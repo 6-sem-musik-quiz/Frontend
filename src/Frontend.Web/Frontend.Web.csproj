@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Frontend.Domain\Frontend.Domain.csproj" />
+    <ProjectReference Include="..\Frontend.Services\Frontend.Services.csproj" />
+  </ItemGroup>
+</Project>
