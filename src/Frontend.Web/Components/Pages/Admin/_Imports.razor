@@ -1,0 +1,2 @@
+@* Alle sider under /admin/** kræver rollen Admin. Ikke-admins ser "Ingen adgang" (se Routes.razor). *@
+@attribute [Authorize(Roles = Roles.Admin)]

@@ -1,0 +1,11 @@
+@inject NavigationManager Navigation
+
+@* Sender en ikke-logget bruger til /login og husker den side, brugeren prøvede at åbne. *@
+
+@code {
+    protected override void OnInitialized()
+    {
+        var returnUrl = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.NavigateTo(LoginUrl.For(returnUrl));
+    }
+}

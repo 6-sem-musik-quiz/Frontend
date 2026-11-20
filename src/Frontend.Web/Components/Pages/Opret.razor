@@ -1,0 +1,53 @@
+@page "/opret"
+@attribute [AllowAnonymous]
+@inject IAuthService AuthService
+@inject ApiCallHandler ApiCall
+@inject NavigationManager Navigation
+
+<PageTitle>Opret bruger · Slopster</PageTitle>
+
+<div class="auth-card">
+    <h1 class="h3 mb-3">Opret bruger</h1>
+
+    <ErrorMessage Message="@_error" />
+
+    <EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="opret">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label for="username" class="form-label">Brugernavn</label>
+            <InputText id="username" class="form-control" @bind-Value="_model.UserName" autocomplete="username" />
+            <ValidationMessage For="() => _model.UserName" />
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label">Adgangskode</label>
+            <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" autocomplete="new-password" />
+            <ValidationMessage For="() => _model.Password" />
+        </div>
+
+        <LoadingButton Type="submit" IsLoading="_loading" LoadingText="Opretter…" class="w-100">Opret bruger</LoadingButton>
+    </EditForm>
+
+    <p class="mt-3 mb-0">Har du allerede en bruger? <a href="login">Log ind</a></p>
+</div>
+
+@code {
+    private readonly CreateUserRequest _model = new();
+    private string? _error;
+    private bool _loading;
+
+    private async Task SubmitAsync()
+    {
+        _loading = true;
+        _error = await ApiCall.RunAsync(
+            () => AuthService.RegisterAsync(_model),
+            unauthorizedMessage: "Brugeren blev oprettet, men login fejlede. Prøv at logge ind.");
+        _loading = false;
+
+        if (_error is null)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+}
