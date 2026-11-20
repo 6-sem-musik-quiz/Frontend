@@ -1,0 +1,46 @@
+@* Knap med loading-tilstand: deaktiveres og viser spinner, mens OnClick kører.
+   Med Type="submit" sættes IsLoading udefra (fx fra en EditForm's OnValidSubmit). *@
+
+<button type="@Type" class="btn @CssClass" disabled="@(Busy || Disabled)" @onclick="HandleClickAsync" @attributes="AdditionalAttributes">
+    @if (Busy)
+    {
+        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        <span>@LoadingText</span>
+    }
+    else
+    {
+        @ChildContent
+    }
+</button>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnClick { get; set; }
+    [Parameter] public string Type { get; set; } = "button";
+    [Parameter] public string CssClass { get; set; } = "btn-primary";
+    [Parameter] public string LoadingText { get; set; } = "Vent…";
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool _running;
+    private bool Busy => _running || IsLoading;
+
+    private async Task HandleClickAsync()
+    {
+        if (Busy || !OnClick.HasDelegate)
+        {
+            return;
+        }
+
+        _running = true;
+        try
+        {
+            await OnClick.InvokeAsync();
+        }
+        finally
+        {
+            _running = false;
+        }
+    }
+}

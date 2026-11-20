@@ -1,0 +1,10 @@
+@* Viser en fejlbesked (fx fra ApiCallHandler). Intet renderes, når Message er tom. *@
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="alert alert-danger" role="alert">@Message</div>
+}
+
+@code {
+    [Parameter] public string? Message { get; set; }
+}

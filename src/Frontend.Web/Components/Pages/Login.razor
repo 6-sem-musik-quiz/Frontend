@@ -1,0 +1,55 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@inject IAuthService AuthService
+@inject ApiCallHandler ApiCall
+@inject NavigationManager Navigation
+
+<PageTitle>Log ind · Slopster</PageTitle>
+
+<div class="auth-card">
+    <h1 class="h3 mb-3">Log ind</h1>
+
+    <ErrorMessage Message="@_error" />
+
+    <EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="login">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label for="username" class="form-label">Brugernavn</label>
+            <InputText id="username" class="form-control" @bind-Value="_model.UserName" autocomplete="username" />
+            <ValidationMessage For="() => _model.UserName" />
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label">Adgangskode</label>
+            <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" autocomplete="current-password" />
+            <ValidationMessage For="() => _model.Password" />
+        </div>
+
+        <LoadingButton Type="submit" IsLoading="_loading" LoadingText="Logger ind…" class="w-100">Log ind</LoadingButton>
+    </EditForm>
+
+    <p class="mt-3 mb-0">Ingen bruger? <a href="opret">Opret bruger</a></p>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+
+    private readonly LoginRequest _model = new();
+    private string? _error;
+    private bool _loading;
+
+    private async Task SubmitAsync()
+    {
+        _loading = true;
+        _error = await ApiCall.RunAsync(
+            () => AuthService.LoginAsync(_model),
+            unauthorizedMessage: "Forkert brugernavn eller adgangskode.");
+        _loading = false;
+
+        if (_error is null)
+        {
+            Navigation.NavigateTo(LoginUrl.SafeReturnUrl(ReturnUrl));
+        }
+    }
+}

@@ -1,0 +1,23 @@
+@inject IAuthService AuthService
+
+<header class="topbar navbar navbar-expand navbar-dark px-3">
+    <a class="navbar-brand fw-bold" href="">🎵 Slopster</a>
+
+    <AuthorizeView>
+        <Authorized>
+            <nav class="navbar-nav me-auto">
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Forside</NavLink>
+                <AuthorizeView Roles="@Roles.Admin" Context="adminContext">
+                    <NavLink class="nav-link" href="admin">Admin</NavLink>
+                </AuthorizeView>
+            </nav>
+
+            <span class="navbar-text text-light me-3" data-testid="current-user">@context.User.Identity?.Name</span>
+            <LoadingButton CssClass="btn-outline-light btn-sm" OnClick="LogoutAsync" LoadingText="Logger ud…">Log ud</LoadingButton>
+        </Authorized>
+    </AuthorizeView>
+</header>
+
+@code {
+    private Task LogoutAsync() => AuthService.LogoutAsync();
+}

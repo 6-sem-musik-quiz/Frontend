@@ -16,12 +16,17 @@ public class HealthCheckTests(WebApplicationFactory<Program> factory) : IClassFi
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    [Fact]
-    public async Task HomePage_ReturnsOk()
+    // Beskyttede sider håndhæves i Blazor (AuthorizeRouteView), så server-endpointet skal
+    // levere app-skallen i stedet for at challenge uden auth-scheme (som ville give 500).
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/admin")]
+    [InlineData("/login")]
+    public async Task Pages_ReturnOk(string path)
     {
         var client = factory.CreateClient();
 
-        var response = await client.GetAsync("/");
+        var response = await client.GetAsync(path);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
