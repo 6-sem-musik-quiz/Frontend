@@ -76,6 +76,6 @@ public class ApiErrorMappingTests
 
         Assert.Equal("token-123", result.Token);
         Assert.Equal(HttpMethod.Post, stub.LastRequest!.Method);
-        Assert.Equal(new Uri(BaseAddress, "api/users/login"), stub.LastRequest.RequestUri);
+        Assert.Equal(new Uri(BaseAddress, "users/login"), stub.LastRequest.RequestUri);
     }
 }

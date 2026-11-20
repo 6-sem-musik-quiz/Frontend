@@ -8,11 +8,13 @@ using Frontend.Services.Interfaces;
 namespace Frontend.Services.ApiClients;
 
 // Typed HttpClients. BaseAddress og BearerTokenHandler sættes i ServiceLayerExtensions.
+// Routes er relative til servicens base-URL gennem edgeservice (/api/<service>/), som
+// sender /api/userservice/users videre til userservice som /api/users.
 // Routes er FORELØBIGE, indtil kontrakterne er godkendt i Platform/docs/contracts.
 
 public class UserApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IUserApiClient
 {
-    private const string Route = "api/users";
+    private const string Route = "users";
 
     public Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default) =>
         PostAsync<LoginRequest, LoginResponse>($"{Route}/login", request, ct);
@@ -29,7 +31,7 @@ public class UserApiClient(HttpClient httpClient) : ApiClientBase(httpClient), I
 
 public class LobbyApiClient(HttpClient httpClient) : ApiClientBase(httpClient), ILobbyApiClient
 {
-    private const string Route = "api/lobbies";
+    private const string Route = "lobbies";
 
     public async Task<IReadOnlyList<LobbyDto>> GetLobbiesAsync(CancellationToken ct = default) =>
         await GetAsync<List<LobbyDto>>(Route, ct);
@@ -49,7 +51,7 @@ public class LobbyApiClient(HttpClient httpClient) : ApiClientBase(httpClient), 
 
 public class GameApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IGameApiClient
 {
-    private const string Route = "api/games";
+    private const string Route = "games";
 
     public Task<GameDto> StartGameAsync(StartGameRequest request, CancellationToken ct = default) =>
         PostAsync<StartGameRequest, GameDto>(Route, request, ct);
@@ -69,7 +71,7 @@ public class GameApiClient(HttpClient httpClient) : ApiClientBase(httpClient), I
 
 public class MusicApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IMusicApiClient
 {
-    private const string Route = "api/tracks";
+    private const string Route = "tracks";
 
     public async Task<IReadOnlyList<TrackDto>> GetTracksAsync(CancellationToken ct = default) =>
         await GetAsync<List<TrackDto>>(Route, ct);
@@ -86,7 +88,7 @@ public class MusicApiClient(HttpClient httpClient) : ApiClientBase(httpClient), 
 
 public class StatisticApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IStatisticApiClient
 {
-    private const string Route = "api/statistics";
+    private const string Route = "statistics";
 
     public Task<PlayerStatisticDto> GetPlayerStatisticAsync(Guid userId, CancellationToken ct = default) =>
         GetAsync<PlayerStatisticDto>($"{Route}/players/{userId}", ct);

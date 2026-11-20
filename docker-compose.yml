@@ -3,13 +3,5 @@ services:
     build: .
     ports:
       - "5006:8080"
-    environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      # Backend services run from their own repos and are reached through the host's ports.
-      Services__UserService: "http://host.docker.internal:5001"
-      Services__MusicService: "http://host.docker.internal:5002"
-      Services__StatisticService: "http://host.docker.internal:5003"
-      Services__LobbyService: "http://host.docker.internal:5004"
-      Services__GameService: "http://host.docker.internal:5005"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # nginx serves the WebAssembly files only. The app calls /api/<service>/ on the same host,
+    # which in the cluster is edgeservice (Cloudflare Tunnel). Locally /api/* answers 404.
