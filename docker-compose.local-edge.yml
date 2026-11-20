@@ -1,0 +1,10 @@
+# Override: send /api/* to the edgeservice on this machine (http://localhost:5000)
+# instead of the real one. Start the edge from the EdgeService repo first.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.local-edge.yml up --build
+services:
+  web:
+    volumes:
+      - ./nginx/api-local-edge.conf:/etc/nginx/api.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

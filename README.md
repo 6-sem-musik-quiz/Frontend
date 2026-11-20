@@ -49,6 +49,16 @@ nginx forwards `/api/*` to `https://quiz.munkcloud.dk` (edgeservice in the clust
 only talks to localhost, so there is no CORS. **This is the live data**: whatever you create or
 delete is real. After a code change, run `docker compose up --build` again.
 
+**Against a local edgeservice** (to test a backend feature end to end):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local-edge.yml up --build
+```
+
+nginx then forwards `/api/*` to the edge on `http://localhost:5000` instead
+([`nginx/api-local-edge.conf`](nginx/api-local-edge.conf)). Start the edge and your service first:
+see "Testing a feature locally" in the EdgeService README.
+
 **Dev server** (hot reload, no backend):
 
 ```bash
