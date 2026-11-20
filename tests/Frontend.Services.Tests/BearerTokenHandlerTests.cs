@@ -62,11 +62,11 @@ public class BearerTokenHandlerTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Services:UserService"] = "http://users.test",
-                ["Services:LobbyService"] = "http://lobbies.test",
-                ["Services:GameService"] = "http://games.test",
-                ["Services:MusicService"] = "http://music.test",
-                ["Services:StatisticService"] = "http://stats.test",
+                ["Services:UserService"] = "http://edge.test/api/userservice/",
+                ["Services:LobbyService"] = "http://edge.test/api/lobbyservice/",
+                ["Services:GameService"] = "http://edge.test/api/gameservice/",
+                ["Services:MusicService"] = "http://edge.test/api/musicservice/",
+                ["Services:StatisticService"] = "http://edge.test/api/statisticservice/",
             })
             .Build();
 
@@ -81,7 +81,7 @@ public class BearerTokenHandlerTests
 
         Assert.Equal(2, stub.Requests.Count);
         Assert.All(stub.Requests, r => Assert.Equal("Bearer user-token", r.Headers.Authorization?.ToString()));
-        Assert.Equal(new Uri("http://lobbies.test/api/lobbies"), stub.Requests[0].RequestUri);
-        Assert.Equal(new Uri("http://music.test/api/tracks"), stub.Requests[1].RequestUri);
+        Assert.Equal(new Uri("http://edge.test/api/lobbyservice/lobbies"), stub.Requests[0].RequestUri);
+        Assert.Equal(new Uri("http://edge.test/api/musicservice/tracks"), stub.Requests[1].RequestUri);
     }
 }

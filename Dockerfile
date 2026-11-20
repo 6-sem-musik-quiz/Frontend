@@ -11,8 +11,10 @@ RUN dotnet restore src/Frontend.Web/Frontend.Web.csproj
 COPY src/ src/
 RUN dotnet publish src/Frontend.Web/Frontend.Web.csproj -c Release -o /app/publish --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
-WORKDIR /app
+# Blazor WebAssembly is only static files, so nginx serves them. No .NET runtime in this image.
+# nginx-unprivileged runs as user 101 and listens on 8080.
+FROM nginxinc/nginx-unprivileged:1.29-alpine AS final
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY nginx/api-404.conf /etc/nginx/api.conf
+COPY --from=build /app/publish/wwwroot /usr/share/nginx/html
 EXPOSE 8080
-COPY --from=build /app/publish .
-ENTRYPOINT ["dotnet", "Frontend.Web.dll"]

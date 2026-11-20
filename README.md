@@ -1,21 +1,21 @@
 # Frontend
 
-Part of the **6-sem-musik-quiz** system. ASP.NET Core (.NET 10) Blazor Web App with interactive server rendering. Serves the UI for players and admins and calls the backend services over HTTP.
+Part of the **6-sem-musik-quiz** system. Blazor WebAssembly (.NET 10). The whole app runs in the browser; in production nginx serves it as static files. It calls the backend services over HTTP through edgeservice (YARP) on the same host: `https://quiz.munkcloud.dk/api/<service>/...`.
 
 ## Architecture
 
 ```
-Web  ──►  Services  ──►  backend APIs (UserService, MusicService, ...)
+Web  ──►  Services  ──►  /api/<service>/  ──►  edgeservice (YARP)  ──►  UserService, MusicService, ...
   └─────────┴──►  Domain
 ```
 
 | Project | Responsibility |
 |---|---|
-| `src/Frontend.Web` | Razor components, pages, layout, `Program.cs`. Pages inject API client interfaces, never `HttpClient` directly. |
+| `src/Frontend.Web` | Razor components, pages, layout, `Program.cs`, `wwwroot/index.html`. Pages inject API client interfaces, never `HttpClient` directly. |
 | `src/Frontend.Services` | Typed `HttpClient`s, one per backend area. The only layer that knows backend URLs and routes. |
 | `src/Frontend.Domain` | DTOs that mirror the backend contracts. No dependencies. |
 | `tests/Frontend.Services.Tests` | Unit tests for API clients with a stubbed `HttpMessageHandler` (xUnit). |
-| `tests/Frontend.Web.Tests` | Component tests with bUnit + NSubstitute, and integration tests using `WebApplicationFactory`. |
+| `tests/Frontend.Web.Tests` | Component and auth tests with bUnit + NSubstitute. |
 
 `Example*` files are placeholders showing the pattern end to end (`/examples` page → `IExampleApiClient` → UserService `GET /api/example`). Replace them with real pages and clients.
 
@@ -23,32 +23,49 @@ Web  ──►  Services  ──►  backend APIs (UserService, MusicService, ..
 
 1. Request/response DTOs in `Domain/DTOs` (same shape as the backend's)
 2. `I<Name>ApiClient` in `Services/Interfaces` + implementation in `Services/ApiClients`
-3. Register it in `ServiceLayerExtensions` with `AddHttpClient` and the right base URL from `ServiceUrlOptions`
+3. Register it in `ServiceLayerExtensions` with `AddHttpClient` and the right base URL from `ServiceUrlOptions`. Routes are relative to the service, without `api/` (e.g. `users`): the base URL is already `/api/userservice/`, and edgeservice turns `/api/userservice/users` into userservice's `/api/users`.
 4. Page or component in `Web/Components/Pages`, inject the interface
 5. Tests: API client in `Frontend.Services.Tests`, page in `Frontend.Web.Tests` (bUnit)
 
 ## Configuration
 
-Backend URLs live in the `Services` section of `appsettings.json` and default to the local ports below. Override with environment variables, e.g. `Services__UserService=http://userservice:8080`.
+`Program.cs` points every API client at `<page host>/api/<service>/`. To call another host
+(e.g. a local edgeservice), set `ApiBaseUrl` in `src/Frontend.Web/wwwroot/appsettings.Development.json`;
+that host then needs CORS for the frontend's origin.
+
+Login state (the JWT) is kept in the browser's `sessionStorage` and sent as `Authorization: Bearer`.
+The backend services validate it; the frontend only reads its claims for display and routing.
 
 ## Running locally
 
-Start the backend services you need from their own repos first (`docker compose up --build` in each).
-
-**Frontend from your IDE:**
+**Against the real backend** (recommended):
 
 ```bash
-dotnet run --project src/Frontend.Web
+docker compose up --build        # http://localhost:5006
 ```
 
-**Frontend in Docker** (reaches the backends on the host's ports):
+This runs the production image, but with [`nginx/api-proxy.conf`](nginx/api-proxy.conf) mounted:
+nginx forwards `/api/*` to `https://quiz.munkcloud.dk` (edgeservice in the cluster). The browser
+only talks to localhost, so there is no CORS. **This is the live data**: whatever you create or
+delete is real. After a code change, run `docker compose up --build` again.
+
+**Dev server** (hot reload, no backend):
 
 ```bash
-docker compose up --build
+dotnet run --project src/Frontend.Web       # http://localhost:5006
 ```
 
-- Frontend: http://localhost:5006
-- Health: http://localhost:5006/health
+API calls fail here, since there is no edgeservice on the same host. To use one, set `ApiBaseUrl`
+in `src/Frontend.Web/wwwroot/appsettings.Development.json`; that host then needs CORS.
+
+## Hosting
+
+The image is `nginxinc/nginx-unprivileged` with the published `wwwroot` and [`nginx/default.conf`](nginx/default.conf):
+port 8080, user 101, `GET /health`, unknown paths fall back to `index.html`, and `/api/*` answers 404
+([`nginx/api-404.conf`](nginx/api-404.conf); in the cluster `/api/*` never reaches this pod).
+CI pushes it to `ghcr.io/6-sem-musik-quiz/frontend` on every push to `main`, and Flux deploys it
+(see `6-sem-musik-quiz/gitops`, `apps/frontend.yaml`). Cloudflare Tunnel sends
+`https://quiz.munkcloud.dk/api/*` to edgeservice and everything else here.
 
 ## Tests
 

@@ -1,8 +1,10 @@
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
+using System.Text.Json;
+
+using Microsoft.JSInterop;
 
 namespace Frontend.Web.Auth;
 
-// Token og bruger, som de gemmes i browserens session storage (krypteret via Data Protection).
+// Token og bruger, som de gemmes i browserens sessionStorage (ryddes, når fanen lukkes).
 public sealed record StoredSession(string Token, string? UserName, string? Role);
 
 public interface ITokenStorage
@@ -12,18 +14,20 @@ public interface ITokenStorage
     Task DeleteAsync();
 }
 
-// Kræver JS interop, så den kan kun bruges efter circuit'en er startet (ikke under prerender).
-public sealed class ProtectedSessionTokenStorage(ProtectedSessionStorage storage) : ITokenStorage
+// sessionStorage via JS interop. Tokenet er ikke krypteret (det kan en app i browseren ikke),
+// men det er en signeret JWT, som backend-services validerer; frontenden bruger kun claims til visning.
+public sealed class BrowserSessionTokenStorage(IJSRuntime js) : ITokenStorage
 {
     private const string Key = "slopster.session";
 
     public async Task<StoredSession?> GetAsync()
     {
-        var result = await storage.GetAsync<StoredSession>(Key);
-        return result.Success ? result.Value : null;
+        var json = await js.InvokeAsync<string?>("sessionStorage.getItem", Key);
+        return string.IsNullOrEmpty(json) ? null : JsonSerializer.Deserialize<StoredSession>(json);
     }
 
-    public async Task SetAsync(StoredSession session) => await storage.SetAsync(Key, session);
+    public async Task SetAsync(StoredSession session) =>
+        await js.InvokeVoidAsync("sessionStorage.setItem", Key, JsonSerializer.Serialize(session));
 
-    public async Task DeleteAsync() => await storage.DeleteAsync(Key);
+    public async Task DeleteAsync() => await js.InvokeVoidAsync("sessionStorage.removeItem", Key);
 }

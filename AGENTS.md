@@ -19,7 +19,7 @@ dotnet build -c Release
 dotnet test -c Release
 ```
 
-Run locally: `dotnet run --project src/Frontend.Web`. Review the README before migrations, DB access or changing ports.
+Run locally: `dotnet run --project src/Frontend.Web` (Blazor WebAssembly; API calls go to `/api/<service>/` through edgeservice). Review the README before migrations, DB access or changing ports.
 
 ## Four-agent workflow
 

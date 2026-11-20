@@ -1,9 +1,6 @@
 using Frontend.Services.Auth;
 
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server.Circuits;
 
 namespace Frontend.Web.Auth;
 
@@ -11,32 +8,33 @@ public static class AuthServiceCollectionExtensions
 {
     public static IServiceCollection AddFrontendAuth(this IServiceCollection services)
     {
+        // [Authorize] håndhæves af AuthorizeRouteView i Routes.razor. Backend-services validerer selve JWT'en.
+        services.AddAuthorizationCore();
         services.AddCascadingAuthenticationState();
-        services.AddAuthorization();
-
-        // Login-state lever i Blazor-circuit'en (ikke i en cookie), så server-endpointet må ikke
-        // challenge/forbid. [Authorize] håndhæves af AuthorizeRouteView i Routes.razor.
-        services.AddSingleton<IAuthorizationMiddlewareResultHandler, PassThroughAuthorizationMiddlewareResultHandler>();
 
         services.AddSingleton(TimeProvider.System);
-        services.AddScoped<UserSession>();
-        services.AddScoped<ITokenStorage, ProtectedSessionTokenStorage>();
+
+        // Singleton: i WebAssembly er der én bruger pr. fane, og IHttpClientFactory opretter
+        // BearerTokenHandler i sit eget DI-scope, så et scoped UserSession ville være en anden instans.
+        services.AddSingleton<UserSession>();
+        services.AddSingleton<IAccessTokenProvider, SessionAccessTokenProvider>();
+
+        services.AddScoped<ITokenStorage, BrowserSessionTokenStorage>();
         services.AddScoped<JwtAuthenticationStateProvider>();
         services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ApiCallHandler>();
 
-        // Giver BearerTokenHandler adgang til den aktuelle circuits token.
-        services.AddSingleton<CircuitServicesAccessor>();
-        services.AddScoped<CircuitHandler, ServicesAccessorCircuitHandler>();
-        services.AddSingleton<IAccessTokenProvider, CircuitAccessTokenProvider>();
-
         return services;
     }
 }
 
-public sealed class PassThroughAuthorizationMiddlewareResultHandler : IAuthorizationMiddlewareResultHandler
+// Henter token fra UserSession. Udløbne tokens sendes ikke med.
+public sealed class SessionAccessTokenProvider(UserSession session, TimeProvider timeProvider) : IAccessTokenProvider
 {
-    public Task HandleAsync(RequestDelegate next, HttpContext context, AuthorizationPolicy policy,
-        PolicyAuthorizationResult authorizeResult) => next(context);
+    public string? GetAccessToken()
+    {
+        var token = session.Current;
+        return token is null || token.IsExpired(timeProvider.GetUtcNow()) ? null : token.Token;
+    }
 }

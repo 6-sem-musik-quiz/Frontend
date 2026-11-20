@@ -1,11 +1,12 @@
 using System.Security.Claims;
+using System.Text.Json;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
 
 namespace Frontend.Web.Auth;
 
-// Login-state for Blazor. Læser "unique_name" og "role" fra JWT'en i ProtectedSessionStorage.
+// Login-state for Blazor. Læser "unique_name" og "role" fra JWT'en i sessionStorage.
 // Når tokenet udløber, ryddes sessionen og alle AuthorizeViews/AuthorizeRouteView opdateres;
 // AuthorizeRouteView sender derefter brugeren til /login (se RedirectToLogin).
 public sealed class JwtAuthenticationStateProvider(
@@ -68,15 +69,15 @@ public sealed class JwtAuthenticationStateProvider(
             var stored = await storage.GetAsync();
             Apply(JwtTokenParser.TryParse(stored?.Token));
         }
-        catch (Exception ex) when (ex is InvalidOperationException or JSException or JSDisconnectedException or TaskCanceledException)
+        catch (Exception ex) when (ex is InvalidOperationException or JSException or TaskCanceledException)
         {
-            // JS interop er ikke tilgængelig (fx under prerender) eller data kan ikke dekrypteres.
-            // Vi behandler brugeren som anonym uden at markere sessionen som indlæst.
-            logger.LogDebug(ex, "Kunne ikke læse session fra ProtectedSessionStorage.");
+            // JS interop er ikke tilgængelig. Vi behandler brugeren som anonym uden at markere
+            // sessionen som indlæst.
+            logger.LogDebug(ex, "Kunne ikke læse session fra sessionStorage.");
         }
-        catch (System.Security.Cryptography.CryptographicException ex)
+        catch (JsonException ex)
         {
-            logger.LogWarning(ex, "Gemt session kunne ikke dekrypteres og slettes.");
+            logger.LogWarning(ex, "Gemt session kunne ikke læses og slettes.");
             await ClearAsync();
         }
     }
@@ -94,9 +95,9 @@ public sealed class JwtAuthenticationStateProvider(
         {
             await storage.DeleteAsync();
         }
-        catch (Exception ex) when (ex is InvalidOperationException or JSException or JSDisconnectedException or TaskCanceledException)
+        catch (Exception ex) when (ex is InvalidOperationException or JSException or TaskCanceledException)
         {
-            logger.LogDebug(ex, "Kunne ikke slette session fra ProtectedSessionStorage.");
+            logger.LogDebug(ex, "Kunne ikke slette session fra sessionStorage.");
         }
     }
 

@@ -1,6 +1,6 @@
 namespace Frontend.Services.Auth;
 
-// Giver den aktuelle brugers JWT. Implementeres af Web-laget (læser fra brugerens Blazor-circuit).
+// Giver den aktuelle brugers JWT. Implementeres af Web-laget (læser fra UserSession i browseren).
 public interface IAccessTokenProvider
 {
     string? GetAccessToken();
