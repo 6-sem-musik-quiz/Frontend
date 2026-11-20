@@ -1,7 +1,14 @@
+# Runs the production image locally against the REAL backend:
+# nginx serves the app on http://localhost:5006 and forwards /api/* to
+# https://quiz.munkcloud.dk (edgeservice in the cluster). This is the live data,
+# so what you create or delete here is real.
+#
+#   docker compose up --build
 services:
   web:
     build: .
     ports:
       - "5006:8080"
-    # nginx serves the WebAssembly files only. The app calls /api/<service>/ on the same host,
-    # which in the cluster is edgeservice (Cloudflare Tunnel). Locally /api/* answers 404.
+    volumes:
+      - ./nginx/api-proxy.conf:/etc/nginx/api.conf:ro
+      - ./nginx/upstream-ca.pem:/etc/nginx/upstream-ca.pem:ro

@@ -38,18 +38,31 @@ The backend services validate it; the frontend only reads its claims for display
 
 ## Running locally
 
+**Against the real backend** (recommended):
+
 ```bash
-dotnet run --project src/Frontend.Web       # dev server on http://localhost:5006
-docker compose up --build                   # the production image: nginx on http://localhost:5006
+docker compose up --build        # http://localhost:5006
 ```
 
-Locally there is no edgeservice on the same host, so API calls fail (nginx answers `/api/*` with 404).
-Pages and routing work.
+This runs the production image, but with [`nginx/api-proxy.conf`](nginx/api-proxy.conf) mounted:
+nginx forwards `/api/*` to `https://quiz.munkcloud.dk` (edgeservice in the cluster). The browser
+only talks to localhost, so there is no CORS. **This is the live data**: whatever you create or
+delete is real. After a code change, run `docker compose up --build` again.
+
+**Dev server** (hot reload, no backend):
+
+```bash
+dotnet run --project src/Frontend.Web       # http://localhost:5006
+```
+
+API calls fail here, since there is no edgeservice on the same host. To use one, set `ApiBaseUrl`
+in `src/Frontend.Web/wwwroot/appsettings.Development.json`; that host then needs CORS.
 
 ## Hosting
 
-The image is `nginxinc/nginx-unprivileged` with the published `wwwroot` and [`nginx.conf`](nginx.conf):
-port 8080, user 101, `GET /health`, unknown paths fall back to `index.html`.
+The image is `nginxinc/nginx-unprivileged` with the published `wwwroot` and [`nginx/default.conf`](nginx/default.conf):
+port 8080, user 101, `GET /health`, unknown paths fall back to `index.html`, and `/api/*` answers 404
+([`nginx/api-404.conf`](nginx/api-404.conf); in the cluster `/api/*` never reaches this pod).
 CI pushes it to `ghcr.io/6-sem-musik-quiz/frontend` on every push to `main`, and Flux deploys it
 (see `6-sem-musik-quiz/gitops`, `apps/frontend.yaml`). Cloudflare Tunnel sends
 `https://quiz.munkcloud.dk/api/*` to edgeservice and everything else here.
