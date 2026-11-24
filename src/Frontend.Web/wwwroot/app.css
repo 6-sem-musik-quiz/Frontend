@@ -922,3 +922,61 @@ h1:focus {
 @media (prefers-reduced-motion: reduce) {
     .rt-card.new, .rt-card.out, .rt-stamp { animation-duration: .01s; animation-delay: 0s; }
 }
+
+/* Rival seats on a phone: one compact line each, so my own hand stays near the top.
+   name | count | stamp | last 5 streak squares | toggle; the hand unfolds below when toggled. */
+.rt-toggle {
+    display: none;
+}
+@media (max-width: 575.98px) {
+    .rt {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+    .rt-seat {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto auto 34px;
+        align-items: center;
+        gap: 4px 8px;
+        padding: 5px 6px 5px 10px;
+        box-shadow: 2px 2px 0 var(--sl-ink);
+    }
+    .rt-top { display: contents; }
+    .rt-name { grid-column: 1; grid-row: 1; font-size: 15px; }
+    .rt-count { grid-column: 2; grid-row: 1; font-size: 12px; }
+    .rt-stamp {
+        grid-column: 3;
+        grid-row: 1;
+        position: static;
+        transform: none;
+        animation: none;
+    }
+    .rt-q { width: 18px; height: 24px; font-size: 12px; box-shadow: 1px 1px 0 var(--sl-ink); }
+    .rt-track { grid-column: 4; grid-row: 1; flex-wrap: nowrap; gap: 2px; }
+    .rt-track b { width: 9px; height: 9px; border-width: 1.5px; }
+    .rt-track b:not(.recent) { display: none; } /* the last five played rounds only */
+    .rt-run { margin-left: 4px; font-size: 10px; white-space: nowrap; }
+    .rt-toggle {
+        grid-column: 5;
+        grid-row: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border: 2px solid var(--sl-ink);
+        border-radius: 4px;
+        background: var(--sl-cream);
+        color: var(--sl-ink);
+        font-size: 14px;
+        cursor: pointer;
+    }
+    .rt-hand { display: none; }
+    .rt-seat.open .rt-hand {
+        display: flex;
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+}

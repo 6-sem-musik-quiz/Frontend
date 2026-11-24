@@ -59,7 +59,7 @@ public class RivalTableTests : BunitContext
 
         var tracks = cut.FindAll("[data-testid=rival-track]");
         Assert.Equal(10, tracks[0].QuerySelectorAll("b").Length);
-        Assert.Equal(["n", "y", "y", "y"], tracks[0].QuerySelectorAll("b.y, b.n").Select(b => b.ClassName));
+        Assert.Equal(["n", "y", "y", "y"], tracks[0].QuerySelectorAll("b.y, b.n").Select(b => b.ClassList.Contains("y") ? "y" : "n"));
         Assert.Equal("3 i træk", tracks[0].QuerySelector("[data-testid=rival-run]")!.TextContent);
         Assert.Null(tracks[1].QuerySelector("[data-testid=rival-run]")); // a run of 0 is not shown
     }
@@ -95,6 +95,34 @@ public class RivalTableTests : BunitContext
 
         Assert.DoesNotContain(cut.FindAll("[data-testid=rival-card]"), c => c.ClassList.Contains("out") || c.ClassList.Contains("new"));
         Assert.Equal(3, cut.FindAll("[data-testid=rival-card]").Count);
+    }
+
+    [Fact]
+    public void PhoneToggle_UnfoldsAndFoldsOneSeatsHand()
+    {
+        var cut = RenderTable(Rival(), Rival(3, "Benjamin"));
+
+        var toggle = cut.FindAll("[data-testid=rival-toggle]")[0];
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Equal("Vis Asgers kort", toggle.GetAttribute("aria-label"));
+
+        toggle.Click();
+        var seats = cut.FindAll("[data-testid=rival]");
+        Assert.Contains("open", seats[0].ClassList);
+        Assert.DoesNotContain("open", seats[1].ClassList);
+        Assert.Equal("true", cut.FindAll("[data-testid=rival-toggle]")[0].GetAttribute("aria-expanded"));
+
+        cut.FindAll("[data-testid=rival-toggle]")[0].Click();
+        Assert.DoesNotContain("open", cut.FindAll("[data-testid=rival]")[0].ClassList);
+    }
+
+    [Fact]
+    public void Streak_MarksTheLastFivePlayedRounds_ForThePhone()
+    {
+        var cut = RenderTable(Rival(history: [true, false, true, true, false, true, true]));
+
+        var squares = cut.FindAll("[data-testid=rival-track] b");
+        Assert.Equal([2, 3, 4, 5, 6], squares.Select((b, i) => (b, i)).Where(x => x.b.ClassList.Contains("recent")).Select(x => x.i));
     }
 
     [Theory]

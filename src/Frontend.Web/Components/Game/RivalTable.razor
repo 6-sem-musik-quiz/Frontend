@@ -4,7 +4,9 @@
      squeeze together to fit the seat, like my own hand (--n, app.css "Rival seats"),
    - a lock stamp when they answer: order and seconds, never where,
    - a streak track: one square per round, "3 i træk" during a run.
-   At round end a right card slides in, a wrong one falls out. *@
+   At round end a right card slides in, a wrong one falls out.
+   On a phone (app.css, under 576 px) each seat is one compact line: name, count, stamp and the last
+   five streak squares; the hand is hidden until the player taps the seat's toggle. *@
 @using System.Globalization
 
 <section class="rt" aria-label="Modstandere" data-testid="rival-table">
@@ -12,11 +14,17 @@
     {
         var cards = HandOf(rival);
         var run = CurrentRun(rival.History);
-        <article @key="rival.UserId" class="rt-seat" data-testid="rival" aria-label="@SeatLabel(rival)">
+        var open = _open.Contains(rival.UserId);
+        <article @key="rival.UserId" class="rt-seat @(open ? "open" : "")" data-testid="rival" aria-label="@SeatLabel(rival)">
             <div class="rt-top">
                 <span class="px rt-name">@rival.Name</span>
                 <span class="px rt-count" data-testid="rival-count">@rival.Cards.Count kort</span>
             </div>
+
+            @* Only shown on a phone, where the hand is folded away. *@
+            <button type="button" class="rt-toggle" aria-expanded="@(open ? "true" : "false")"
+                    aria-label="@(open ? $"Skjul {rival.Name}s kort" : $"Vis {rival.Name}s kort")"
+                    @onclick="() => Toggle(rival.UserId)" data-testid="rival-toggle">@(open ? "▴" : "▾")</button>
 
             @* Over 8 cards only a strip of each shows, so the year runs up its edge (like my own hand). *@
             <div class="rt-hand @(cards.Count > 8 ? "tight" : "")" style="--n:@cards.Count" aria-hidden="true">
@@ -39,7 +47,10 @@
             <div class="rt-track" data-testid="rival-track">
                 @for (var round = 0; round < TotalRounds; round++)
                 {
-                    <b class="@(round < rival.History.Count ? (rival.History[round] ? "y" : "n") : "")"></b>
+                    // "recent" marks the last five played rounds: all a phone has room for.
+                    var played = round < rival.History.Count;
+                    var recent = played && round >= rival.History.Count - RecentRounds;
+                    <b class="@(played ? (rival.History[round] ? "y" : "n") : "") @(recent ? "recent" : "")"></b>
                 }
                 @if (run >= 2)
                 {
@@ -53,6 +64,17 @@
 @code {
     [Parameter] public IReadOnlyList<RivalView> Rivals { get; set; } = [];
     [Parameter] public int TotalRounds { get; set; } = 10;
+
+    public const int RecentRounds = 5;
+
+    // Seats whose hand is unfolded on a phone.
+    private readonly HashSet<int> _open = [];
+
+    private void Toggle(int userId)
+    {
+        if (!_open.Remove(userId))
+            _open.Add(userId);
+    }
 
     // The cards to draw: the hand, with a right answer marked new, or a wrong one put in at its slot
     // to fall out.
