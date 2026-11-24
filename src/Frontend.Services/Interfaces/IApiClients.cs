@@ -17,13 +17,17 @@ public interface IUserApiClient
     Task<IReadOnlyList<UserDto>> GetUsersAsync(CancellationToken ct = default);
 }
 
+// LobbyService. Live updates come over SignalR (ILobbyHub in Frontend.Web), not through this client.
 public interface ILobbyApiClient
 {
-    Task<IReadOnlyList<LobbyDto>> GetLobbiesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<LobbySummaryDto>> GetLobbiesAsync(CancellationToken ct = default);
     Task<LobbyDto> GetLobbyAsync(Guid id, CancellationToken ct = default);
     Task<LobbyDto> CreateLobbyAsync(CreateLobbyRequest request, CancellationToken ct = default);
-    Task<LobbyDto> JoinLobbyAsync(JoinLobbyRequest request, CancellationToken ct = default);
+    Task<LobbyDto> JoinLobbyAsync(Guid id, CancellationToken ct = default);
+    Task<LobbyDto> JoinByCodeAsync(string code, CancellationToken ct = default);
     Task LeaveLobbyAsync(Guid id, CancellationToken ct = default);
+    Task<LobbyDto> SetReadyAsync(Guid id, bool ready, CancellationToken ct = default);
+    Task<StartGameResponse> StartGameAsync(Guid id, CancellationToken ct = default);
 }
 
 public interface IGameApiClient

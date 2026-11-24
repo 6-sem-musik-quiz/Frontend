@@ -55,7 +55,7 @@ public class BearerTokenHandlerTests
     [Fact]
     public async Task AddServiceLayer_SetsTokenAndBaseAddress_OnAllTypedClients()
     {
-        var stub = new StubHttpMessageHandler(HttpStatusCode.OK, Array.Empty<LobbyDto>());
+        var stub = new StubHttpMessageHandler(HttpStatusCode.OK, Array.Empty<LobbySummaryDto>());
         var tokenProvider = Substitute.For<IAccessTokenProvider>();
         tokenProvider.GetAccessToken().Returns("user-token");
 
