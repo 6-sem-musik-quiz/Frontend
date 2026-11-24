@@ -1,0 +1,30 @@
+@* SCRUM-117: link til Grafana-dashboardet. URL'en kommer fra Grafana:DashboardUrl i wwwroot/appsettings.json
+   (Blazor WebAssembly kører i browseren, så den læser ikke miljøvariabler fra serveren). Uden URL vises intet.
+   Kun et link, ingen iframe. *@
+@inject IConfiguration Configuration
+
+@if (DashboardUrl is { } url)
+{
+    <section class="card mb-4" data-testid="grafana-card">
+        <div class="card-body d-flex flex-wrap align-items-center gap-3">
+            <div class="flex-grow-1">
+                <h2 class="h5 card-title mb-1">Drift og metrics</h2>
+                <p class="card-text text-body-secondary mb-0">
+                    Aktive lobbyer, spil i gang, cache-hits og svartider pr. service.
+                </p>
+            </div>
+            <a class="btn btn-outline-primary" href="@url" target="_blank" rel="noopener noreferrer">Åbn Grafana ↗</a>
+        </div>
+    </section>
+}
+
+@code {
+    private string? DashboardUrl
+    {
+        get
+        {
+            var url = Configuration["Grafana:DashboardUrl"];
+            return Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http" ? url : null;
+        }
+    }
+}

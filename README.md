@@ -33,6 +33,10 @@ Web  ──►  Services  ──►  /api/<service>/  ──►  edgeservice (YA
 (e.g. a local edgeservice), set `ApiBaseUrl` in `src/Frontend.Web/wwwroot/appsettings.Development.json`;
 that host then needs CORS for the frontend's origin.
 
+`Grafana:DashboardUrl` in `src/Frontend.Web/wwwroot/appsettings.json` is the dashboard the admin page links to
+("Drift og metrics", SCRUM-117). The app runs in the browser and reads that file, not environment variables;
+leave the value out to hide the card.
+
 Login state (the JWT) is kept in the browser's `sessionStorage` and sent as `Authorization: Bearer`.
 The backend services validate it; the frontend only reads its claims for display and routing.
 

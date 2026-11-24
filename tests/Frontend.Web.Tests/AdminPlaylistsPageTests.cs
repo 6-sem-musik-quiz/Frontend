@@ -28,6 +28,8 @@ public class AdminPlaylistsPageTests : BunitContext
         Services.AddSingleton(Substitute.For<IAuthService>());
         Services.AddSingleton(_music);
         Services.AddScoped<ApiCallHandler>();
+        Services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(
+            new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build()); // /admin reads Grafana:DashboardUrl
 
         _music.GetPlaylistsAsync(Arg.Any<CancellationToken>()).Returns([
             new PlaylistDto(1, "80s", 12),
