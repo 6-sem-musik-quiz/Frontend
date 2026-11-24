@@ -1,0 +1,76 @@
+@* SCRUM-153: a list of songs from the game with our own card data: year, title, artist(s), round and
+   how it went. Deliberately no links to music services. Closes with the button or Esc. *@
+
+@if (Open)
+{
+    <div class="songs-backdrop" @onclick="CloseAsync" data-testid="songs-backdrop">
+        <div class="songs-dialog" role="dialog" aria-modal="true" aria-labelledby="songs-title"
+             @onclick:stopPropagation="true" @onkeydown="OnKeyDownAsync" data-testid="songs-dialog">
+            <div class="songs-head">
+                <div>
+                    <h2 id="songs-title" class="px">@Title</h2>
+                    @if (Intro is not null)
+                    {
+                        <p>@Intro</p>
+                    }
+                </div>
+                <button type="button" class="btn btn-sm" @ref="_close" @onclick="CloseAsync" data-testid="songs-close">Luk</button>
+            </div>
+
+            @if (Songs.Count == 0)
+            {
+                <p class="songs-empty" data-testid="songs-empty">@EmptyText</p>
+            }
+            else
+            {
+                <ul class="songs-list">
+                    @foreach (var played in Songs.OrderBy(s => s.Round))
+                    {
+                        var (tag, css) = Outcome(played);
+                        <li @key="played.Round" data-testid="song">
+                            <span class="songs-year">@played.Song.Year</span>
+                            <span>
+                                <span class="songs-title">@played.Song.Title</span>
+                                <span class="songs-meta">@string.Join(", ", played.Song.Artists) · runde @played.Round</span>
+                            </span>
+                            <span class="songs-tag @css">@tag</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string Title { get; set; } = "Sange";
+    [Parameter] public string? Intro { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "Ingen sange endnu.";
+    [Parameter] public IReadOnlyList<PlayedSong> Songs { get; set; } = [];
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private ElementReference _close;
+    private bool _wasOpen;
+
+    public static (string Text, string Css) Outcome(PlayedSong played) =>
+        played.Correct ? ("i din hånd", "kept")
+        : played.Answered ? ("forkert", "wrong")
+        : ("intet svar", "missed");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Move focus into the dialog when it opens, so the keyboard and screen readers follow.
+        if (Open && !_wasOpen)
+            await _close.FocusAsync();
+        _wasOpen = Open;
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+            await CloseAsync();
+    }
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+}

@@ -16,6 +16,10 @@ public record RivalView(
     RivalStamp? Stamp,                     // set once they have answered the running round
     RivalReveal? Reveal);                  // set between RoundEnded and the next round
 
+// SCRUM-153: a round's song and how it went for me. Shown in the discard pile (not Correct) and in
+// the list of all songs after the game. Only our own card data, no links to music services.
+public record PlayedSong(int Round, CardDto Song, bool Correct, bool Answered);
+
 // Order is 1 for the first to answer. AfterMs is null after a reload (the server sends the order only).
 public record RivalStamp(int Order, int? AfterMs);
 

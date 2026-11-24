@@ -31,6 +31,14 @@
     <div class="gr-hint" data-testid="hint">@Hint</div>
 
     @* Never scrolls: --n tells the CSS how many cards (+ the "?") to fit into the width. *@
+    @* Left and Right (the deck and the discard pile, SCRUM-153) sit beside the hand; the hand sizes
+       its cards from its own wrapper, so they never push it into a scrollbar. *@
+    <div class="gr-hand-row">
+    @if (Left is not null)
+    {
+        <div class="gr-side gr-side-left">@Left</div>
+    }
+    <div class="gr-hand-wrap">
     <div class="gr-hand" data-hand="" role="group" aria-label="Din tidslinje" style="--n:@(Cards.Count + 1)" data-testid="hand">
         @{
             var count = Cards.Count + (ShowPlaced ? 1 : 0);
@@ -67,6 +75,12 @@
             }
         }
     </div>
+    </div>
+    @if (Right is not null)
+    {
+        <div class="gr-side gr-side-right">@Right</div>
+    }
+    </div>
 
     <div class="gr-footer">
         <span class="gr-count px" data-testid="count">Din hånd · @Cards.Count kort = @Cards.Count point</span>
@@ -92,6 +106,10 @@
     [Parameter] public RoundReveal? Reveal { get; set; }
 
     [Parameter] public string Banner { get; set; } = "Nu spiller";
+
+    // Shown to the left and right of the hand (under it on a phone).
+    [Parameter] public RenderFragment? Left { get; set; }
+    [Parameter] public RenderFragment? Right { get; set; }
 
     // The confirmed slotIndex: 0 = before the first card, Cards.Count = after the last.
     [Parameter] public EventCallback<int> OnConfirm { get; set; }
