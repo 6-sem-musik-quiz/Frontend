@@ -69,7 +69,8 @@ public class ApiErrorMappingTests
     [Fact]
     public async Task Success_ReturnsDeserializedBody()
     {
-        var stub = new StubHttpMessageHandler(HttpStatusCode.OK, new LoginResponse("token-123"));
+        var stub = new StubHttpMessageHandler(HttpStatusCode.OK,
+            new LoginResponse("token-123", DateTime.UtcNow.AddHours(12), new UserDto(1, "bob", Roles.Player)));
         var client = new UserApiClient(Http(stub));
 
         var result = await client.LoginAsync(new LoginRequest { UserName = "bob", Password = "pw" });
@@ -77,5 +78,25 @@ public class ApiErrorMappingTests
         Assert.Equal("token-123", result.Token);
         Assert.Equal(HttpMethod.Post, stub.LastRequest!.Method);
         Assert.Equal(new Uri(BaseAddress, "users/login"), stub.LastRequest.RequestUri);
+    }
+
+    // The exact JSON UserService returns from POST /api/users/login (camelCase, int id, role as text).
+    [Fact]
+    public async Task Login_ReadsUserServiceResponse()
+    {
+        const string json = """
+            {"token":"aaa.bbb.ccc","expiresAt":"2026-11-24T22:00:00Z","user":{"id":7,"userName":"alice","role":"Player"}}
+            """;
+        var stub = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
+        });
+        var client = new UserApiClient(Http(stub));
+
+        var result = await client.LoginAsync(new LoginRequest { UserName = "alice", Password = "password1" });
+
+        Assert.Equal("aaa.bbb.ccc", result.Token);
+        Assert.Equal(DateTime.Parse("2026-11-24T22:00:00Z").ToUniversalTime(), result.ExpiresAt.ToUniversalTime());
+        Assert.Equal(new UserDto(7, "alice", Roles.Player), result.User);
     }
 }

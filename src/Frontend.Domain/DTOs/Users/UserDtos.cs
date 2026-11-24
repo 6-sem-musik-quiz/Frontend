@@ -2,7 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Frontend.Domain.DTOs.Users;
 
-// FORELØBIG: spejler UserService-opgaven. Der ligger endnu ingen godkendt kontrakt i Platform/docs/contracts.
+// Spejler UserService (POST /api/users/login og POST /api/users). Der ligger endnu ingen godkendt
+// kontrakt i Platform/docs/contracts, så UserService's DTO'er er kilden.
 public class LoginRequest
 {
     [Required(ErrorMessage = "Brugernavn er påkrævet.")]
@@ -13,8 +14,8 @@ public class LoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
-// Svar fra login. Token er en JWT med claims "unique_name" og "role".
-public record LoginResponse(string Token);
+// Svar fra login. Token er en JWT med claims "sub", "unique_name", "role" og "exp".
+public record LoginResponse(string Token, DateTime ExpiresAt, UserDto User);
 
 public class CreateUserRequest
 {
@@ -27,7 +28,8 @@ public class CreateUserRequest
     public string Password { get; set; } = string.Empty;
 }
 
-public record UserDto(Guid Id, string UserName, string Role, DateTime CreatedAt);
+// UserService's offentlige visning af en bruger. Role kommer som tekst ("Player"/"Admin").
+public record UserDto(int Id, string UserName, string Role);
 
 public static class Roles
 {
