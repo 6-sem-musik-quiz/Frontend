@@ -1,0 +1,111 @@
+@* SCRUM-110: offentlige lobbyer (opdateres hvert 5. sekund) og join med kode. *@
+@implements IDisposable
+@inject ILobbyApiClient Lobbies
+@inject ApiCallHandler ApiCall
+@inject NavigationManager Navigation
+
+<h2 class="h5">Lobbyer</h2>
+
+<form class="input-group mb-3" @onsubmit="JoinByCodeAsync" data-testid="join-code-form">
+    <label for="join-code" class="visually-hidden">Lobbykode</label>
+    <input id="join-code" class="form-control text-uppercase" placeholder="Kode (6 tegn)" maxlength="6" autocomplete="off"
+           @bind="_code" @bind:event="oninput" />
+    <LoadingButton Type="submit" CssClass="btn-outline-primary" IsLoading="_joiningCode" LoadingText="Joiner…"
+                   Disabled="@(_code.Trim().Length != 6)">Join med kode</LoadingButton>
+</form>
+
+<ErrorMessage Message="@_error" />
+<ErrorMessage Message="@_refreshError" />
+
+@if (_lobbies is null)
+{
+    @if (_refreshError is null)
+    {
+        <p class="text-body-secondary">Henter lobbyer…</p>
+    }
+}
+else if (_lobbies.Count == 0)
+{
+    <p class="text-body-secondary" data-testid="no-lobbies">Ingen åbne lobbyer lige nu. Opret en!</p>
+}
+else
+{
+    <ul class="list-group" data-testid="lobbies">
+        @foreach (var lobby in _lobbies)
+        {
+            var full = lobby.PlayerCount >= lobby.MaxPlayers;
+            <li @key="lobby.Id" class="list-group-item d-flex align-items-center gap-2 @(full ? "opacity-50" : "")" data-testid="lobby-row">
+                <div class="flex-grow-1">
+                    <div class="fw-semibold">@lobby.HostUserName</div>
+                    <div class="small text-body-secondary">
+                        @lobby.CategoryName · @lobby.Rounds runder · @lobby.AnswerTimeSeconds sek.
+                    </div>
+                </div>
+                <span class="badge text-bg-light" data-testid="player-count">@lobby.PlayerCount/@lobby.MaxPlayers</span>
+                @if (full)
+                {
+                    <span class="small text-body-secondary">Fuld</span>
+                }
+                else
+                {
+                    <LoadingButton CssClass="btn-primary btn-sm" OnClick="() => JoinAsync(lobby.Id)" LoadingText="Joiner…">Join</LoadingButton>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    // How often the list is refreshed. A parameter so tests need not wait.
+    [Parameter] public TimeSpan RefreshInterval { get; set; } = TimeSpan.FromSeconds(5);
+
+    private List<LobbySummaryDto>? _lobbies;
+    private string _code = string.Empty;
+    private bool _joiningCode;
+    private string? _error;        // from join
+    private string? _refreshError; // from loading the list
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        _timer = new Timer(_ => InvokeAsync(async () =>
+        {
+            await RefreshAsync();
+            StateHasChanged();
+        }), null, RefreshInterval, RefreshInterval);
+    }
+
+    // A failed refresh keeps the last list and shows why; the next successful one clears it.
+    private async Task RefreshAsync()
+    {
+        List<LobbySummaryDto>? lobbies = null;
+        _refreshError = await ApiCall.RunAsync(async () => lobbies = (await Lobbies.GetLobbiesAsync()).ToList());
+        if (lobbies is not null)
+            _lobbies = lobbies;
+    }
+
+    private async Task JoinAsync(Guid id)
+    {
+        LobbyDto? lobby = null;
+        _error = await ApiCall.RunAsync(async () => lobby = await Lobbies.JoinLobbyAsync(id), messageFor: LobbyMessages.For);
+        if (lobby is not null)
+            Navigation.NavigateTo($"lobby/{lobby.Id}");
+    }
+
+    private async Task JoinByCodeAsync()
+    {
+        var code = _code.Trim().ToUpperInvariant();
+        if (code.Length != 6)
+            return;
+
+        _joiningCode = true;
+        LobbyDto? lobby = null;
+        _error = await ApiCall.RunAsync(async () => lobby = await Lobbies.JoinByCodeAsync(code), messageFor: LobbyMessages.For);
+        _joiningCode = false;
+        if (lobby is not null)
+            Navigation.NavigateTo($"lobby/{lobby.Id}");
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

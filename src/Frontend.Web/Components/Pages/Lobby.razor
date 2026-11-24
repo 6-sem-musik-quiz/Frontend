@@ -1,0 +1,258 @@
+@page "/lobby/{Id:guid}"
+@* SCRUM-111: lobby-siden. Ændringer går gennem REST; spillerlisten opdateres live via LobbyHub (SignalR).
+   Kan hubben ikke nås, hentes lobbyen i stedet hvert 5. sekund. *@
+@implements IAsyncDisposable
+@using Frontend.Services.Errors
+@inject ILobbyApiClient Lobbies
+@inject ILobbyHub Hub
+@inject ApiCallHandler ApiCall
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Lobby · Slopster</PageTitle>
+
+<ErrorMessage Message="@_error" />
+
+@if (_notFound)
+{
+    <p>Lobbyen findes ikke (længere). <a href="">Tilbage til forsiden</a></p>
+}
+else if (_lobby is { } lobby)
+{
+    <div class="d-flex flex-wrap align-items-baseline gap-2 mb-3">
+        <h1 class="h3 mb-0 me-auto">Lobby: @lobby.Settings.CategoryName</h1>
+        @if (!_live)
+        {
+            <span class="badge text-bg-warning" data-testid="not-live" title="Live-opdatering virker ikke; siden opdateres hvert 5. sekund.">Ikke live</span>
+        }
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-5">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Indstillinger</h2>
+                    <dl class="row mb-0" data-testid="settings">
+                        <dt class="col-6">Playlist</dt><dd class="col-6">@lobby.Settings.CategoryName</dd>
+                        <dt class="col-6">Runder</dt><dd class="col-6">@lobby.Settings.Rounds</dd>
+                        <dt class="col-6">Svartid</dt><dd class="col-6">@lobby.Settings.AnswerTimeSeconds sek.</dd>
+                        <dt class="col-6">Pladser</dt><dd class="col-6">@lobby.Players.Count/@lobby.Settings.MaxPlayers</dd>
+                    </dl>
+                    @if (lobby.IsPrivate && lobby.Code is { } joinCode)
+                    {
+                        <div class="mt-3 text-center">
+                            <div class="small text-body-secondary">Kode</div>
+                            <div class="display-6 fw-bold font-monospace" data-testid="code">@joinCode</div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => CopyCodeAsync(joinCode)">
+                                @(_copied ? "Kopieret ✓" : "Kopiér")
+                            </button>
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <div class="col-md-7">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Spillere</h2>
+                    <ul class="list-group mb-3" data-testid="players">
+                        @foreach (var player in lobby.Players)
+                        {
+                            <li @key="player.UserId" class="list-group-item d-flex align-items-center gap-2" data-testid="player">
+                                <span class="flex-grow-1">
+                                    @if (player.UserId == lobby.HostUserId)
+                                    {
+                                        <span title="Vært" aria-label="Vært">👑 </span>
+                                    }
+                                    @player.UserName
+                                    @if (player.UserId == _userId)
+                                    {
+                                        <span class="text-body-secondary"> (dig)</span>
+                                    }
+                                </span>
+                                @if (player.IsReady)
+                                {
+                                    <span class="text-success fw-bold" aria-label="Klar" data-testid="ready">✓ Klar</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <LoadingButton CssClass="@(Me?.IsReady == true ? "btn-outline-success" : "btn-success")" OnClick="ToggleReadyAsync"
+                                       LoadingText="Gemmer…" data-testid="ready-button">
+                            @(Me?.IsReady == true ? "Ikke klar" : "Klar")
+                        </LoadingButton>
+                        <LoadingButton CssClass="btn-outline-danger" OnClick="LeaveAsync" LoadingText="Forlader…">Forlad lobby</LoadingButton>
+                        @if (IsHost)
+                        {
+                            <LoadingButton CssClass="btn-primary ms-auto" OnClick="StartAsync" LoadingText="Starter…"
+                                           Disabled="@(StartBlockedReason is not null)" data-testid="start-button">Start spil</LoadingButton>
+                        }
+                    </div>
+                    @if (IsHost && StartBlockedReason is { } reason)
+                    {
+                        <p class="small text-body-secondary mt-2 mb-0" data-testid="start-reason">@reason</p>
+                    }
+                    else if (!IsHost)
+                    {
+                        <p class="small text-body-secondary mt-2 mb-0">Værten starter spillet, når alle er klar.</p>
+                    }
+                </div>
+            </section>
+        </div>
+    </div>
+}
+else if (_error is null)
+{
+    <p class="text-body-secondary">Henter lobby…</p>
+}
+
+@code {
+    public static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
+
+    [Parameter] public Guid Id { get; set; }
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private LobbyDto? _lobby;
+    private int? _userId;
+    private string? _error;
+    private bool _notFound;
+    private bool _live;
+    private bool _copied;
+    private bool _leaving;
+    private Timer? _pollTimer;
+
+    private LobbyPlayerDto? Me => _lobby?.Players.FirstOrDefault(p => p.UserId == _userId);
+    private bool IsHost => _lobby is not null && _lobby.HostUserId == _userId;
+
+    // Why the host cannot start yet, or null when they can.
+    private string? StartBlockedReason
+    {
+        get
+        {
+            if (_lobby is not { } lobby)
+                return null;
+            var missing = 2 - lobby.Players.Count;
+            if (missing > 0)
+                return missing == 1 ? "Venter på 1 spiller mere." : $"Venter på {missing} spillere mere.";
+            var notReady = lobby.Players.Count(p => !p.IsReady);
+            if (notReady > 0)
+                return notReady == 1 ? "Venter på, at 1 spiller bliver klar." : $"Venter på, at {notReady} spillere bliver klar.";
+            return null;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null)
+        {
+            var user = (await AuthState).User;
+            if (int.TryParse(user.FindFirst("sub")?.Value, out var id))
+                _userId = id;
+        }
+
+        await LoadAsync();
+        if (_lobby is null)
+            return;
+
+        Hub.LobbyUpdated += OnLobbyUpdated;
+        Hub.GameStarted += OnGameStarted;
+        Hub.LobbyClosed += OnLobbyClosed;
+        try
+        {
+            await Hub.ConnectAsync(Id);
+            _live = true;
+        }
+        catch (Exception)
+        {
+            // No live updates (hub down, or the edge does not forward it): fall back to polling.
+            _pollTimer = new Timer(_ => InvokeAsync(async () =>
+            {
+                await LoadAsync();
+                StateHasChanged();
+            }), null, PollInterval, PollInterval);
+        }
+    }
+
+    // 404 = the lobby is gone, or it is private and we are not in it.
+    private async Task LoadAsync()
+    {
+        _error = await ApiCall.RunAsync(async () =>
+        {
+            try
+            {
+                _lobby = await Lobbies.GetLobbyAsync(Id);
+            }
+            catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                _notFound = true;
+                _lobby = null;
+            }
+        });
+    }
+
+    private Task OnLobbyUpdated(LobbyDto lobby) => InvokeAsync(() =>
+    {
+        if (lobby.Id == Id)
+            _lobby = lobby;
+        StateHasChanged();
+    });
+
+    private Task OnGameStarted(Guid gameId) => InvokeAsync(() => Navigation.NavigateTo($"spil/{gameId}"));
+
+    // The last player left. If that was us, LeaveAsync already navigates.
+    private Task OnLobbyClosed() => InvokeAsync(() =>
+    {
+        if (!_leaving)
+            Navigation.NavigateTo("?lukket=1");
+    });
+
+    private async Task ToggleReadyAsync()
+    {
+        var ready = Me?.IsReady != true;
+        _error = await ApiCall.RunAsync(async () => _lobby = await Lobbies.SetReadyAsync(Id, ready), messageFor: LobbyMessages.For);
+    }
+
+    private async Task LeaveAsync()
+    {
+        _leaving = true;
+        _error = await ApiCall.RunAsync(() => Lobbies.LeaveLobbyAsync(Id), messageFor: LobbyMessages.For);
+        if (_error is null)
+            Navigation.NavigateTo("");
+        else
+            _leaving = false;
+    }
+
+    private async Task StartAsync()
+    {
+        StartGameResponse? started = null;
+        _error = await ApiCall.RunAsync(async () => started = await Lobbies.StartGameAsync(Id), messageFor: LobbyMessages.For);
+        if (started is not null)
+            Navigation.NavigateTo($"spil/{started.GameId}");
+    }
+
+    private async Task CopyCodeAsync(string code)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", code);
+            _copied = true;
+        }
+        catch (JSException)
+        {
+            // Clipboard not allowed (e.g. not https); the code is on screen anyway.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _pollTimer?.Dispose();
+        Hub.LobbyUpdated -= OnLobbyUpdated;
+        Hub.GameStarted -= OnGameStarted;
+        Hub.LobbyClosed -= OnLobbyClosed;
+        await Hub.DisposeAsync();
+    }
+}

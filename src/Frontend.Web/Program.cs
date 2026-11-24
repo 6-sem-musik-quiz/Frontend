@@ -1,6 +1,7 @@
 using Frontend.Services.Extensions;
 using Frontend.Web.Auth;
 using Frontend.Web.Components;
+using Frontend.Web.Lobbies;
 using Frontend.Web.Music;
 
 using Microsoft.AspNetCore.Components.Web;
@@ -28,5 +29,7 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 builder.Services.AddFrontendAuth();
 builder.Services.AddServiceLayer(builder.Configuration);
 builder.Services.AddScoped<ISongUploader, SongUploader>();
+// One hub connection per lobby page; the page disposes it.
+builder.Services.AddTransient<ILobbyHub, LobbyHub>();
 
 await builder.Build().RunAsync();

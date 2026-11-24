@@ -1,0 +1,25 @@
+/* Three columns side by side on a computer; under 900 px the tabs pick one panel. */
+.home-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.3fr;
+    gap: 1rem;
+    align-items: start;
+}
+
+.home-tabs {
+    display: none;
+}
+
+@media (max-width: 899.98px) {
+    .home-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .home-tabs {
+        display: flex;
+    }
+
+    .home-panel:not(.active) {
+        display: none;
+    }
+}

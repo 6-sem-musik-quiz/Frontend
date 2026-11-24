@@ -33,8 +33,8 @@ public class LobbyApiClient(HttpClient httpClient) : ApiClientBase(httpClient), 
 {
     private const string Route = "lobbies";
 
-    public async Task<IReadOnlyList<LobbyDto>> GetLobbiesAsync(CancellationToken ct = default) =>
-        await GetAsync<List<LobbyDto>>(Route, ct);
+    public async Task<IReadOnlyList<LobbySummaryDto>> GetLobbiesAsync(CancellationToken ct = default) =>
+        await GetAsync<List<LobbySummaryDto>>(Route, ct);
 
     public Task<LobbyDto> GetLobbyAsync(Guid id, CancellationToken ct = default) =>
         GetAsync<LobbyDto>($"{Route}/{id}", ct);
@@ -42,11 +42,20 @@ public class LobbyApiClient(HttpClient httpClient) : ApiClientBase(httpClient), 
     public Task<LobbyDto> CreateLobbyAsync(CreateLobbyRequest request, CancellationToken ct = default) =>
         PostAsync<CreateLobbyRequest, LobbyDto>(Route, request, ct);
 
-    public Task<LobbyDto> JoinLobbyAsync(JoinLobbyRequest request, CancellationToken ct = default) =>
-        PostAsync<JoinLobbyRequest, LobbyDto>($"{Route}/join", request, ct);
+    public Task<LobbyDto> JoinLobbyAsync(Guid id, CancellationToken ct = default) =>
+        PostAsync<LobbyDto>($"{Route}/{id}/join", ct);
+
+    public Task<LobbyDto> JoinByCodeAsync(string code, CancellationToken ct = default) =>
+        PostAsync<JoinByCodeRequest, LobbyDto>($"{Route}/join-by-code", new JoinByCodeRequest(code), ct);
 
     public Task LeaveLobbyAsync(Guid id, CancellationToken ct = default) =>
-        DeleteAsync($"{Route}/{id}/players/me", ct);
+        PostWithoutBodyAsync($"{Route}/{id}/leave", ct);
+
+    public Task<LobbyDto> SetReadyAsync(Guid id, bool ready, CancellationToken ct = default) =>
+        PostAsync<ReadyRequest, LobbyDto>($"{Route}/{id}/ready", new ReadyRequest(ready), ct);
+
+    public Task<StartGameResponse> StartGameAsync(Guid id, CancellationToken ct = default) =>
+        PostAsync<StartGameResponse>($"{Route}/{id}/start", ct);
 }
 
 public class GameApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IGameApiClient

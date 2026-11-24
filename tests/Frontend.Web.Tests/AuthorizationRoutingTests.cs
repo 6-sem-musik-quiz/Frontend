@@ -26,7 +26,8 @@ public class AuthorizationRoutingTests : BunitContext
         Services.AddLogging();
         Services.AddSingleton(Substitute.For<IAuthService>());
         Services.AddScoped<ApiCallHandler>();
-        Services.AddSingleton(Substitute.For<Frontend.Services.Interfaces.IMusicApiClient>()); // /admin lists playlists
+        Services.AddSingleton(Substitute.For<Frontend.Services.Interfaces.IMusicApiClient>()); // /admin and / list playlists
+        Services.AddSingleton(Substitute.For<Frontend.Services.Interfaces.ILobbyApiClient>()); // / lists lobbies
 
         _auth = AddAuthorization();
 

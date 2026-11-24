@@ -1,7 +1,45 @@
 @page "/"
+@* SCRUM-110: forsiden. Tre kolonner på computer (Leaderboard | Opret lobby | Lobbyer), faner under 900 px. *@
 
 <PageTitle>Musikquiz</PageTitle>
 
-<h1>Musikquiz</h1>
+<h1 class="visually-hidden">Musikquiz</h1>
 
-<p>Velkommen. Log ind, opret en lobby og test din musikviden mod dine venner.</p>
+@if (LobbyClosed)
+{
+    <div class="alert alert-info" role="status" data-testid="lobby-closed">Lobbyen blev lukket.</div>
+}
+
+<nav class="home-tabs nav nav-pills nav-fill mb-3" aria-label="Forside">
+    @foreach (var tab in Tabs)
+    {
+        <button type="button" class="nav-link @(_tab == tab.Key ? "active" : "")" @onclick="() => _tab = tab.Key">@tab.Title</button>
+    }
+</nav>
+
+<div class="home-grid">
+    <section class="home-panel card @(_tab == "leaderboard" ? "active" : "")" aria-label="Leaderboard">
+        <div class="card-body">
+            <h2 class="h5">Leaderboard</h2>
+            <p class="text-body-secondary mb-0">Kommer snart.</p>
+        </div>
+    </section>
+    <section class="home-panel card @(_tab == "create" ? "active" : "")" aria-label="Opret lobby">
+        <div class="card-body"><CreateLobbyForm /></div>
+    </section>
+    <section class="home-panel card @(_tab == "lobbies" ? "active" : "")" aria-label="Lobbyer">
+        <div class="card-body"><LobbyList /></div>
+    </section>
+</div>
+
+@code {
+    private static readonly (string Key, string Title)[] Tabs =
+        [("leaderboard", "Leaderboard"), ("create", "Opret lobby"), ("lobbies", "Lobbyer")];
+
+    // Set by the lobby page when the lobby was closed (/?lukket=1).
+    [SupplyParameterFromQuery(Name = "lukket")] public int? Closed { get; set; }
+
+    private string _tab = "lobbies";
+
+    private bool LobbyClosed => Closed == 1;
+}

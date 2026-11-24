@@ -1,0 +1,139 @@
+@* SCRUM-110: opret lobby. Playlister fra MusicService; runder, der kræver flere sange end playlisten har, er slået fra. *@
+@inject IMusicApiClient Music
+@inject ILobbyApiClient Lobbies
+@inject ApiCallHandler ApiCall
+@inject NavigationManager Navigation
+
+<h2 class="h5">Opret lobby</h2>
+
+<ErrorMessage Message="@_error" />
+
+@if (_playlists is null)
+{
+    @if (_error is null)
+    {
+        <p class="text-body-secondary">Henter playlister…</p>
+    }
+}
+else if (_playlists.Count == 0)
+{
+    <p class="text-body-secondary">Der er ingen playlister endnu.</p>
+}
+else
+{
+    <form @onsubmit="CreateAsync" data-testid="create-lobby-form">
+        <div class="mb-3">
+            <label for="playlist" class="form-label">Playlist</label>
+            <select id="playlist" class="form-select" value="@_playlistId" @onchange="OnPlaylistChanged">
+                @foreach (var playlist in _playlists)
+                {
+                    <option value="@playlist.Id">@playlist.Name (@playlist.SongCount sange)</option>
+                }
+            </select>
+        </div>
+
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <label for="answer-time" class="form-label">Svartid</label>
+                <select id="answer-time" class="form-select" @bind="_answerTime">
+                    @foreach (var seconds in AnswerTimes)
+                    {
+                        <option value="@seconds">@seconds sek.</option>
+                    }
+                </select>
+            </div>
+            <div class="col-6">
+                <label for="rounds" class="form-label">Runder</label>
+                <select id="rounds" class="form-select" @bind="_rounds">
+                    @foreach (var rounds in RoundOptions)
+                    {
+                        <option value="@rounds" disabled="@(!RoundsAllowed(rounds))">@rounds</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="row g-2 mb-3 align-items-end">
+            <div class="col-6">
+                <label for="max-players" class="form-label">Pladser</label>
+                <select id="max-players" class="form-select" @bind="_maxPlayers">
+                    @for (var players = 2; players <= 8; players++)
+                    {
+                        <option value="@players">@players</option>
+                    }
+                </select>
+            </div>
+            <div class="col-6">
+                <div class="form-check mb-2">
+                    <input id="private" class="form-check-input" type="checkbox" @bind="_isPrivate" />
+                    <label for="private" class="form-check-label">Privat (join med kode)</label>
+                </div>
+            </div>
+        </div>
+
+        @if (!RoundsAllowed(RoundOptions[0]))
+        {
+            <p class="small text-danger" data-testid="too-few-songs">Playlisten har for få sange til et spil (mindst 6).</p>
+        }
+
+        <LoadingButton Type="submit" CssClass="btn-primary w-100" IsLoading="_creating" LoadingText="Opretter…"
+                       Disabled="@(!RoundsAllowed(_rounds))">Opret</LoadingButton>
+    </form>
+}
+
+@code {
+    private static readonly int[] AnswerTimes = [15, 30, 45, 60];
+    private static readonly int[] RoundOptions = [5, 10, 15, 20];
+
+    private List<PlaylistDto>? _playlists;
+    private int _playlistId;
+    private int _answerTime = 30;
+    private int _rounds = 10;
+    private int _maxPlayers = 4;
+    private bool _isPrivate;
+    private bool _creating;
+    private string? _error;
+
+    private PlaylistDto? Selected => _playlists?.FirstOrDefault(p => p.Id == _playlistId);
+
+    // One start card plus one song per round.
+    private bool RoundsAllowed(int rounds) => Selected is { } p && p.SongCount >= rounds + 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _error = await ApiCall.RunAsync(async () => _playlists = (await Music.GetPlaylistsAsync()).ToList());
+        if (_playlists is { Count: > 0 })
+            SelectPlaylist(_playlists[0].Id);
+    }
+
+    private void OnPlaylistChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var id))
+            SelectPlaylist(id);
+    }
+
+    // Keeps the chosen number of rounds if the playlist has songs enough, otherwise the most it allows.
+    private void SelectPlaylist(int id)
+    {
+        _playlistId = id;
+        if (!RoundsAllowed(_rounds))
+            _rounds = RoundOptions.Where(RoundsAllowed).DefaultIfEmpty(_rounds).Max();
+    }
+
+    private async Task CreateAsync()
+    {
+        if (!RoundsAllowed(_rounds))
+            return;
+
+        _creating = true;
+        LobbyDto? lobby = null;
+        _error = await ApiCall.RunAsync(
+            async () => lobby = await Lobbies.CreateLobbyAsync(
+                new CreateLobbyRequest(_playlistId, _answerTime, _rounds, _maxPlayers, _isPrivate)),
+            messageFor: LobbyMessages.For);
+        _creating = false;
+
+        if (lobby is not null)
+            Navigation.NavigateTo($"lobby/{lobby.Id}");
+    }
+}

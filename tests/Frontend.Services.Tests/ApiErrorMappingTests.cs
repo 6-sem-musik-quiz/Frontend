@@ -20,7 +20,7 @@ public class ApiErrorMappingTests
             """{"type":"about:blank","title":"Lobbyen er fuld","status":409,"detail":"Der er allerede 8 spillere."}""");
         var client = new LobbyApiClient(Http(stub));
 
-        var ex = await Assert.ThrowsAsync<ApiException>(() => client.JoinLobbyAsync(new JoinLobbyRequest("ABCD")));
+        var ex = await Assert.ThrowsAsync<ApiException>(() => client.JoinByCodeAsync("ABCD"));
 
         Assert.Equal(HttpStatusCode.Conflict, ex.StatusCode);
         Assert.NotNull(ex.Problem);
