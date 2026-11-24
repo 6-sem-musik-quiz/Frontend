@@ -8,13 +8,16 @@
 
 @if (_lobby is { } lobby)
 {
-    <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="status" data-testid="current-lobby">
-        <span class="flex-grow-1">
-            Du er stadig i en lobby: <strong>@lobby.Settings.CategoryName</strong>
-            (@lobby.Players.Count/@lobby.Settings.MaxPlayers spillere).
+    <div class="card current-lobby" role="status" data-testid="current-lobby">
+        <span class="current-lobby-plate">Din lobby</span>
+        <span class="current-lobby-text">
+            Du er stadig i <span class="current-lobby-name">@lobby.Settings.CategoryName</span>
+            <span class="current-lobby-count">@lobby.Players.Count/@lobby.Settings.MaxPlayers spillere</span>
         </span>
-        <a class="btn btn-primary btn-sm" href="lobby/@lobby.Id">Gå til lobby</a>
-        <LoadingButton CssClass="btn-outline-danger btn-sm" OnClick="LeaveAsync" LoadingText="Forlader…">Forlad lobby</LoadingButton>
+        <div class="current-lobby-actions">
+            <a class="btn btn-primary" href="lobby/@lobby.Id">Gå til lobby</a>
+            <LoadingButton CssClass="btn-outline-danger" OnClick="LeaveAsync" LoadingText="Forlader…">Forlad lobby</LoadingButton>
+        </div>
     </div>
 }
 
