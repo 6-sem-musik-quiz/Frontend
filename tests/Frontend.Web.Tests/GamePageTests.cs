@@ -260,6 +260,69 @@ public class GamePageTests : BunitContext
     }
 
     [Fact]
+    public async Task DeckAndDiscard_FollowTheRounds()
+    {
+        var cut = RenderPage();
+        Assert.Equal("10", Text(cut, "deck-count"));
+        Assert.Equal("0", Text(cut, "discard-count"));
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+        cut.WaitForAssertion(() => Assert.Equal("9", Text(cut, "deck-count")));
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+        [
+            new RoundResultDto(Me, "alice", 0, false, 0, [Card(1976)]),
+            new RoundResultDto(Bob, "bob", null, false, 0, [Card(1976)])
+        ])));
+
+        Assert.Equal("1", Text(cut, "discard-count"));
+        cut.Find("[data-testid=discard]").Click();
+        var song = Assert.Single(cut.FindAll("[data-testid=song]"));
+        Assert.Contains("Sang 1982", song.TextContent);
+        Assert.Contains("forkert", song.TextContent);
+    }
+
+    [Fact]
+    public void AfterAReload_TheDiscardPileIsRebuiltFromPastSongsAndMyHistory()
+    {
+        _hub.State = State(round: 3) with
+        {
+            Players =
+            [
+                new PlayerSummaryDto(Me, "alice", 1, [Card(1976), Card(1985)],
+                    [new RoundHistoryDto(1, true, 3000), new RoundHistoryDto(2, false, 4000), new RoundHistoryDto(3, false, null)]),
+                new PlayerSummaryDto(Bob, "bob", 0, [Card(1976)])
+            ],
+            PastSongs = [new PastSongDto(1, Card(1985)), new PastSongDto(2, Card(2003)), new PastSongDto(3, Card(1995))]
+        };
+
+        var cut = RenderPage();
+        cut.Find("[data-testid=discard]").Click();
+
+        var rows = cut.FindAll("[data-testid=song]");
+        Assert.Equal(2, rows.Count);
+        Assert.Contains("forkert", rows[0].TextContent);    // round 2: answered, wrong
+        Assert.Contains("intet svar", rows[1].TextContent); // round 3: no answer
+        Assert.Equal("7", Text(cut, "deck-count"));
+    }
+
+    [Fact]
+    public async Task GameEnd_CanShowEveryRoundsSong()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+            [new RoundResultDto(Me, "alice", 1, true, 1, [Card(1976), Card(1982)])])));
+        await cut.InvokeAsync(() => _hub.RaiseGameEnded(new GameEndedDto(GameId, [new StandingDto(Me, "alice", 1, 1, 1, 1, [])])));
+
+        cut.Find("[data-testid=all-songs]").Click();
+
+        var song = Assert.Single(cut.FindAll("[data-testid=song]"));
+        Assert.Contains("i din hånd", song.TextContent);
+        Assert.Equal("Alle spillets sange", cut.Find("#songs-title").TextContent);
+    }
+
+    [Fact]
     public void JoinError_ShowsTheDanishMessage()
     {
         _hub.JoinError = new GameHubException("Du er ikke med i det her spil.");

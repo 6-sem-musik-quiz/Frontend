@@ -57,6 +57,10 @@ public partial class GamePage : IAsyncDisposable
     private long _playbackStarted;
     private RoundReveal? _reveal;
     private GameEndedDto? _ended;
+
+    // Every ended round's song and how it went for me (discard pile, all songs after the game).
+    private readonly List<PlayedSong> _played = [];
+    private bool _showAllSongs;
     private double _volume = 0.8;
 
     private CancellationTokenSource? _roundCts;
@@ -144,6 +148,15 @@ public partial class GamePage : IAsyncDisposable
                 // After a reload the server only knows the order, not the time on our stamp.
                 Stamp = p.AnsweredOrder is { } order ? new RivalStamp(order, null) : null
             };
+        }
+
+        // After a reload: the past songs, with my own history saying how each went.
+        var myHistory = state.Players.FirstOrDefault(p => p.UserId == _me)?.History ?? [];
+        _played.Clear();
+        foreach (var past in state.PastSongs ?? [])
+        {
+            var mine = myHistory.FirstOrDefault(h => h.Round == past.Round);
+            _played.Add(new PlayedSong(past.Round, past.Song, mine?.Correct == true, mine?.AnsweredAfterMs is not null));
         }
     }
 
@@ -321,6 +334,8 @@ public partial class GamePage : IAsyncDisposable
         _reveal = new RoundReveal(ended.Song, Answered: mine?.SlotIndex is not null, Correct: mine?.Correct == true);
         // The hand keeps showing the reveal; the new timeline replaces it when the next round starts.
         _nextTimeline = mine?.Timeline;
+        _played.RemoveAll(p => p.Round == ended.Round);
+        _played.Add(new PlayedSong(ended.Round, ended.Song, mine?.Correct == true, mine?.SlotIndex is not null));
         foreach (var result in ended.Results)
         {
             if (_players.TryGetValue(result.UserId, out var player))

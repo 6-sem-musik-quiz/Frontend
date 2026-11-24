@@ -1,0 +1,31 @@
+@* SCRUM-153: the discard pile to the right of my hand: the songs I didn't get (wrong or no answer).
+   Tapping it opens the list. Safe mid-round: these songs were revealed to everyone already. *@
+
+<button type="button" class="pile pile-discard @(Discarded.Count == 0 ? "pile-empty" : "")" @ref="_button"
+        aria-haspopup="dialog" aria-label="@($"Kasserede sange: {Discarded.Count}. Vis listen.")"
+        @onclick="() => _open = true" data-testid="discard">
+    <div class="pile-stack" aria-hidden="true"><i></i><i></i><i></i><span data-testid="discard-count">@Discarded.Count</span></div>
+    <div class="pile-label" aria-hidden="true">Kasserede<small>tryk for at se</small></div>
+</button>
+
+<SongListDialog Open="_open" Title="Kasserede sange" Songs="Discarded"
+                Intro="Sangene du ikke fik med i hånden."
+                EmptyText="Ingen kasserede sange endnu."
+                OnClose="CloseAsync" />
+
+@code {
+    // Every song played so far; the pile shows the ones I didn't get.
+    [Parameter] public IReadOnlyList<PlayedSong> Songs { get; set; } = [];
+
+    private ElementReference _button;
+    private bool _open;
+
+    private List<PlayedSong> Discarded => Songs.Where(s => !s.Correct).ToList();
+
+    private async Task CloseAsync()
+    {
+        _open = false;
+        StateHasChanged();
+        await _button.FocusAsync(); // back to where the player was
+    }
+}

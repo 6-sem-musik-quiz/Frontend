@@ -21,7 +21,10 @@ else
         </Side>
         <ChildContent>
             <RivalTable Rivals="RivalViews" TotalRounds="TotalRounds" />
-            <HandOfCards Cards="_timeline" Round="_round" Locked="@(_secondsLeft == 0)" Reveal="_reveal" OnConfirm="Confirmed" />
+            <HandOfCards Cards="_timeline" Round="_round" Locked="@(_secondsLeft == 0)" Reveal="_reveal" OnConfirm="Confirmed">
+                <Left><DeckPile RoundsLeft="@(TotalRounds - _round)" /></Left>
+                <Right><DiscardPile Songs="_played" /></Right>
+            </HandOfCards>
         </ChildContent>
     </GameLayout>
 
@@ -77,6 +80,14 @@ else
         new("Somebody That I Used to Know", ["Gotye", "Kimbra"], 2011)
     ];
 
+    // Rounds 1-3 before the preview starts in round 4.
+    private readonly List<PlayedSong> _played =
+    [
+        new(1, new("Take On Me", ["a-ha"], 1985), Correct: true, Answered: true),
+        new(2, new("Hey Ya!", ["OutKast"], 2003), Correct: false, Answered: true),
+        new(3, new("Wonderwall", ["Oasis"], 1995), Correct: false, Answered: false)
+    ];
+
     private int _round = 4;
     private int _secondsLeft = AnswerTime;
     private int? _mySlot;
@@ -120,6 +131,7 @@ else
     private void EndRound()
     {
         _reveal = new RoundReveal(Song, _mySlot is not null, _mySlot is { } s && IsRight(_timeline, s));
+        _played.Add(new PlayedSong(_round, Song, _reveal.Correct, _reveal.Answered));
         foreach (var rival in _rivals)
         {
             var right = rival.Slot is { } slot && IsRight(rival.Cards, slot);

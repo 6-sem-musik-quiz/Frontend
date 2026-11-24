@@ -549,14 +549,15 @@ h1:focus {
    It never scrolls. The cards overlap more as the hand grows, so it always fits its width:
    one whole card, plus a step (--s) for each of the other --n - 1 cards (--n = cards + 1, set by
    HandOfCards, so the placed "?" fits too). The gap width (--sw) and the overlap (--m) follow from
-   the step. 24px is kept for the outer cards' tilt and the two outer gaps (measured: the tilt is
+   the step. --tilt is kept for the outer cards' tilt and the two outer gaps (measured: the tilt is
    capped at 10°). The outermost cards don't overlap outwards (rules below). 21 cards fit on a
    375 px phone, about 12 px of each card showing, with the year running up that edge. */
 .gr-hand {
     --pad: 28px;
     --cw: 96px;
     --ch: 136px;
-    --s: calc((100cqw - 2 * var(--pad) - 24px - var(--cw)) / max(1, var(--n, 6) - 1));
+    --tilt: 80px; /* room for the outer cards' tilt next to the piles; 24px on a phone, where the hand is alone */
+    --s: calc((100cqw - 2 * var(--pad) - var(--tilt) - var(--cw)) / max(1, var(--n, 6) - 1));
     --sw: clamp(6px, calc(var(--s) * .3), 16px);
     --m: min(-14px, calc((var(--s) - var(--sw) - var(--cw)) / 2));
     display: flex;
@@ -714,7 +715,7 @@ h1:focus {
     .gs-players { display: flex; flex-wrap: wrap; gap: 4px 16px; }
     .gs-players li { gap: 6px; line-height: 1.6; }
     .gr-mystery-area { height: 120px; }
-    .gr-hand { --pad: 12px; --cw: 76px; --ch: 108px; min-height: 220px; padding: 90px var(--pad) 16px; }
+    .gr-hand { --pad: 12px; --tilt: 24px; --cw: 76px; --ch: 108px; min-height: 220px; padding: 90px var(--pad) 16px; }
     .gr-hand .gc { padding: 7px 4px; }
     .gr-hand .gc-year { font-size: 19px; }
     .gr-hand .gc-title { font-size: 10.5px; }
@@ -979,4 +980,148 @@ h1:focus {
         grid-column: 1 / -1;
         grid-row: 2;
     }
+}
+
+/* ---- Deck and discard pile beside the hand (SCRUM-153) ---- */
+.gr-hand-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+}
+.gr-hand-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    container-type: inline-size; /* the hand sizes its cards from this width, not the whole round */
+}
+.gr-side-left { grid-column: 1; grid-row: 1; padding-bottom: 24px; }
+.gr-side-right { grid-column: 3; grid-row: 1; padding-bottom: 24px; }
+
+.pile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--sl-cream);
+    font: inherit;
+}
+button.pile { cursor: pointer; }
+button.pile:hover .pile-stack { transform: translateY(-3px); }
+button.pile:focus-visible { outline: 3px solid var(--sl-mustard); outline-offset: 4px; border-radius: 6px; }
+.pile-stack {
+    position: relative;
+    width: 58px;
+    height: 82px;
+    transition: transform .15s;
+}
+.pile-stack i {
+    position: absolute;
+    inset: 0;
+    border: 3px solid var(--sl-ink);
+    border-radius: 6px;
+    background: var(--sl-cream);
+}
+.pile-stack i:nth-child(1) { transform: translate(6px, -6px) rotate(4deg); }
+.pile-stack i:nth-child(2) { transform: translate(3px, -3px) rotate(-3deg); }
+.pile-stack span {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--sl-pixel);
+    font-size: 24px;
+    color: var(--sl-ink);
+}
+.pile-deck .pile-stack i { background: var(--sl-teal-dark); }
+.pile-deck .pile-stack span { color: var(--sl-cream); }
+.pile-discard .pile-stack i { background: #D9CDB0; }
+.pile-empty .pile-stack i:not(:last-of-type) { display: none; }
+.pile-label {
+    font-family: var(--sl-pixel);
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: center;
+}
+.pile-label small {
+    display: block;
+    font-family: system-ui, sans-serif;
+    font-size: 11px;
+    opacity: .85;
+}
+
+/* Song list dialog (discard pile, and all songs after the game) */
+.songs-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+             max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    background: rgba(30, 35, 43, .55);
+}
+.songs-dialog {
+    width: min(560px, 100%);
+    max-height: 100%;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 18px;
+    background: var(--sl-cream);
+    color: var(--sl-ink);
+    border: 3px solid var(--sl-ink);
+    border-radius: 6px;
+    box-shadow: 4px 4px 0 var(--sl-ink);
+}
+.songs-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+.songs-head h2 { font-size: 18px; margin: 0; }
+.songs-head p { font-size: 13px; color: var(--sl-muted); margin: 2px 0 0; }
+.songs-list { list-style: none; margin: 0; padding: 0; }
+.songs-list li {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 2px dotted rgba(46, 52, 64, .25);
+}
+.songs-list li:last-child { border-bottom: 0; }
+.songs-year { font-family: var(--sl-pixel); font-size: 18px; }
+.songs-title { display: block; font-weight: 600; }
+.songs-meta { font-size: 13px; color: var(--sl-muted); }
+.songs-tag {
+    font-family: var(--sl-pixel);
+    font-size: 11px;
+    padding: 1px 6px;
+    border: 2px solid var(--sl-ink);
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.songs-tag.kept { background: var(--sl-green); }
+.songs-tag.wrong { background: var(--sl-rust); color: var(--sl-cream); }
+.songs-tag.missed { background: transparent; }
+.songs-empty { color: var(--sl-muted); margin: 0; }
+
+/* On a phone the piles sit side by side under the hand. */
+@media (max-width: 575.98px) {
+    .gr-hand-row { grid-template-columns: 1fr 1fr; row-gap: 4px; }
+    .gr-hand-wrap { grid-column: 1 / -1; grid-row: 1; }
+    .gr-side-left, .gr-side-right { grid-row: 2; padding-bottom: 0; }
+    .gr-side-left { grid-column: 1; justify-self: center; }
+    .gr-side-right { grid-column: 2; justify-self: center; }
+    .pile-stack { width: 44px; height: 62px; }
+    .pile-stack span { font-size: 19px; }
 }
