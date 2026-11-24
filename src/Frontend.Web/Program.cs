@@ -1,6 +1,7 @@
 using Frontend.Services.Extensions;
 using Frontend.Web.Auth;
 using Frontend.Web.Components;
+using Frontend.Web.Games;
 using Frontend.Web.Lobbies;
 using Frontend.Web.Music;
 
@@ -31,5 +32,7 @@ builder.Services.AddServiceLayer(builder.Configuration);
 builder.Services.AddScoped<ISongUploader, SongUploader>();
 // One hub connection per lobby page; the page disposes it.
 builder.Services.AddTransient<ILobbyHub, LobbyHub>();
+builder.Services.AddTransient<IGameHubClient, GameHubClient>();
+builder.Services.AddScoped<IGameAudio, GameAudio>();
 
 await builder.Build().RunAsync();

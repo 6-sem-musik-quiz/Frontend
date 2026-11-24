@@ -9,11 +9,16 @@
     <ProjectReference Include="..\..\src\Frontend.Web\Frontend.Web.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- An in-process SignalR server for GameHubClientTests (with Microsoft.AspNetCore.TestHost). -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="bunit" Version="2.15.2" />
     <PackageReference Include="coverlet.collector" Version="10.1.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.15" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <PackageReference Include="NSubstitute" Version="6.2.0" />
     <PackageReference Include="xunit" Version="2.9.3" />

@@ -1,4 +1,3 @@
-using Frontend.Domain.DTOs.Games;
 using Frontend.Domain.DTOs.Lobbies;
 using Frontend.Domain.DTOs.Music;
 using Frontend.Domain.DTOs.Statistics;
@@ -69,26 +68,6 @@ public class LobbyApiClient(HttpClient httpClient) : ApiClientBase(httpClient), 
 
     public Task<StartGameResponse> StartGameAsync(Guid id, CancellationToken ct = default) =>
         PostAsync<StartGameResponse>($"{Route}/{id}/start", ct);
-}
-
-public class GameApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IGameApiClient
-{
-    private const string Route = "games";
-
-    public Task<GameDto> StartGameAsync(StartGameRequest request, CancellationToken ct = default) =>
-        PostAsync<StartGameRequest, GameDto>(Route, request, ct);
-
-    public Task<GameDto> GetGameAsync(Guid id, CancellationToken ct = default) =>
-        GetAsync<GameDto>($"{Route}/{id}", ct);
-
-    public Task<RoundDto> GetCurrentRoundAsync(Guid gameId, CancellationToken ct = default) =>
-        GetAsync<RoundDto>($"{Route}/{gameId}/rounds/current", ct);
-
-    public Task<AnswerResultDto> SubmitAnswerAsync(Guid gameId, SubmitAnswerRequest request, CancellationToken ct = default) =>
-        PostAsync<SubmitAnswerRequest, AnswerResultDto>($"{Route}/{gameId}/answers", request, ct);
-
-    public async Task<IReadOnlyList<ScoreDto>> GetScoresAsync(Guid gameId, CancellationToken ct = default) =>
-        await GetAsync<List<ScoreDto>>($"{Route}/{gameId}/scores", ct);
 }
 
 public class MusicApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IMusicApiClient
