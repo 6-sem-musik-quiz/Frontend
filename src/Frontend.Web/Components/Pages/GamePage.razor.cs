@@ -21,12 +21,15 @@ public partial class GamePage : IAsyncDisposable
     [Inject] private TimeProvider Time { get; set; } = null!;
     [Inject] private IJSRuntime JS { get; set; } = null!;
 
-    private sealed class Player(string name, int score, int cards)
+    // What the card table (SCRUM-152) knows about a player. Everything here is public.
+    private sealed class Player(string name, int score)
     {
         public string Name { get; } = name;
         public int Score { get; set; } = score;
-        public int Cards { get; set; } = cards;
-        public bool Answered { get; set; }
+        public List<CardDto> Cards { get; set; } = [];
+        public List<bool> History { get; set; } = [];
+        public RivalStamp? Stamp { get; set; }     // answered the running round: order and time
+        public RivalReveal? Reveal { get; set; }   // between RoundEnded and the next round
     }
 
     private int? _me;
@@ -70,9 +73,11 @@ public partial class GamePage : IAsyncDisposable
         ? (_round == 0 ? "Spillet starter, når alle er forbundet." : "Næste runde starter om lidt.")
         : "Tiden er gået.";
 
-    private List<GamePlayerView> PlayerViews =>
-        _playerOrder.Select(id => _players[id])
-            .Zip(_playerOrder, (p, id) => new GamePlayerView(id, p.Name, p.Cards, p.Answered))
+    // Everyone but me, in lobby order.
+    private List<RivalView> Rivals =>
+        _playerOrder.Where(id => id != _me)
+            .Select(id => (Id: id, P: _players[id]))
+            .Select(x => new RivalView(x.Id, x.P.Name, x.P.Cards, x.P.History, x.P.Stamp, x.P.Reveal))
             .ToList();
 
     protected override async Task OnInitializedAsync()
@@ -132,7 +137,13 @@ public partial class GamePage : IAsyncDisposable
         foreach (var p in state.Players)
         {
             _playerOrder.Add(p.UserId);
-            _players[p.UserId] = new Player(p.UserName, p.Score, p.UserId == _me ? _cards.Count : p.Score + 1);
+            _players[p.UserId] = new Player(p.UserName, p.Score)
+            {
+                Cards = (p.Timeline ?? (p.UserId == _me ? _cards : [])).ToList(),
+                History = (p.History ?? []).OrderBy(h => h.Round).Select(h => h.Correct).ToList(),
+                // After a reload the server only knows the order, not the time on our stamp.
+                Stamp = p.AnsweredOrder is { } order ? new RivalStamp(order, null) : null
+            };
         }
     }
 
@@ -204,7 +215,10 @@ public partial class GamePage : IAsyncDisposable
         _needsPlay = false;
         _secondsLeft = null;
         foreach (var p in _players.Values)
-            p.Answered = false;
+        {
+            p.Stamp = null;
+            p.Reveal = null;
+        }
         StateHasChanged();
 
         try
@@ -278,9 +292,8 @@ public partial class GamePage : IAsyncDisposable
     {
         try
         {
+            // My own stamp arrives with PlayerAnswered like everyone else's.
             await Hub.SubmitAnswerAsync(GameId, _round, slotIndex);
-            if (_me is { } me && _players.TryGetValue(me, out var player))
-                player.Answered = true;
         }
         catch (GameHubException e)
         {
@@ -288,10 +301,11 @@ public partial class GamePage : IAsyncDisposable
         }
     }
 
+    // The order counts everyone who has answered this round, me included (the server counts the same way).
     private Task OnPlayerAnswered(PlayerAnsweredDto answered) => InvokeAsync(() =>
     {
-        if (_players.TryGetValue(answered.UserId, out var player))
-            player.Answered = true;
+        if (_players.TryGetValue(answered.UserId, out var player) && player.Stamp is null)
+            player.Stamp = new RivalStamp(_players.Values.Count(p => p.Stamp is not null) + 1, answered.AnsweredAfterMs);
         StateHasChanged();
     });
 
@@ -312,7 +326,9 @@ public partial class GamePage : IAsyncDisposable
             if (_players.TryGetValue(result.UserId, out var player))
             {
                 player.Score = result.Score;
-                player.Cards = result.Timeline.Count;
+                player.Cards = result.Timeline.ToList();
+                player.History.Add(result.Correct);
+                player.Reveal = new RivalReveal(ended.Song, result.Correct, result.SlotIndex);
             }
         }
         await ReleaseAsync(ended.Round);

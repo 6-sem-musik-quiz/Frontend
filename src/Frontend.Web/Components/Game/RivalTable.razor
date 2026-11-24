@@ -1,0 +1,132 @@
+@* SCRUM-152: the card table (Slopster Rivals v3). The opponents sit above my hand, each with
+   - name and number of cards,
+   - a small face-up hand (year only; title and artist as tooltip), which never scrolls: the cards
+     squeeze together to fit the seat, like my own hand (--n, app.css "Rival seats"),
+   - a lock stamp when they answer: order and seconds, never where,
+   - a streak track: one square per round, "3 i træk" during a run.
+   At round end a right card slides in, a wrong one falls out.
+   On a phone (app.css, under 576 px) each seat is one compact line: name, count, stamp and the last
+   five streak squares; the hand is hidden until the player taps the seat's toggle. *@
+@using System.Globalization
+
+<section class="rt" aria-label="Modstandere" data-testid="rival-table">
+    @foreach (var rival in Rivals)
+    {
+        var cards = HandOf(rival);
+        var run = CurrentRun(rival.History);
+        var open = _open.Contains(rival.UserId);
+        <article @key="rival.UserId" class="rt-seat @(open ? "open" : "")" data-testid="rival" aria-label="@SeatLabel(rival)">
+            <div class="rt-top">
+                <span class="px rt-name">@rival.Name</span>
+                <span class="px rt-count" data-testid="rival-count">@rival.Cards.Count kort</span>
+            </div>
+
+            @* Only shown on a phone, where the hand is folded away. *@
+            <button type="button" class="rt-toggle" aria-expanded="@(open ? "true" : "false")"
+                    aria-label="@(open ? $"Skjul {rival.Name}s kort" : $"Vis {rival.Name}s kort")"
+                    @onclick="() => Toggle(rival.UserId)" data-testid="rival-toggle">@(open ? "▴" : "▾")</button>
+
+            @* Over 8 cards only a strip of each shows, so the year runs up its edge (like my own hand). *@
+            <div class="rt-hand @(cards.Count > 8 ? "tight" : "")" style="--n:@cards.Count" aria-hidden="true">
+                @for (var i = 0; i < cards.Count; i++)
+                {
+                    var (card, look) = cards[i];
+                    <span @key="@($"{card.Year}-{card.Title}-{look}")" class="rt-card @look" style="@Fan(i, cards.Count)"
+                          title="@($"{card.Year}: {card.Title} – {string.Join(", ", card.Artists)}")" data-testid="rival-card"><span>@ShortYear(card.Year)</span></span>
+                }
+            </div>
+
+            @if (rival.Stamp is { } stamp && rival.Reveal is null)
+            {
+                <div class="rt-stamp" data-testid="rival-stamp">
+                    <span class="rt-q px" aria-hidden="true">?</span>
+                    <span class="rt-st px">@StampText(stamp)</span>
+                </div>
+            }
+
+            <div class="rt-track" data-testid="rival-track">
+                @for (var round = 0; round < TotalRounds; round++)
+                {
+                    // "recent" marks the last five played rounds: all a phone has room for.
+                    var played = round < rival.History.Count;
+                    var recent = played && round >= rival.History.Count - RecentRounds;
+                    <b class="@(played ? (rival.History[round] ? "y" : "n") : "") @(recent ? "recent" : "")"></b>
+                }
+                @if (run >= 2)
+                {
+                    <span class="rt-run px" data-testid="rival-run">@run i træk</span>
+                }
+            </div>
+        </article>
+    }
+</section>
+
+@code {
+    [Parameter] public IReadOnlyList<RivalView> Rivals { get; set; } = [];
+    [Parameter] public int TotalRounds { get; set; } = 10;
+
+    public const int RecentRounds = 5;
+
+    // Seats whose hand is unfolded on a phone.
+    private readonly HashSet<int> _open = [];
+
+    private void Toggle(int userId)
+    {
+        if (!_open.Remove(userId))
+            _open.Add(userId);
+    }
+
+    // The cards to draw: the hand, with a right answer marked new, or a wrong one put in at its slot
+    // to fall out.
+    private static List<(CardDto Card, string Look)> HandOf(RivalView rival)
+    {
+        var cards = rival.Cards.Select(c => (c, "")).ToList();
+        switch (rival.Reveal)
+        {
+            case { Correct: true } right:
+                var index = cards.FindIndex(c => c.c.Year == right.Song.Year && c.c.Title == right.Song.Title);
+                if (index >= 0)
+                    cards[index] = (cards[index].c, "new");
+                break;
+            case { Correct: false, Slot: { } slot } wrong:
+                cards.Insert(Math.Clamp(slot, 0, cards.Count), (wrong.Song, "out"));
+                break;
+        }
+        return cards;
+    }
+
+    // The run of right answers at the end of the history.
+    public static int CurrentRun(IReadOnlyList<bool> history)
+    {
+        var run = 0;
+        for (var i = history.Count - 1; i >= 0 && history[i]; i--)
+            run++;
+        return run;
+    }
+
+    // "1. · 4,2 s" (Danish decimal comma), or "1." when the time is not known.
+    public static string StampText(RivalStamp stamp) =>
+        stamp.AfterMs is { } ms
+            ? $"{stamp.Order}. · {(ms / 1000.0).ToString("0.0", CultureInfo.GetCultureInfo("da-DK"))} s"
+            : $"{stamp.Order}.";
+
+    private string SeatLabel(RivalView rival)
+    {
+        var label = $"{rival.Name}: {rival.Cards.Count} kort";
+        if (rival.Stamp is { } stamp && rival.Reveal is null)
+            label += $", har svaret som nummer {stamp.Order}";
+        var run = CurrentRun(rival.History);
+        return run >= 2 ? $"{label}, {run} rigtige i træk" : label;
+    }
+
+    private static string ShortYear(int year) => (year % 100).ToString("00", CultureInfo.InvariantCulture);
+
+    // A gentle fan: at most 8° and 6 px at the ends, so it stays inside the seat.
+    private static string Fan(int index, int count)
+    {
+        var rel = index - (count - 1) / 2.0;
+        var step = Math.Min(3.0, 8.0 / Math.Max(1, count - 1) * 2);
+        var lift = Math.Min(6, rel * rel * 0.8);
+        return string.Create(CultureInfo.InvariantCulture, $"--r:{rel * step:0.#}deg;--lift:{lift:0.#}px");
+    }
+}

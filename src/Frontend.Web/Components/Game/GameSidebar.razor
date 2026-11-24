@@ -1,5 +1,6 @@
-@* SCRUM-148: left column of the game round (UI-design v1, board 3): round, countdown and the players.
-   Other players show only their number of cards and a ✓ once they have answered. *@
+@* SCRUM-148: left column of the game round (UI-design v1, board 3): round and countdown, plus anything
+   the page adds below (ChildContent, e.g. the volume). The players sit at the card table (RivalTable,
+   SCRUM-152) instead of in a list here. *@
 @using System.Globalization
 
 <aside class="gs" aria-label="Spilstatus">
@@ -14,24 +15,7 @@
         <div class="gs-bar" aria-hidden="true"><div class="gs-bar-fill" style="@BarStyle" data-testid="time-bar"></div></div>
     </div>
 
-    <div class="card gs-box gs-players-box">
-        <div class="sl-label">Spillere (kort)</div>
-        <ul class="list-unstyled mb-0 gs-players">
-            @foreach (var player in Players)
-            {
-                <li @key="player.UserId" class="@(player.UserId == MyUserId ? "me" : "")" data-testid="game-player">
-                    <span>
-                        @player.UserName
-                        @if (player.Answered)
-                        {
-                            <span class="gs-answered" aria-label="har svaret" title="Har svaret" data-testid="answered">✓</span>
-                        }
-                    </span>
-                    <b class="px" aria-label="@($"{player.Cards} kort")">@player.Cards</b>
-                </li>
-            }
-        </ul>
-    </div>
+    @ChildContent
 </aside>
 
 @code {
@@ -42,8 +26,7 @@
     [Parameter] public int? SecondsLeft { get; set; }
     [Parameter] public int AnswerTimeSeconds { get; set; } = 30;
 
-    [Parameter] public IReadOnlyList<GamePlayerView> Players { get; set; } = [];
-    [Parameter] public int MyUserId { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
 
     private string BarStyle
     {

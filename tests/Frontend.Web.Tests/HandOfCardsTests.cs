@@ -266,23 +266,17 @@ public class HandOfCardsTests : BunitContext
 public class GameSidebarTests : BunitContext
 {
     [Fact]
-    public void ShowsRoundTimeAndPlayers_WithOnlyCardCountsAndAnsweredMarks()
+    public void ShowsRoundAndTime_AndWhatThePageAddsBelow()
     {
         var cut = Render<GameSidebar>(p => p
             .Add(x => x.Round, 4).Add(x => x.TotalRounds, 10)
             .Add(x => x.SecondsLeft, 15).Add(x => x.AnswerTimeSeconds, 30)
-            .Add(x => x.MyUserId, 1)
-            .Add(x => x.Players, [new GamePlayerView(1, "Mathias", 5, false), new GamePlayerView(2, "Asger", 4, true)]));
+            .AddChildContent("<div data-testid=\"extra\">Lydstyrke</div>"));
 
         Assert.Equal("4 / 10", cut.Find("[data-testid=round]").TextContent);
         Assert.Equal("15", cut.Find("[data-testid=time]").TextContent);
         Assert.Equal("width:50%", cut.Find("[data-testid=time-bar]").GetAttribute("style"));
-
-        var players = cut.FindAll("[data-testid=game-player]");
-        Assert.Contains("me", players[0].ClassList);
-        Assert.Null(players[0].QuerySelector("[data-testid=answered]"));
-        Assert.NotNull(players[1].QuerySelector("[data-testid=answered]"));
-        Assert.Equal(["5", "4"], players.Select(p => p.QuerySelector("b")!.TextContent));
+        Assert.NotNull(cut.Find("[data-testid=extra]"));
     }
 
     [Fact]

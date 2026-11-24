@@ -37,7 +37,8 @@ public sealed class FakeGameHub : IGameHubClient
 
     public Task RaisePrefetch(params PrefetchDto[] files) => Prefetch?.Invoke(files) ?? Task.CompletedTask;
     public Task RaiseRoundStarted(RoundStartedDto round) => RoundStarted?.Invoke(round) ?? Task.CompletedTask;
-    public Task RaisePlayerAnswered(int userId) => PlayerAnswered?.Invoke(new PlayerAnsweredDto(userId)) ?? Task.CompletedTask;
+    public Task RaisePlayerAnswered(int userId, int afterMs = 0) =>
+        PlayerAnswered?.Invoke(new PlayerAnsweredDto(userId, afterMs)) ?? Task.CompletedTask;
     public Task RaiseRoundEnded(RoundEndedDto round) => RoundEnded?.Invoke(round) ?? Task.CompletedTask;
     public Task RaiseGameEnded(GameEndedDto game) => GameEnded?.Invoke(game) ?? Task.CompletedTask;
     public Task RaiseConnectionLost() => ConnectionLost?.Invoke() ?? Task.CompletedTask;

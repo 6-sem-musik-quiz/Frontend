@@ -779,3 +779,204 @@ h1:focus {
 .game-place.first {
     color: var(--sl-rust);
 }
+
+/* ---- Rival seats at the card table (SCRUM-152) ---- */
+.rt {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    gap: 14px;
+    width: 100%;
+    margin-bottom: 18px;
+}
+.rt-seat {
+    position: relative;
+    container-type: inline-size; /* the rival's hand sizes its cards from this width (cqw) */
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 10px 12px;
+    background: var(--sl-cream);
+    border: 3px solid var(--sl-ink);
+    border-radius: 6px;
+    box-shadow: 3px 3px 0 var(--sl-ink);
+}
+.rt-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
+}
+.rt-name { font-size: 17px; }
+.rt-count { font-size: 14px; color: var(--sl-muted); }
+
+/* The rival's hand never scrolls, like mine: one whole card plus a step per extra card fits the seat. */
+.rt-hand {
+    --cw: 32px;
+    --s: calc((100cqw - var(--cw) - 12px) / max(1, var(--n, 5) - 1));
+    --m: min(-4px, calc((var(--s) - var(--cw)) / 2));
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 60px;
+    overflow-x: clip;
+}
+.rt-card {
+    flex: none;
+    width: var(--cw);
+    height: 46px;
+    margin: 0 var(--m);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--sl-ink);
+    border-radius: 4px;
+    background: var(--sl-cream);
+    font-family: system-ui, sans-serif; /* the pixel font smears at this size */
+    font-weight: 700;
+    font-size: clamp(7px, calc(var(--s) * .6), 11px);
+    color: var(--sl-ink);
+    transform-origin: 50% 100%;
+    transform: translateY(var(--lift, 0)) rotate(var(--r, 0));
+}
+.rt-hand.tight .rt-card {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 3px 0 0 1px;
+}
+.rt-hand.tight .rt-card > span {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    line-height: 1;
+}
+.rt-card:first-child { margin-left: 0; }
+.rt-card:last-child { margin-right: 0; }
+.rt-card.new {
+    background: var(--sl-green);
+    animation: rt-slidein .5s ease;
+}
+.rt-card.out {
+    background: var(--sl-rust);
+    color: var(--sl-cream);
+    animation: rt-fall .9s ease .6s forwards;
+}
+@keyframes rt-slidein { from { transform: translateY(-30px); opacity: 0; } }
+@keyframes rt-fall { to { transform: translateY(40px) rotate(30deg); opacity: 0; } }
+
+/* Lock stamp: when, never where. */
+.rt-stamp {
+    position: absolute;
+    top: 38px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transform: rotate(6deg);
+    animation: rt-stampin .3s cubic-bezier(.2, 1.6, .4, 1);
+}
+@keyframes rt-stampin { from { transform: rotate(6deg) scale(1.8); opacity: 0; } }
+.rt-q {
+    width: 26px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--sl-ink);
+    border-radius: 4px;
+    background: var(--sl-mustard);
+    box-shadow: 2px 2px 0 var(--sl-ink);
+    font-size: 16px;
+}
+.rt-st {
+    background: var(--sl-ink);
+    color: var(--sl-cream);
+    font-size: 11px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Streak track: one square per round. */
+.rt-track {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 3px;
+}
+.rt-track b {
+    width: 11px;
+    height: 11px;
+    border: 2px dashed var(--sl-ink);
+    border-radius: 2px;
+    opacity: .45;
+}
+.rt-track b.y { background: var(--sl-green); border-style: solid; opacity: 1; }
+.rt-track b.n { background: var(--sl-rust); border-style: solid; opacity: 1; }
+.rt-run {
+    margin-left: 6px;
+    font-size: 11px;
+    color: var(--sl-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rt-card.new, .rt-card.out, .rt-stamp { animation-duration: .01s; animation-delay: 0s; }
+}
+
+/* Rival seats on a phone: one compact line each, so my own hand stays near the top.
+   name | count | stamp | last 5 streak squares | toggle; the hand unfolds below when toggled. */
+.rt-toggle {
+    display: none;
+}
+@media (max-width: 575.98px) {
+    .rt {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+    .rt-seat {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto auto 34px;
+        align-items: center;
+        gap: 4px 8px;
+        padding: 5px 6px 5px 10px;
+        box-shadow: 2px 2px 0 var(--sl-ink);
+    }
+    .rt-top { display: contents; }
+    .rt-name { grid-column: 1; grid-row: 1; font-size: 15px; }
+    .rt-count { grid-column: 2; grid-row: 1; font-size: 12px; }
+    .rt-stamp {
+        grid-column: 3;
+        grid-row: 1;
+        position: static;
+        transform: none;
+        animation: none;
+    }
+    .rt-q { width: 18px; height: 24px; font-size: 12px; box-shadow: 1px 1px 0 var(--sl-ink); }
+    .rt-track { grid-column: 4; grid-row: 1; flex-wrap: nowrap; gap: 2px; }
+    .rt-track b { width: 9px; height: 9px; border-width: 1.5px; }
+    .rt-track b:not(.recent) { display: none; } /* the last five played rounds only */
+    .rt-run { margin-left: 4px; font-size: 10px; white-space: nowrap; }
+    .rt-toggle {
+        grid-column: 5;
+        grid-row: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border: 2px solid var(--sl-ink);
+        border-radius: 4px;
+        background: var(--sl-cream);
+        color: var(--sl-ink);
+        font-size: 14px;
+        cursor: pointer;
+    }
+    .rt-hand { display: none; }
+    .rt-seat.open .rt-hand {
+        display: flex;
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+}
