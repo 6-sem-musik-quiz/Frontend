@@ -1,0 +1,353 @@
+@page "/admin/playlister/{Id:int}"
+@* SCRUM-115: én playlist med dens sange: lyt, upload, ret og fjern. Kun Admin (Pages/Admin/_Imports.razor). *@
+@inject IMusicApiClient Music
+@inject ISongUploader Uploader
+@inject ApiCallHandler ApiCall
+@inject TimeProvider Time
+
+<PageTitle>@(_playlist?.Name ?? "Playlist") · Admin · Slopster</PageTitle>
+
+<p class="mb-2"><a href="admin">← Alle playlister</a></p>
+
+@if (_playlist is not null)
+{
+    <h1 class="mb-1">@_playlist.Name</h1>
+    <p class="text-body-secondary" data-testid="song-count">@SongCountText</p>
+}
+
+<ErrorMessage Message="@_error" />
+
+@if (_playingUrl is not null)
+{
+    <div class="d-flex align-items-center gap-2 mb-3" data-testid="player">
+        <audio controls autoplay src="@_playingUrl" class="flex-grow-1"></audio>
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => _playingUrl = null">Stop</button>
+    </div>
+}
+
+@if (_songs is not null)
+{
+    <section class="card mb-4">
+        <div class="card-body">
+            <h2 class="h5 card-title">Upload sang</h2>
+            <ErrorMessage Message="@_uploadError" />
+
+            <form @onsubmit="UploadAsync" data-testid="upload-form">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="upload-file" class="form-label">Mp3-fil</label>
+                        <InputFile id="upload-file" class="form-control" accept=".mp3,audio/mpeg" OnChange="OnFileSelected"
+                                   @ref="_fileInput" disabled="@_uploading" />
+                        @if (_file is not null)
+                        {
+                            <div class="form-text">@_file.Name · @FormatSize(_file.Size)</div>
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        <label for="upload-title" class="form-label">Titel</label>
+                        <input id="upload-title" class="form-control" maxlength="200" @bind="_upload.Title" @bind:event="oninput" disabled="@_uploading" />
+                    </div>
+                    <div class="col-md-8">
+                        <label for="upload-artist" class="form-label">Kunstner(e)</label>
+                        <ArtistPicker InputId="upload-artist" @bind-Selected="_upload.Artists" />
+                    </div>
+                    <div class="col-md-4">
+                        <label for="upload-year" class="form-label">År</label>
+                        <input id="upload-year" type="number" class="form-control" min="@MinYear" max="@ThisYear"
+                               @bind="_upload.Year" disabled="@_uploading" />
+                    </div>
+                </div>
+
+                @if (_uploading)
+                {
+                    <div class="progress mt-3" role="progressbar" aria-label="Upload" aria-valuenow="@_progress" aria-valuemin="0" aria-valuemax="100"
+                         data-testid="upload-progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: @(_progress)%">@_progress %</div>
+                    </div>
+                }
+
+                <LoadingButton Type="submit" CssClass="btn-primary mt-3" IsLoading="_uploading" LoadingText="Uploader…">Upload sang</LoadingButton>
+            </form>
+        </div>
+    </section>
+
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+        <h2 class="h5 mb-0 me-auto">Sange</h2>
+        <label for="song-search" class="visually-hidden">Søg</label>
+        <input id="song-search" class="form-control" style="max-width: 20rem" type="search" placeholder="Søg på titel eller kunstner…"
+               @bind="_search" @bind:event="oninput" />
+    </div>
+
+    @if (Visible.Count == 0)
+    {
+        <p class="text-body-secondary" data-testid="no-songs">
+            @(_songs.Count == 0 ? "Playlisten har ingen sange endnu." : "Ingen sange matcher søgningen.")
+        </p>
+    }
+    else
+    {
+        <table class="table align-middle" data-testid="songs">
+            <thead>
+                <tr>
+                    <th><button type="button" class="btn btn-link p-0 fw-bold text-decoration-none" data-testid="sort-title" @onclick="() => SortBy(SongSort.Title)">Titel @Arrow(SongSort.Title)</button></th>
+                    <th>Kunstner(e)</th>
+                    <th><button type="button" class="btn btn-link p-0 fw-bold text-decoration-none" data-testid="sort-year" @onclick="() => SortBy(SongSort.Year)">År @Arrow(SongSort.Year)</button></th>
+                    <th>Længde</th>
+                    <th class="text-end">Handlinger</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var song in Visible)
+                {
+                    <tr @key="song.Id" data-testid="song-row">
+                        <td>@song.Title</td>
+                        <td>@string.Join(", ", song.Artists)</td>
+                        <td>@song.Year</td>
+                        <td>@FormatDuration(song.DurationSeconds)</td>
+                        <td class="text-end text-nowrap">
+                            <button type="button" class="btn btn-outline-primary btn-sm" aria-label="Afspil @song.Title"
+                                    @onclick="() => _playingUrl = song.AudioUrl">▶</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => StartEditAsync(song)">Ret</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => _removing = song">Fjern</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@if (_editing is not null)
+{
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" data-testid="edit-dialog">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <form class="modal-content" @onsubmit="SaveEditAsync">
+                <div class="modal-header">
+                    <h2 class="modal-title h5">Ret sang</h2>
+                    <button type="button" class="btn-close" aria-label="Luk" @onclick="() => _editing = null"></button>
+                </div>
+                <div class="modal-body">
+                    <ErrorMessage Message="@_editError" />
+                    <div class="mb-3">
+                        <label for="edit-title" class="form-label">Titel</label>
+                        <input id="edit-title" class="form-control" maxlength="200" @bind="_edit.Title" @bind:event="oninput" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-artist" class="form-label">Kunstner(e)</label>
+                        <ArtistPicker InputId="edit-artist" @bind-Selected="_edit.Artists" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-year" class="form-label">År</label>
+                        <input id="edit-year" type="number" class="form-control" min="@MinYear" max="@ThisYear" @bind="_edit.Year" />
+                    </div>
+                    <p class="small text-body-secondary mb-0">Ændringen gælder i alle playlister, sangen er i.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => _editing = null">Annuller</button>
+                    <LoadingButton Type="submit" IsLoading="_saving" LoadingText="Gemmer…">Gem</LoadingButton>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+}
+
+<ConfirmDialog Visible="_removing is not null" Title="Fjern sang" ConfirmText="Fjern" OnConfirm="RemoveAsync" OnCancel="() => _removing = null">
+    <p>Fjern <strong>@_removing?.Title</strong> fra playlisten?</p>
+    <p class="mb-0 small text-body-secondary">Sangen slettes helt, hvis den ikke er i andre playlister.</p>
+</ConfirmDialog>
+
+@code {
+    private const int MinYear = 1900;
+
+    [Parameter] public int Id { get; set; }
+
+    private PlaylistDto? _playlist;
+    private List<SongDto>? _songs;
+    private string? _error;
+    private string _search = string.Empty;
+    private SongSort _sort = SongSort.Title;
+    private bool _descending;
+    private string? _playingUrl;
+
+    private InputFile? _fileInput;
+    private IBrowserFile? _file;
+    private SongForm _upload = new();
+    private bool _uploading;
+    private int _progress;
+    private string? _uploadError;
+
+    private SongDto? _editing;
+    private SongForm _edit = new();
+    private bool _saving;
+    private string? _editError;
+
+    private SongDto? _removing;
+
+    private int ThisYear => Time.GetLocalNow().Year;
+
+    private string SongCountText => _playlist is null ? "" : _playlist.SongCount == 1 ? "1 sang" : $"{_playlist.SongCount} sange";
+
+    private List<SongDto> Visible
+    {
+        get
+        {
+            var search = _search.Trim();
+            var songs = (_songs ?? []).Where(s => search.Length == 0
+                || s.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || s.Artists.Any(a => a.Contains(search, StringComparison.OrdinalIgnoreCase)));
+            songs = _sort switch
+            {
+                SongSort.Year => _descending ? songs.OrderByDescending(s => s.Year).ThenBy(s => s.Title)
+                                             : songs.OrderBy(s => s.Year).ThenBy(s => s.Title),
+                _ => _descending ? songs.OrderByDescending(s => s.Title, StringComparer.OrdinalIgnoreCase)
+                                 : songs.OrderBy(s => s.Title, StringComparer.OrdinalIgnoreCase)
+            };
+            return songs.ToList();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _error = await ApiCall.RunAsync(async () =>
+        {
+            _playlist = await Music.GetPlaylistAsync(Id);
+            _songs = (await Music.GetSongsAsync(Id)).ToList();
+        });
+    }
+
+    private void SortBy(SongSort sort)
+    {
+        _descending = _sort == sort && !_descending;
+        _sort = sort;
+    }
+
+    private string Arrow(SongSort sort) => _sort != sort ? "" : _descending ? "▼" : "▲";
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _file = e.File;
+        _uploadError = null;
+        // Fill in the title from the file name if it is still empty.
+        if (string.IsNullOrWhiteSpace(_upload.Title))
+            _upload.Title = Path.GetFileNameWithoutExtension(e.File.Name);
+    }
+
+    private async Task UploadAsync()
+    {
+        _uploadError = Validate(_upload) ?? (_file is null ? "Vælg en mp3-fil." : null);
+        if (_uploadError is null && !IsMp3(_file!))
+            _uploadError = "Filen er ikke en mp3.";
+        if (_uploadError is not null || _fileInput?.Element is not { } input)
+            return;
+
+        _uploading = true;
+        _progress = 0;
+        SongDto? song = null;
+        var request = new UploadSongRequest(_upload.Title.Trim(), _upload.Artists.Select(a => a.Id).ToList(), _upload.Year!.Value);
+        _uploadError = await ApiCall.RunAsync(async () =>
+            song = await Uploader.UploadAsync(Id, input, request, OnUploadProgress));
+        _uploading = false;
+
+        if (song is not null)
+        {
+            _songs = [.. _songs ?? [], song];
+            _playlist = _playlist! with { SongCount = _playlist.SongCount + 1 };
+            _upload = new SongForm();
+            _file = null;
+        }
+    }
+
+    private void OnUploadProgress(int percent) =>
+        _ = InvokeAsync(() =>
+        {
+            _progress = percent;
+            StateHasChanged();
+        });
+
+    private async Task StartEditAsync(SongDto song)
+    {
+        _editError = null;
+        _edit = new SongForm { Title = song.Title, Year = song.Year };
+        _editing = song;
+
+        // SongDto has artist names; the picker needs ids. Names are unique, so look each one up.
+        var artists = new List<ArtistDto>();
+        _editError = await ApiCall.RunAsync(async () =>
+        {
+            foreach (var name in song.Artists)
+            {
+                var match = (await Music.SearchArtistsAsync(name))
+                    .FirstOrDefault(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase));
+                if (match is not null)
+                    artists.Add(match);
+            }
+        });
+        _edit.Artists = artists;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editing is not { } song)
+            return;
+        _editError = Validate(_edit);
+        if (_editError is not null)
+            return;
+
+        _saving = true;
+        _editError = await ApiCall.RunAsync(async () =>
+        {
+            var updated = await Music.UpdateSongAsync(song.Id,
+                new UpdateSongRequest(_edit.Title.Trim(), _edit.Artists.Select(a => a.Id).ToList(), _edit.Year!.Value));
+            _songs = (_songs ?? []).Select(s => s.Id == updated.Id ? updated : s).ToList();
+            _editing = null;
+        });
+        _saving = false;
+    }
+
+    private async Task RemoveAsync()
+    {
+        if (_removing is not { } song)
+            return;
+
+        _error = await ApiCall.RunAsync(async () =>
+        {
+            await Music.RemoveSongAsync(Id, song.Id);
+            _songs = (_songs ?? []).Where(s => s.Id != song.Id).ToList();
+            _playlist = _playlist! with { SongCount = Math.Max(0, _playlist.SongCount - 1) };
+            if (_playingUrl == song.AudioUrl)
+                _playingUrl = null;
+        });
+        _removing = null;
+    }
+
+    // The same rules as MusicService, so the user gets the message before anything is sent.
+    private string? Validate(SongForm form)
+    {
+        if (form.Title.Trim().Length is 0 or > 200)
+            return "Titlen skal være 1-200 tegn.";
+        if (form.Artists.Count == 0)
+            return "Vælg mindst én kunstner.";
+        if (form.Year is not { } year || year < MinYear || year > ThisYear)
+            return $"Året skal være mellem {MinYear} og {ThisYear}.";
+        return null;
+    }
+
+    private static bool IsMp3(IBrowserFile file) =>
+        file.ContentType is "audio/mpeg" or "audio/mp3"
+        || (string.IsNullOrEmpty(file.ContentType) && file.Name.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase));
+
+    public static string FormatDuration(int seconds) => $"{seconds / 60}:{seconds % 60:00}";
+
+    private static string FormatSize(long bytes) =>
+        bytes >= 1024 * 1024 ? $"{bytes / 1024d / 1024:0.0} MB" : $"{Math.Max(1, bytes / 1024)} KB";
+
+    private enum SongSort { Title, Year }
+
+    private sealed class SongForm
+    {
+        public string Title { get; set; } = string.Empty;
+        public List<ArtistDto> Artists { get; set; } = [];
+        public int? Year { get; set; }
+    }
+}

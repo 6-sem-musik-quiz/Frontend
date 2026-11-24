@@ -26,6 +26,7 @@ public class AuthorizationRoutingTests : BunitContext
         Services.AddLogging();
         Services.AddSingleton(Substitute.For<IAuthService>());
         Services.AddScoped<ApiCallHandler>();
+        Services.AddSingleton(Substitute.For<Frontend.Services.Interfaces.IMusicApiClient>()); // /admin lists playlists
 
         _auth = AddAuthorization();
 
@@ -98,7 +99,7 @@ public class AuthorizationRoutingTests : BunitContext
         var cut = Render<Routes>();
 
         Assert.DoesNotContain("Ingen adgang", cut.Markup);
-        Assert.Equal("Admin", cut.Find("h1").TextContent);
+        Assert.Equal("Playlister", cut.Find("h1").TextContent);
     }
 
     [Fact]

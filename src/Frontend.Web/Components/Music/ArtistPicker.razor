@@ -1,0 +1,99 @@
+@* Vælg en eller flere kunstnere: søg blandt de eksisterende, eller opret en ny (SCRUM-123).
+   Selected er de valgte kunstnere; ændringer meldes via SelectedChanged. *@
+@inject IMusicApiClient Music
+@inject ApiCallHandler ApiCall
+
+<div class="artist-picker">
+    <div class="mb-2" data-testid="selected-artists">
+        @foreach (var artist in Selected)
+        {
+            <span class="badge text-bg-primary me-1 mb-1">
+                @artist.Name
+                <button type="button" class="btn-close btn-close-white ms-1 small" aria-label="Fjern @artist.Name"
+                        @onclick="() => RemoveAsync(artist)"></button>
+            </span>
+        }
+        @if (Selected.Count == 0)
+        {
+            <span class="text-body-secondary small">Ingen kunstnere valgt.</span>
+        }
+    </div>
+
+    <input id="@InputId" class="form-control" placeholder="Søg efter kunstner…" autocomplete="off"
+           value="@_search" @oninput="OnSearchInput" aria-label="Søg efter kunstner" />
+
+    <ErrorMessage Message="@_error" />
+
+    @if (_results.Count > 0 || CanCreate)
+    {
+        <div class="list-group mt-1" data-testid="artist-results">
+            @foreach (var artist in _results.Where(a => Selected.All(s => s.Id != a.Id)))
+            {
+                <button type="button" class="list-group-item list-group-item-action" @onclick="() => AddAsync(artist)">@artist.Name</button>
+            }
+            @if (CanCreate)
+            {
+                <button type="button" class="list-group-item list-group-item-action text-primary" data-testid="create-artist"
+                        @onclick="CreateAsync" disabled="@_creating">+ Opret kunstner "@_search.Trim()"</button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<ArtistDto> Selected { get; set; } = [];
+    [Parameter] public EventCallback<List<ArtistDto>> SelectedChanged { get; set; }
+    [Parameter] public string InputId { get; set; } = "artist-search";
+
+    private string _search = string.Empty;
+    private List<ArtistDto> _results = [];
+    private string? _error;
+    private bool _creating;
+    private int _searchVersion;
+
+    // A new artist can be created when the text is not empty and no result has exactly that name.
+    private bool CanCreate =>
+        _search.Trim().Length is > 0 and <= 200
+        && _results.All(a => !string.Equals(a.Name, _search.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? string.Empty;
+        var version = ++_searchVersion;
+        if (string.IsNullOrWhiteSpace(_search))
+        {
+            _results = [];
+            return;
+        }
+
+        IReadOnlyList<ArtistDto> found = [];
+        _error = await ApiCall.RunAsync(async () => found = await Music.SearchArtistsAsync(_search));
+        // Ignore answers to older keystrokes that arrive after a newer one.
+        if (version == _searchVersion)
+            _results = found.ToList();
+    }
+
+    private async Task AddAsync(ArtistDto artist)
+    {
+        if (Selected.All(a => a.Id != artist.Id))
+            await SelectedChanged.InvokeAsync([.. Selected, artist]);
+        _search = string.Empty;
+        _results = [];
+    }
+
+    private Task RemoveAsync(ArtistDto artist) =>
+        SelectedChanged.InvokeAsync(Selected.Where(a => a.Id != artist.Id).ToList());
+
+    private async Task CreateAsync()
+    {
+        _creating = true;
+        ArtistDto? created = null;
+        _error = await ApiCall.RunAsync(
+            async () => created = await Music.CreateArtistAsync(_search.Trim()),
+            statusMessages: new Dictionary<HttpStatusCode, string> { [HttpStatusCode.Conflict] = "Kunstneren findes allerede. Søg efter den i stedet." });
+        _creating = false;
+
+        if (created is not null)
+            await AddAsync(created);
+    }
+}

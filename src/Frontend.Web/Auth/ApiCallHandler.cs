@@ -1,3 +1,5 @@
+using System.Net;
+
 using Frontend.Services.Errors;
 
 using Microsoft.AspNetCore.Components;
@@ -16,7 +18,9 @@ public sealed class ApiCallHandler(IAuthService authService, NavigationManager n
     // Returnerer en fejlbesked til visning, eller null hvis kaldet lykkedes.
     // unauthorizedMessage bruges fx på login-siden, hvor 401 betyder forkert adgangskode: så vises
     // beskeden i stedet for at sende brugeren til /login.
-    public async Task<string?> RunAsync(Func<Task> action, string? unauthorizedMessage = null)
+    // statusMessages gives a page its own text for a status code, e.g. 409 → "Navnet findes allerede".
+    public async Task<string?> RunAsync(Func<Task> action, string? unauthorizedMessage = null,
+        IReadOnlyDictionary<HttpStatusCode, string>? statusMessages = null)
     {
         try
         {
@@ -26,6 +30,11 @@ public sealed class ApiCallHandler(IAuthService authService, NavigationManager n
         catch (UnauthorizedApiException) when (unauthorizedMessage is not null)
         {
             return unauthorizedMessage;
+        }
+        catch (ApiException ex) when (ex is not UnauthorizedApiException
+                                      && statusMessages?.TryGetValue(ex.StatusCode, out _) == true)
+        {
+            return statusMessages[ex.StatusCode];
         }
         catch (UnauthorizedApiException ex)
         {

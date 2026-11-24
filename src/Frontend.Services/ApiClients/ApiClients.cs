@@ -71,19 +71,36 @@ public class GameApiClient(HttpClient httpClient) : ApiClientBase(httpClient), I
 
 public class MusicApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IMusicApiClient
 {
-    private const string Route = "tracks";
+    public async Task<IReadOnlyList<PlaylistDto>> GetPlaylistsAsync(CancellationToken ct = default) =>
+        await GetAsync<List<PlaylistDto>>("playlists", ct);
 
-    public async Task<IReadOnlyList<TrackDto>> GetTracksAsync(CancellationToken ct = default) =>
-        await GetAsync<List<TrackDto>>(Route, ct);
+    public Task<PlaylistDto> GetPlaylistAsync(int id, CancellationToken ct = default) =>
+        GetAsync<PlaylistDto>($"playlists/{id}", ct);
 
-    public Task<TrackDto> GetRandomTrackAsync(CancellationToken ct = default) =>
-        GetAsync<TrackDto>($"{Route}/random", ct);
+    public Task<PlaylistDto> CreatePlaylistAsync(string name, CancellationToken ct = default) =>
+        PostAsync<PlaylistNameRequest, PlaylistDto>("playlists", new PlaylistNameRequest(name), ct);
 
-    public Task<TrackDto> CreateTrackAsync(CreateTrackRequest request, CancellationToken ct = default) =>
-        PostAsync<CreateTrackRequest, TrackDto>(Route, request, ct);
+    public Task<PlaylistDto> RenamePlaylistAsync(int id, string name, CancellationToken ct = default) =>
+        PutAsync<PlaylistNameRequest, PlaylistDto>($"playlists/{id}", new PlaylistNameRequest(name), ct);
 
-    public Task DeleteTrackAsync(Guid id, CancellationToken ct = default) =>
-        DeleteAsync($"{Route}/{id}", ct);
+    public Task DeletePlaylistAsync(int id, CancellationToken ct = default) =>
+        DeleteAsync($"playlists/{id}", ct);
+
+    public async Task<IReadOnlyList<SongDto>> GetSongsAsync(int playlistId, CancellationToken ct = default) =>
+        await GetAsync<List<SongDto>>($"playlists/{playlistId}/songs", ct);
+
+    public Task<SongDto> UpdateSongAsync(int songId, UpdateSongRequest request, CancellationToken ct = default) =>
+        PutAsync<UpdateSongRequest, SongDto>($"songs/{songId}", request, ct);
+
+    public Task RemoveSongAsync(int playlistId, int songId, CancellationToken ct = default) =>
+        DeleteAsync($"playlists/{playlistId}/songs/{songId}", ct);
+
+    public async Task<IReadOnlyList<ArtistDto>> SearchArtistsAsync(string? search, CancellationToken ct = default) =>
+        await GetAsync<List<ArtistDto>>(
+            string.IsNullOrWhiteSpace(search) ? "artists" : $"artists?search={Uri.EscapeDataString(search.Trim())}", ct);
+
+    public Task<ArtistDto> CreateArtistAsync(string name, CancellationToken ct = default) =>
+        PostAsync<ArtistNameRequest, ArtistDto>("artists", new ArtistNameRequest(name), ct);
 }
 
 public class StatisticApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IStatisticApiClient
