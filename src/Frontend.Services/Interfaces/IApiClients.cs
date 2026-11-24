@@ -1,4 +1,3 @@
-using Frontend.Domain.DTOs.Games;
 using Frontend.Domain.DTOs.Lobbies;
 using Frontend.Domain.DTOs.Music;
 using Frontend.Domain.DTOs.Statistics;
@@ -30,15 +29,6 @@ public interface ILobbyApiClient
     Task LeaveLobbyAsync(Guid id, CancellationToken ct = default);
     Task<LobbyDto> SetReadyAsync(Guid id, bool ready, CancellationToken ct = default);
     Task<StartGameResponse> StartGameAsync(Guid id, CancellationToken ct = default);
-}
-
-public interface IGameApiClient
-{
-    Task<GameDto> StartGameAsync(StartGameRequest request, CancellationToken ct = default);
-    Task<GameDto> GetGameAsync(Guid id, CancellationToken ct = default);
-    Task<RoundDto> GetCurrentRoundAsync(Guid gameId, CancellationToken ct = default);
-    Task<AnswerResultDto> SubmitAnswerAsync(Guid gameId, SubmitAnswerRequest request, CancellationToken ct = default);
-    Task<IReadOnlyList<ScoreDto>> GetScoresAsync(Guid gameId, CancellationToken ct = default);
 }
 
 // MusicService. Writes are admin only (403 for players). Upload goes through ISongUploader in

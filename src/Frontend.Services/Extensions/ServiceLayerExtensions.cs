@@ -26,7 +26,8 @@ public static class ServiceLayerExtensions
 
         services.AddApiClient<IUserApiClient, UserApiClient>(o => o.UserService);
         services.AddApiClient<ILobbyApiClient, LobbyApiClient>(o => o.LobbyService);
-        services.AddApiClient<IGameApiClient, GameApiClient>(o => o.GameService);
+        // GameService has no REST client: the game is created by LobbyService and played over
+        // the SignalR hub (Frontend.Web/Games/GameHubClient), which uses Services:GameService as its base.
         services.AddApiClient<IMusicApiClient, MusicApiClient>(o => o.MusicService);
         services.AddApiClient<IStatisticApiClient, StatisticApiClient>(o => o.StatisticService);
 

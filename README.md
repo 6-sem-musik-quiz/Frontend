@@ -27,6 +27,21 @@ Web  ──►  Services  ──►  /api/<service>/  ──►  edgeservice (YA
 4. Page or component in `Web/Components/Pages`, inject the interface
 5. Tests: API client in `Frontend.Services.Tests`, page in `Frontend.Web.Tests` (bUnit)
 
+### Real-time (SignalR)
+
+Live updates do not go through the typed `HttpClient`s but through hub clients in `Frontend.Web`,
+each behind an interface so bUnit tests can use a fake:
+
+| Interface | Hub | |
+|---|---|---|
+| `ILobbyHub` (`Lobbies/LobbyHub.cs`) | `/api/lobbyservice/hubs/lobby` | Lobby updates (SCRUM-100) |
+| `IGameHubClient` (`Games/GameHubClient.cs`) | `/api/gameservice/hubs/game` | The game: `JoinGame`, `Ready`, `SubmitAnswer`; events `Prefetch`, `RoundStarted`, `PlayerAnswered`, `RoundEnded`, `GameEnded`, plus `ConnectionLost`/`Rejoined` (SCRUM-147) |
+
+Game DTOs (`Domain/DTOs/Games`) mirror GameService's hub messages. Hub errors become `GameHubException`
+with a Danish message (`Games/GameMessages.cs`). Songs are downloaded and played by `IGameAudio`
+(`wwwroot/js/gameAudio.js`): it fetches from the CDN into a blob URL, so the CDN must allow CORS for
+the frontend's origin.
+
 ## Configuration
 
 `Program.cs` points every API client at `<page host>/api/<service>/`. To call another host
