@@ -724,3 +724,58 @@ h1:focus {
     .gr-message { text-align: left; flex-basis: 100%; order: 2; }
     .gr-confirm { margin-left: auto; }
 }
+
+/* ---- Game page (SCRUM-112) ---- */
+.game-volume .form-range {
+    accent-color: var(--sl-mustard);
+}
+.game-play {
+    align-self: center;
+    margin-bottom: 12px;
+    font-size: 22px;
+    min-height: 56px;
+    padding: 10px 28px;
+}
+.gl-main {
+    display: flex;
+    flex-direction: column;
+}
+.game-end {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+.game-end h1 {
+    font-size: 20px;
+    margin: 0;
+}
+.game-standings {
+    width: min(560px, 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+}
+.game-standings li {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas: "place name score" "place detail score";
+    align-items: center;
+    column-gap: 12px;
+    padding: 10px 14px;
+}
+.game-standings li > :nth-child(1) { grid-area: place; }
+.game-standings li > :nth-child(2) { grid-area: name; font-size: 17px; }
+.game-standings li > :nth-child(3) { grid-area: detail; }
+.game-standings li > :nth-child(4) { grid-area: score; font-size: 17px; }
+.game-standings li.me {
+    box-shadow: 4px 4px 0 var(--sl-ink), inset 0 0 0 2px var(--sl-mustard);
+}
+.game-place {
+    font-size: 24px;
+    text-align: center;
+}
+.game-place.first {
+    color: var(--sl-rust);
+}

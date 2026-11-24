@@ -34,5 +34,6 @@ builder.Services.AddScoped<ISongUploader, SongUploader>();
 builder.Services.AddTransient<ILobbyHub, LobbyHub>();
 builder.Services.AddTransient<IGameHubClient, GameHubClient>();
 builder.Services.AddScoped<IGameAudio, GameAudio>();
+builder.Services.AddSingleton(TimeProvider.System); // the game page's timers; tests use a fake
 
 await builder.Build().RunAsync();
