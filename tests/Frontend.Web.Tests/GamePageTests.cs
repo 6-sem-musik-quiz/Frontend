@@ -39,7 +39,7 @@ public class GamePageTests : BunitContext
         new GameSettingsDto(3, "80'er hits", 10, 30),
         round,
         10,
-        [new PlayerSummaryDto(Me, "alice", 0), new PlayerSummaryDto(Bob, "bob", 0)],
+        [new PlayerSummaryDto(Me, "alice", 0, [Card(1976)]), new PlayerSummaryDto(Bob, "bob", 0, [Card(1976)])],
         [Card(1976)],
         (prefetchRounds.Length == 0 ? [1, 2] : prefetchRounds).Select(r => new PrefetchDto(r, Url(r))).ToList(),
         current);
@@ -58,7 +58,8 @@ public class GamePageTests : BunitContext
 
         Assert.Single(cut.FindAll("[data-testid=card]"));
         Assert.Contains("1976", cut.Find("[data-testid=card]").TextContent);
-        Assert.Equal(2, cut.FindAll("[data-testid=game-player]").Count);
+        var rival = Assert.Single(cut.FindAll("[data-testid=rival]")); // only Bob: I am not at my own table
+        Assert.Contains("bob", rival.TextContent);
         Assert.Contains("Venter på spillerne", cut.Find(".sl-banner").TextContent);
         Assert.Equal("Spillet starter, når alle er forbundet.", Text(cut, "message"));
         Assert.True(cut.Find("[data-testid=confirm]").HasAttribute("disabled"));
@@ -149,7 +150,7 @@ public class GamePageTests : BunitContext
     }
 
     [Fact]
-    public async Task Confirm_SendsTheChosenSlot_ForTheCurrentRound_AndMarksMeAsAnswered()
+    public async Task Confirm_SendsTheChosenSlot_ForTheCurrentRound()
     {
         var cut = RenderPage();
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(3, startsInMs: 0)));
@@ -159,20 +160,59 @@ public class GamePageTests : BunitContext
         cut.Find("[data-testid=confirm]").Click();
 
         Assert.Equal([(3, 1)], _hub.Answers);
-        Assert.NotNull(cut.FindAll("[data-testid=game-player]")[0].QuerySelector("[data-testid=answered]"));
     }
 
     [Fact]
-    public async Task PlayerAnswered_ShowsACheckMark_AndANewRoundClearsIt()
+    public async Task PlayerAnswered_StampsTheRivalsSeat_WithOrderAndTime_AndANewRoundClearsIt()
     {
         var cut = RenderPage();
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
 
-        await cut.InvokeAsync(() => _hub.RaisePlayerAnswered(Bob));
-        Assert.NotNull(cut.FindAll("[data-testid=game-player]")[1].QuerySelector("[data-testid=answered]"));
+        await cut.InvokeAsync(() => _hub.RaisePlayerAnswered(Me, 2100)); // I answered first
+        await cut.InvokeAsync(() => _hub.RaisePlayerAnswered(Bob, 4200));
+        Assert.Equal("2. · 4,2 s", cut.Find("[data-testid=rival] [data-testid=rival-stamp] .rt-st").TextContent);
 
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 0)));
-        cut.WaitForAssertion(() => Assert.Null(cut.FindAll("[data-testid=game-player]")[1].QuerySelector("[data-testid=answered]")));
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid=rival-stamp]")));
+    }
+
+    [Fact]
+    public async Task RoundEnded_UpdatesTheRivalsHandAndStreak()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+        [
+            new RoundResultDto(Me, "alice", null, false, 0, [Card(1976)]),
+            new RoundResultDto(Bob, "bob", 1, true, 1, [Card(1976), Card(1982)], 3000, [1976, null])
+        ])));
+
+        var seat = cut.Find("[data-testid=rival]");
+        Assert.Equal("2 kort", seat.QuerySelector("[data-testid=rival-count]")!.TextContent);
+        Assert.Contains("new", seat.QuerySelectorAll("[data-testid=rival-card]")[1].ClassList);
+        Assert.Single(seat.QuerySelectorAll("[data-testid=rival-track] b.y"));
+    }
+
+    [Fact]
+    public void AfterAReload_TheTableIsRebuiltFromTheServersState()
+    {
+        _hub.State = State(round: 3) with
+        {
+            Players =
+            [
+                new PlayerSummaryDto(Me, "alice", 1, [Card(1976), Card(1990)]),
+                new PlayerSummaryDto(Bob, "bob", 2, [Card(1960), Card(1976), Card(1999)],
+                    [new RoundHistoryDto(2, true, 5000), new RoundHistoryDto(1, true, 3000)], AnsweredOrder: 1)
+            ]
+        };
+
+        var cut = RenderPage();
+
+        var seat = cut.Find("[data-testid=rival]");
+        Assert.Equal(["60", "76", "99"], seat.QuerySelectorAll("[data-testid=rival-card]").Select(c => c.TextContent));
+        Assert.Equal("2 i træk", seat.QuerySelector("[data-testid=rival-run]")!.TextContent);
+        Assert.Equal("1.", seat.QuerySelector("[data-testid=rival-stamp] .rt-st")!.TextContent);
     }
 
     [Fact]
@@ -192,7 +232,6 @@ public class GamePageTests : BunitContext
 
         Assert.Equal("Rigtigt! Kortet bliver i din hånd.", Text(cut, "message"));
         Assert.Contains("blob:" + Url(1), _audio.Revoked);
-        Assert.Contains("2", cut.FindAll("[data-testid=game-player]")[0].QuerySelector("b")!.TextContent);
         Assert.Single(cut.FindAll("[data-testid=card]")); // the reveal still shows the placed card, not a duplicate
 
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 0)));

@@ -1,10 +1,11 @@
 @page "/dev/spil"
-@* SCRUM-148: try the game round's UI without a backend. Only in Development (dotnet run); in a
-   published build the page says it does not exist. Sample data, a local countdown and fake players. *@
+@* SCRUM-148/152: try the game round's UI without a backend. Only in Development (dotnet run); in a
+   published build the page says it does not exist. Sample data, a local countdown and three fake
+   rivals: Asger answers right after 6 s, Benjamin wrong after 13 s, Frederik not at all. *@
 @attribute [AllowAnonymous]
 @using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 @implements IDisposable
-@inject Microsoft.AspNetCore.Components.WebAssembly.Hosting.IWebAssemblyHostEnvironment Environment
+@inject IWebAssemblyHostEnvironment Environment
 
 <PageTitle>Spil (forhåndsvisning)</PageTitle>
 
@@ -16,10 +17,10 @@ else
 {
     <GameLayout>
         <Side>
-            <GameSidebar Round="_round" TotalRounds="10" SecondsLeft="_secondsLeft" AnswerTimeSeconds="AnswerTime"
-                         Players="Players" MyUserId="Me" />
+            <GameSidebar Round="_round" TotalRounds="TotalRounds" SecondsLeft="_secondsLeft" AnswerTimeSeconds="AnswerTime" />
         </Side>
         <ChildContent>
+            <RivalTable Rivals="RivalViews" TotalRounds="TotalRounds" />
             <HandOfCards Cards="_timeline" Round="_round" Locked="@(_secondsLeft == 0)" Reveal="_reveal" OnConfirm="Confirmed" />
         </ChildContent>
     </GameLayout>
@@ -27,7 +28,7 @@ else
     <div class="d-flex gap-2 mt-4 flex-wrap">
         <button class="btn btn-sm" @onclick="EndRound" disabled="@(_reveal is not null)">Afslut runden</button>
         <button class="btn btn-sm" @onclick="NextRound" disabled="@(_reveal is null)">Næste runde</button>
-        <button class="btn btn-sm" @onclick="FillHand" data-testid="fill-hand">Fyld hånden (20 kort)</button>
+        <button class="btn btn-sm" @onclick="FillHand" data-testid="fill-hand">Fyld hænderne (20 kort)</button>
         <span class="text-body-secondary small align-self-center">
             Forhåndsvisning med eksempeldata (kun i Development). Rundens sang er @Song.Title (@Song.Year).
         </span>
@@ -35,8 +36,8 @@ else
 }
 
 @code {
-    private const int Me = 1;
     private const int AnswerTime = 30;
+    private const int TotalRounds = 10;
 
     private static readonly CardDto[] Songs =
     [
@@ -45,6 +46,26 @@ else
         new("Hey Ya!", ["OutKast"], 2003),
         new("Bohemian Rhapsody", ["Queen"], 1975),
         new("Rolling in the Deep", ["Adele"], 2010)
+    ];
+
+    private sealed class DevRival(int id, string name, int answerAfterSeconds, bool answersRight, params int[] years)
+    {
+        public int Id { get; } = id;
+        public string Name { get; } = name;
+        public int AnswerAfterSeconds { get; } = answerAfterSeconds; // 0 = never answers
+        public bool AnswersRight { get; } = answersRight;
+        public List<CardDto> Cards { get; set; } = years.Select(y => new CardDto($"Sang fra {y}", ["Kunstner"], y)).ToList();
+        public List<bool> History { get; } = [true, false, true];
+        public RivalStamp? Stamp { get; set; }
+        public RivalReveal? Reveal { get; set; }
+        public int? Slot { get; set; }
+    }
+
+    private readonly List<DevRival> _rivals =
+    [
+        new(2, "Asger", 6, true, 1972, 1985, 1991, 1999),
+        new(3, "Benjamin", 13, false, 1979, 1991, 2005),
+        new(4, "Frederik", 0, false, 1972, 1988, 2012)
     ];
 
     private List<CardDto> _timeline =
@@ -60,18 +81,12 @@ else
     private int _secondsLeft = AnswerTime;
     private int? _mySlot;
     private RoundReveal? _reveal;
-    private readonly HashSet<int> _answered = [];
     private Timer? _timer;
 
     private CardDto Song => Songs[(_round - 4) % Songs.Length];
 
-    private List<GamePlayerView> Players =>
-    [
-        new(Me, "Mathias", _timeline.Count, _mySlot is not null),
-        new(2, "Asger", 5, _answered.Contains(2)),
-        new(3, "Benjamin", 4, _answered.Contains(3)),
-        new(4, "Frederik", 3, _answered.Contains(4))
-    ];
+    private List<RivalView> RivalViews =>
+        _rivals.Select(r => new RivalView(r.Id, r.Name, r.Cards, r.History, r.Stamp, r.Reveal)).ToList();
 
     protected override void OnInitialized()
     {
@@ -84,21 +99,35 @@ else
         if (_reveal is not null || _secondsLeft == 0)
             return;
         _secondsLeft--;
-        // The other players answer along the way.
-        if (_secondsLeft == 24) _answered.Add(2);
-        if (_secondsLeft == 17) _answered.Add(3);
+        var elapsed = AnswerTime - _secondsLeft;
+        foreach (var rival in _rivals.Where(r => r.AnswerAfterSeconds == elapsed))
+        {
+            var right = RightSlot(rival.Cards);
+            rival.Slot = rival.AnswersRight ? right : (right == 0 ? rival.Cards.Count : 0);
+            rival.Stamp = new RivalStamp(_rivals.Count(r => r.Stamp is not null) + 1, elapsed * 1000 + 300);
+        }
         if (_secondsLeft == 0) EndRound();
         StateHasChanged();
     }
 
     private void Confirmed(int slot) => _mySlot = slot;
 
+    private int RightSlot(List<CardDto> cards) => cards.Count(c => c.Year <= Song.Year);
+
+    private bool IsRight(List<CardDto> cards, int slot) =>
+        (slot == 0 || cards[slot - 1].Year <= Song.Year) && (slot == cards.Count || Song.Year <= cards[slot].Year);
+
     private void EndRound()
     {
-        var correct = _mySlot is { } s
-                      && (s == 0 || _timeline[s - 1].Year <= Song.Year)
-                      && (s == _timeline.Count || Song.Year <= _timeline[s].Year);
-        _reveal = new RoundReveal(Song, _mySlot is not null, correct);
+        _reveal = new RoundReveal(Song, _mySlot is not null, _mySlot is { } s && IsRight(_timeline, s));
+        foreach (var rival in _rivals)
+        {
+            var right = rival.Slot is { } slot && IsRight(rival.Cards, slot);
+            if (right)
+                rival.Cards.Insert(rival.Slot!.Value, Song);
+            rival.History.Add(right);
+            rival.Reveal = new RivalReveal(Song, right, rival.Slot);
+        }
     }
 
     private void NextRound()
@@ -109,17 +138,26 @@ else
         _secondsLeft = AnswerTime;
         _mySlot = null;
         _reveal = null;
-        _answered.Clear();
+        foreach (var rival in _rivals)
+        {
+            rival.Stamp = null;
+            rival.Reveal = null;
+            rival.Slot = null;
+        }
     }
 
-    // The biggest hand a 20-round game can give, to check that it fits without a scrollbar.
+    // The biggest hands a 20-round game can give, to check that they fit without a scrollbar.
     private void FillHand()
     {
-        var years = new[] { 1958, 1964, 1967, 1969, 1971, 1973, 1977, 1979, 1983, 1987, 1989, 1993, 1997, 2001, 2005, 2014, 2017, 2020 };
-        _timeline = _timeline
-            .Concat(years.Take(Math.Max(0, 20 - _timeline.Count)).Select(y => new CardDto($"Sang fra {y}", ["Kunstner"], y)))
+        var years = new[] { 1958, 1964, 1967, 1969, 1971, 1973, 1977, 1979, 1983, 1987, 1989, 1993, 1997, 2001, 2005, 2014, 2017, 2020, 2022, 2024 };
+        List<CardDto> Fill(List<CardDto> cards) => cards
+            .Concat(years.Where(y => cards.All(c => c.Year != y)).Take(Math.Max(0, 20 - cards.Count))
+                .Select(y => new CardDto($"Sang fra {y}", ["Kunstner"], y)))
             .OrderBy(c => c.Year)
             .ToList();
+        _timeline = Fill(_timeline);
+        foreach (var rival in _rivals)
+            rival.Cards = Fill(rival.Cards);
     }
 
     public void Dispose() => _timer?.Dispose();

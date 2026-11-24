@@ -45,14 +45,16 @@ else
     <GameLayout>
         <Side>
             <GameSidebar Round="_round" TotalRounds="_state.TotalRounds" SecondsLeft="_secondsLeft"
-                         AnswerTimeSeconds="_state.Settings.AnswerTimeSeconds" Players="PlayerViews" MyUserId="@(_me ?? 0)" />
-            <div class="card gs-box game-volume">
-                <label for="volume" class="sl-label">Lydstyrke</label>
-                <input id="volume" type="range" class="form-range" min="0" max="100" step="5"
-                       value="@((int)Math.Round(_volume * 100))" @oninput="OnVolumeAsync" data-testid="volume" />
-            </div>
+                         AnswerTimeSeconds="_state.Settings.AnswerTimeSeconds">
+                <div class="card gs-box game-volume">
+                    <label for="volume" class="sl-label">Lydstyrke</label>
+                    <input id="volume" type="range" class="form-range" min="0" max="100" step="5"
+                           value="@((int)Math.Round(_volume * 100))" @oninput="OnVolumeAsync" data-testid="volume" />
+                </div>
+            </GameSidebar>
         </Side>
         <ChildContent>
+            <RivalTable Rivals="Rivals" TotalRounds="_state.TotalRounds" />
             @if (_needsPlay)
             {
                 <button type="button" class="btn btn-primary game-play" @onclick="PlayClickedAsync" data-testid="play">Afspil sangen</button>

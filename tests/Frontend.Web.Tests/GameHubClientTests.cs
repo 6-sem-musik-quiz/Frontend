@@ -48,10 +48,17 @@ public class GameHubClientTests : IAsyncLifetime
                 settings = new { categoryId = 3, categoryName = "80'er hits", rounds = 10, answerTimeSeconds = 30 },
                 round = 0,
                 totalRounds = 10,
-                players = new[] { new { userId = 7, userName = "asger", score = 0 }, new { userId = 8, userName = "mathias", score = 0 } },
+                players = new object[]
+                {
+                    new { userId = 7, userName = "asger", score = 1, timeline = new[] { new { title = "Dancing Queen", artists = new[] { "ABBA" }, year = 1976 } },
+                          history = new[] { new { round = 1, correct = true, answeredAfterMs = (int?)3200 } }, answeredOrder = (int?)1 },
+                    new { userId = 8, userName = "mathias", score = 0, timeline = Array.Empty<object>(),
+                          history = new[] { new { round = 1, correct = false, answeredAfterMs = (int?)null } }, answeredOrder = (int?)null }
+                },
                 myTimeline = new[] { new { title = "Dancing Queen", artists = new[] { "ABBA" }, year = 1976 } },
                 prefetch = new[] { new { round = 1, audioUrl = "https://media.munkcloud.dk/songs/1.mp3" } },
-                currentRound = (object?)null
+                currentRound = (object?)null,
+                pastSongs = new[] { new { round = 1, song = new { title = "Take On Me", artists = new[] { "a-ha" }, year = 1985 } } }
             };
         }
 
@@ -135,6 +142,14 @@ public class GameHubClientTests : IAsyncLifetime
         Assert.Equal(["ABBA"], card.Artists);
         Assert.Equal(new PrefetchDto(1, "https://media.munkcloud.dk/songs/1.mp3"), Assert.Single(state.Prefetch));
         Assert.Null(state.CurrentRound);
+        // SCRUM-150 fields
+        var asger = state.Players[0];
+        Assert.Equal("Dancing Queen", Assert.Single(asger.Timeline!).Title);
+        Assert.Equal(new RoundHistoryDto(1, true, 3200), Assert.Single(asger.History!));
+        Assert.Equal(1, asger.AnsweredOrder);
+        Assert.Null(state.Players[1].AnsweredOrder);
+        Assert.Null(state.Players[1].History![0].AnsweredAfterMs);
+        Assert.Equal((1, "Take On Me"), (state.PastSongs![0].Round, state.PastSongs[0].Song.Title));
     }
 
     [Fact]
@@ -160,7 +175,7 @@ public class GameHubClientTests : IAsyncLifetime
         });
         await Everyone.SendAsync("RoundStarted",
             new { round = 1, totalRounds = 10, startsInMs = 3000, startOffsetSeconds = 42, answerTimeSeconds = 30 });
-        await Everyone.SendAsync("PlayerAnswered", new { userId = 8 });
+        await Everyone.SendAsync("PlayerAnswered", new { userId = 8, answeredAfterMs = 4200 });
         var timeline = new[]
         {
             new { title = "Dancing Queen", artists = new[] { "ABBA" }, year = 1976 },
@@ -172,8 +187,8 @@ public class GameHubClientTests : IAsyncLifetime
             song = new { title = "Take On Me", artists = new[] { "a-ha" }, year = 1985 },
             results = new object[]
             {
-                new { userId = 7, userName = "asger", slotIndex = (int?)1, correct = true, score = 1, timeline },
-                new { userId = 8, userName = "mathias", slotIndex = (int?)null, correct = false, score = 0, timeline = timeline[..1] }
+                new { userId = 7, userName = "asger", slotIndex = (int?)1, correct = true, score = 1, timeline, answeredAfterMs = (int?)2500, range = new int?[] { 1976, null } },
+                new { userId = 8, userName = "mathias", slotIndex = (int?)null, correct = false, score = 0, timeline = timeline[..1], answeredAfterMs = (int?)null, range = (int?[]?)null }
             }
         });
         await Everyone.SendAsync("GameEnded", new
@@ -188,12 +203,15 @@ public class GameHubClientTests : IAsyncLifetime
 
         Assert.Equal([1, 2], (await prefetch.Task.WaitAsync(Timeout)).Select(p => p.Round));
         Assert.Equal(new RoundStartedDto(1, 10, 3000, 42, 30), await started.Task.WaitAsync(Timeout));
-        Assert.Equal(new PlayerAnsweredDto(8), await answered.Task.WaitAsync(Timeout));
+        Assert.Equal(new PlayerAnsweredDto(8, 4200), await answered.Task.WaitAsync(Timeout));
 
         var round = await ended.Task.WaitAsync(Timeout);
         Assert.Equal(("Take On Me", 1985), (round.Song.Title, round.Song.Year));
         Assert.Equal((1, true, 1, 2), (round.Results[0].SlotIndex, round.Results[0].Correct, round.Results[0].Score, round.Results[0].Timeline.Count));
         Assert.Null(round.Results[1].SlotIndex);
+        Assert.Equal(2500, round.Results[0].AnsweredAfterMs);
+        Assert.Equal([1976, null], round.Results[0].Range!);
+        Assert.Null(round.Results[1].Range);
 
         var final = await gameEnded.Task.WaitAsync(Timeout);
         Assert.Equal(GameId, final.GameId);
