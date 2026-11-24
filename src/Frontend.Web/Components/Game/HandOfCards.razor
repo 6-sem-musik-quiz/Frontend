@@ -85,6 +85,9 @@
     // True when the answer time is up: nothing can be placed or confirmed any more.
     [Parameter] public bool Locked { get; set; }
 
+    // What the hand says while Locked (and nothing is confirmed), e.g. before the first round.
+    [Parameter] public string LockedText { get; set; } = "Tiden er gået.";
+
     // My result once the round has ended; null while it is being played.
     [Parameter] public RoundReveal? Reveal { get; set; }
 
@@ -132,7 +135,7 @@
         { Correct: true } => "Rigtigt! Kortet bliver i din hånd.",
         not null => "Forkert – kortet ryger ud.",
         null when _confirmed => "Svar afgivet – låst",
-        null when Locked => "Tiden er gået.",
+        null when Locked => LockedText,
         _ => _message
     };
 

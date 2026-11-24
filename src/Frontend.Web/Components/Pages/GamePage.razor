@@ -1,0 +1,64 @@
+@page "/spil/{GameId:guid}"
+@* SCRUM-112: the game. Joins GameService's hub, downloads the songs ahead (Prefetch -> Ready), plays each
+   round in sync with the others (a local timer on startsInMs, never the device clock), counts down and
+   sends the answer from the hand (SCRUM-148). Round end updates the hand; the game end shows the
+   standings (the staged version is SCRUM-155). *@
+@implements IAsyncDisposable
+
+<PageTitle>Spil</PageTitle>
+
+@if (_loading)
+{
+    <p class="text-body-secondary" role="status">Forbinder til spillet…</p>
+}
+else if (_state is null)
+{
+    <ErrorMessage Message="@_error" />
+    <a href="" class="btn btn-primary">Til forsiden</a>
+}
+else if (_ended is not null)
+{
+    <section class="game-end" aria-labelledby="end-title">
+        <h1 id="end-title" class="sl-banner">· · · Slutstilling · · ·</h1>
+        <ol class="list-unstyled game-standings" data-testid="standings">
+            @foreach (var s in _ended.Standings)
+            {
+                <li class="card @(s.UserId == _me ? "me" : "")" data-testid="standing">
+                    <span class="px game-place @(s.Placement == 1 ? "first" : "")">@s.Placement</span>
+                    <span class="px">@s.UserName@(s.UserId == _me ? " (dig)" : "")</span>
+                    <span class="text-body-secondary small">@s.Correct rigtige af @s.Answered besvarede</span>
+                    <span class="px">@s.Score point</span>
+                </li>
+            }
+        </ol>
+        <a href="" class="btn btn-primary">Til forsiden</a>
+    </section>
+}
+else
+{
+    @if (_connectionLost)
+    {
+        <div class="alert alert-warning" role="status" data-testid="connection-lost">Forbindelsen blev afbrudt. Prøver igen…</div>
+    }
+    <ErrorMessage Message="@_error" />
+
+    <GameLayout>
+        <Side>
+            <GameSidebar Round="_round" TotalRounds="_state.TotalRounds" SecondsLeft="_secondsLeft"
+                         AnswerTimeSeconds="_state.Settings.AnswerTimeSeconds" Players="PlayerViews" MyUserId="@(_me ?? 0)" />
+            <div class="card gs-box game-volume">
+                <label for="volume" class="sl-label">Lydstyrke</label>
+                <input id="volume" type="range" class="form-range" min="0" max="100" step="5"
+                       value="@((int)Math.Round(_volume * 100))" @oninput="OnVolumeAsync" data-testid="volume" />
+            </div>
+        </Side>
+        <ChildContent>
+            @if (_needsPlay)
+            {
+                <button type="button" class="btn btn-primary game-play" @onclick="PlayClickedAsync" data-testid="play">Afspil sangen</button>
+            }
+            <HandOfCards Cards="_cards" Round="_round" Banner="@Banner" Reveal="_reveal"
+                         Locked="@(_timeUp || _roundInfo is null)" LockedText="@LockedText" OnConfirm="ConfirmAsync" />
+        </ChildContent>
+    </GameLayout>
+}
