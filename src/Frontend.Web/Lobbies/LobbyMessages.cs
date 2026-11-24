@@ -12,8 +12,8 @@ public static class LobbyMessages
     {
         ["The lobby is full."] = "Lobbyen er fuld.",
         ["The game has already started."] = "Spillet er allerede startet.",
-        ["You are already in a lobby."] = "Du er allerede i en lobby. Forlad den først.",
-        ["You are already in another lobby."] = "Du er allerede i en anden lobby. Forlad den først.",
+        ["You are already in a lobby."] = "Du er allerede i en lobby. Gå til den eller forlad den øverst på siden.",
+        ["You are already in another lobby."] = "Du er allerede i en anden lobby. Gå til den eller forlad den øverst på siden.",
         ["The lobby is busy. Please try again."] = "Lobbyen er optaget lige nu. Prøv igen.",
         ["Not all players are ready."] = "Ikke alle spillere er klar.",
         ["The players changed while the game was starting. Please try again."] = "Spillerne ændrede sig, mens spillet startede. Prøv igen.",

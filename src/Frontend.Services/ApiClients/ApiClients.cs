@@ -3,6 +3,7 @@ using Frontend.Domain.DTOs.Lobbies;
 using Frontend.Domain.DTOs.Music;
 using Frontend.Domain.DTOs.Statistics;
 using Frontend.Domain.DTOs.Users;
+using Frontend.Services.Errors;
 using Frontend.Services.Interfaces;
 
 namespace Frontend.Services.ApiClients;
@@ -38,6 +39,18 @@ public class LobbyApiClient(HttpClient httpClient) : ApiClientBase(httpClient), 
 
     public Task<LobbyDto> GetLobbyAsync(Guid id, CancellationToken ct = default) =>
         GetAsync<LobbyDto>($"{Route}/{id}", ct);
+
+    public async Task<LobbyDto?> GetMyLobbyAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            return await GetAsync<LobbyDto>($"{Route}/mine", ct);
+        }
+        catch (ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
 
     public Task<LobbyDto> CreateLobbyAsync(CreateLobbyRequest request, CancellationToken ct = default) =>
         PostAsync<CreateLobbyRequest, LobbyDto>(Route, request, ct);

@@ -91,4 +91,25 @@ public class LobbyApiClientTests
         Assert.Equal("ABC234", lobby.Code);
         Assert.True(lobby.Players[0].IsReady);
     }
+
+    [Fact]
+    public async Task GetMyLobby_ReturnsTheLobby()
+    {
+        var (client, stub) = Create(HttpStatusCode.OK, Lobby);
+
+        var lobby = await client.GetMyLobbyAsync();
+
+        Assert.Equal("/api/lobbyservice/lobbies/mine", stub.LastRequest!.RequestUri!.AbsolutePath);
+        Assert.Equal(LobbyId, lobby?.Id);
+    }
+
+    [Fact]
+    public async Task GetMyLobby_404_IsNull()
+    {
+        var stub = StubHttpMessageHandler.ProblemDetails(HttpStatusCode.NotFound,
+            """{"title":"Not found.","status":404,"detail":"You are not in a lobby."}""");
+        var client = new LobbyApiClient(new HttpClient(stub) { BaseAddress = new Uri("http://edge.test/api/lobbyservice/") });
+
+        Assert.Null(await client.GetMyLobbyAsync());
+    }
 }

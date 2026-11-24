@@ -122,7 +122,7 @@ public class FrontPageLobbyTests : BunitContext
 
         cut.Find("[data-testid=create-lobby-form]").Submit();
 
-        cut.WaitForAssertion(() => Assert.Equal("Du er allerede i en lobby. Forlad den først.", cut.Find(".alert-danger").TextContent.Trim()));
+        cut.WaitForAssertion(() => Assert.Equal("Du er allerede i en lobby. Gå til den eller forlad den øverst på siden.", cut.Find(".alert-danger").TextContent.Trim()));
     }
 
     [Fact]
