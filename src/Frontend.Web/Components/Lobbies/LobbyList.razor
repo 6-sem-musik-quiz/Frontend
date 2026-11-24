@@ -6,11 +6,11 @@
 
 <h2 class="h5">Lobbyer</h2>
 
-<form class="input-group mb-3" @onsubmit="JoinByCodeAsync" data-testid="join-code-form">
+<form class="d-flex mb-3" @onsubmit="JoinByCodeAsync" data-testid="join-code-form">
     <label for="join-code" class="visually-hidden">Lobbykode</label>
-    <input id="join-code" class="form-control text-uppercase" placeholder="Kode (6 tegn)" maxlength="6" autocomplete="off"
+    <input id="join-code" class="form-control text-uppercase join-code" placeholder="Kode (6 tegn)" maxlength="6" autocomplete="off"
            @bind="_code" @bind:event="oninput" />
-    <LoadingButton Type="submit" CssClass="btn-outline-primary" IsLoading="_joiningCode" LoadingText="Joiner…"
+    <LoadingButton Type="submit" CssClass="btn-sm ms-2" IsLoading="_joiningCode" LoadingText="Joiner…"
                    Disabled="@(_code.Trim().Length != 6)">Join med kode</LoadingButton>
 </form>
 
@@ -48,7 +48,7 @@ else
                 }
                 else
                 {
-                    <LoadingButton CssClass="btn-primary btn-sm" OnClick="() => JoinAsync(lobby.Id)" LoadingText="Joiner…">Join</LoadingButton>
+                    <LoadingButton CssClass="btn-sm" OnClick="() => JoinAsync(lobby.Id)" LoadingText="Joiner…">Join</LoadingButton>
                 }
             </li>
         }

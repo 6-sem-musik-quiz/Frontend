@@ -1,19 +1,308 @@
+/* Slopster designguide v1: retro 8-bit in type and borders, modern in layout.
+   Teal background, cream cards with a charcoal border and a hard 4 px shadow, mustard as the only accent. */
+:root {
+    --sl-teal: #6FA8A4;
+    --sl-teal-dark: #5A8F8B;
+    --sl-cream: #F3E9D2;
+    --sl-ink: #2E3440;
+    --sl-ink-deep: #1E232B;
+    --sl-muted: #4A4F57;
+    --sl-mustard: #E0A43A;
+    --sl-rust: #B4532A;
+    --sl-green: #7FB069;
+    --sl-pixel: 'Pixelify Sans', monospace;
+
+    /* Bootstrap picks these up, so its components follow the palette. */
+    --bs-body-font-family: system-ui, sans-serif;
+    --bs-body-color: var(--sl-ink);
+    --bs-body-bg: var(--sl-teal);
+    --bs-secondary-color: var(--sl-muted);
+    --bs-border-color: var(--sl-ink);
+    --bs-link-color: var(--sl-ink);
+    --bs-link-color-rgb: 46, 52, 64;
+    --bs-link-hover-color: var(--sl-rust);
+    --bs-link-hover-color-rgb: 180, 83, 42;
+    --bs-danger: var(--sl-rust);
+    --bs-danger-rgb: 180, 83, 42;
+    --bs-success: #4E7F3B;
+    --bs-success-rgb: 78, 127, 59;
+    --bs-focus-ring-color: rgba(224, 164, 58, .6);
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: var(--sl-teal);
+    color: var(--sl-ink);
+    font-family: system-ui, sans-serif;
 }
 
-a, .btn-link {
-    color: #006bb7;
+h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6, .px, .btn, .navbar-brand, .badge {
+    font-family: var(--sl-pixel);
+    font-weight: 600;
 }
 
-.btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+a:hover {
+    color: var(--sl-rust);
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+/* Cards: cream, 3 px charcoal border, 6 px corners, hard 4 px shadow. */
+.card, .auth-card, .modal-content {
+    --bs-card-bg: var(--sl-cream);
+    --bs-card-border-color: var(--sl-ink);
+    --bs-card-border-width: 3px;
+    --bs-card-border-radius: 6px;
+    --bs-card-inner-border-radius: 3px;
+    background: var(--sl-cream);
+    color: var(--sl-ink);
+    border: 3px solid var(--sl-ink);
+    border-radius: 6px;
+    box-shadow: 4px 4px 0 var(--sl-ink);
+}
+
+.card h2.h5 {
+    font-size: 22px;
+}
+
+/* Banner: "· · · Venter på spillere · · ·" */
+.sl-banner {
+    align-self: center;
+    display: inline-block;
+    background: var(--sl-cream);
+    color: var(--sl-ink);
+    border: 3px solid var(--sl-ink);
+    box-shadow: 4px 4px 0 var(--sl-ink);
+    padding: 6px 30px;
+    font-family: var(--sl-pixel);
+    font-size: 18px;
+}
+
+/* Dark title plate, e.g. the playlist name in the lobby. */
+.sl-plate {
+    background: var(--sl-ink);
+    color: var(--sl-cream);
+    border-radius: 6px;
+    box-shadow: 4px 4px 0 var(--sl-ink-deep);
+    padding: 10px 16px;
+    font-family: var(--sl-pixel);
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.sl-label {
+    font-size: 13px;
+    color: var(--sl-muted);
+}
+
+/* Buttons: mustard primary, cream secondary, pressed 3 px down on click. */
+.btn {
+    --bs-btn-font-size: 17px;
+    --bs-btn-padding-x: 18px;
+    --bs-btn-padding-y: 8px;
+    --bs-btn-border-width: 3px;
+    --bs-btn-border-radius: 6px;
+    --bs-btn-color: var(--sl-ink);
+    --bs-btn-bg: var(--sl-cream);
+    --bs-btn-border-color: var(--sl-ink);
+    --bs-btn-hover-color: var(--sl-ink);
+    --bs-btn-hover-bg: #FAF3E3;
+    --bs-btn-hover-border-color: var(--sl-ink);
+    --bs-btn-active-color: var(--sl-ink);
+    --bs-btn-active-bg: var(--sl-cream);
+    --bs-btn-active-border-color: var(--sl-ink);
+    --bs-btn-disabled-color: var(--sl-ink);
+    --bs-btn-disabled-bg: var(--sl-cream);
+    --bs-btn-disabled-border-color: var(--sl-ink);
+    --bs-btn-disabled-opacity: .55;
+    font-weight: 400;
+    min-height: 44px;
+    box-shadow: 3px 3px 0 var(--sl-ink);
+    transition: transform .05s, box-shadow .05s;
+}
+
+.btn:active, .btn.active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 var(--sl-ink);
+}
+
+.btn:disabled, .btn.disabled {
+    box-shadow: 3px 3px 0 var(--sl-ink);
+}
+
+.btn-sm {
+    --bs-btn-font-size: 15px;
+    --bs-btn-padding-x: 12px;
+    --bs-btn-padding-y: 4px;
+    min-height: 38px;
+}
+
+.btn-primary, .btn-success {
+    --bs-btn-bg: var(--sl-mustard);
+    --bs-btn-hover-bg: #E8B354;
+    --bs-btn-active-bg: var(--sl-mustard);
+    --bs-btn-disabled-bg: var(--sl-mustard);
+}
+
+.btn-danger {
+    --bs-btn-color: var(--sl-cream);
+    --bs-btn-bg: var(--sl-rust);
+    --bs-btn-hover-color: var(--sl-cream);
+    --bs-btn-hover-bg: #C2603A;
+    --bs-btn-active-color: var(--sl-cream);
+    --bs-btn-active-bg: var(--sl-rust);
+}
+
+/* Outline variants become the cream secondary button; danger keeps a rust label. */
+.btn-outline-danger {
+    --bs-btn-color: var(--sl-rust);
+    --bs-btn-hover-color: var(--sl-rust);
+    --bs-btn-active-color: var(--sl-rust);
+}
+
+.btn-outline-light {
+    --bs-btn-color: var(--sl-cream);
+    --bs-btn-bg: transparent;
+    --bs-btn-border-color: var(--sl-cream);
+    --bs-btn-hover-color: var(--sl-ink);
+    --bs-btn-hover-bg: var(--sl-cream);
+    --bs-btn-hover-border-color: var(--sl-cream);
+    box-shadow: 3px 3px 0 var(--sl-ink-deep);
+}
+
+.btn-link {
+    box-shadow: none;
+    border-color: transparent;
+}
+
+.btn-close {
+    box-shadow: none;
+    min-height: 0;
+}
+
+.btn:focus-visible, .form-control:focus, .form-select:focus, .form-check-input:focus {
+    outline: 3px solid var(--sl-mustard);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+/* Fields */
+.form-control, .form-select {
+    background-color: var(--sl-cream);
+    color: var(--sl-ink);
+    border: 2px solid var(--sl-ink);
+    border-radius: 4px;
+    font-family: var(--sl-pixel);
+    font-size: 16px;
+    min-height: 44px;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: #FAF3E3;
+    border-color: var(--sl-ink);
+}
+
+.form-label {
+    font-size: 13px;
+    color: var(--sl-muted);
+    margin-bottom: 6px;
+}
+
+.form-check-input {
+    border: 2px solid var(--sl-ink);
+    background-color: var(--sl-cream);
+}
+
+.form-check-input:checked {
+    background-color: var(--sl-ink);
+    border-color: var(--sl-ink);
+}
+
+/* Lists inside cards: dotted separators, no boxes. */
+.list-group {
+    --bs-list-group-bg: transparent;
+    --bs-list-group-border-color: rgba(46, 52, 64, .2);
+    --bs-list-group-color: var(--sl-ink);
+    border-radius: 0;
+}
+
+.list-group-item {
+    border-width: 0 0 2px 0;
+    border-style: dotted;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.list-group-item:last-child {
+    border-bottom: 0;
+}
+
+/* Tables (admin pages) */
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--sl-ink);
+    --bs-table-border-color: rgba(46, 52, 64, .2);
+    --bs-table-striped-bg: rgba(46, 52, 64, .05);
+    --bs-table-hover-bg: rgba(46, 52, 64, .08);
+}
+
+.table > thead th {
+    font-family: var(--sl-pixel);
+    font-weight: 600;
+    border-bottom: 3px solid var(--sl-ink);
+}
+
+/* Alerts: cream card with a coloured left edge. */
+.alert {
+    background: var(--sl-cream);
+    color: var(--sl-ink);
+    border: 3px solid var(--sl-ink);
+    border-left-width: 10px;
+    border-radius: 6px;
+    box-shadow: 4px 4px 0 var(--sl-ink);
+}
+
+.alert-danger { border-left-color: var(--sl-rust); }
+.alert-warning { border-left-color: var(--sl-mustard); }
+.alert-info { border-left-color: var(--sl-teal-dark); }
+.alert-success { border-left-color: var(--sl-green); }
+
+.badge {
+    border-radius: 3px;
+    font-weight: 400;
+    border: 2px solid var(--sl-ink);
+}
+
+.text-bg-light, .text-bg-secondary { background: var(--sl-cream) !important; color: var(--sl-ink) !important; }
+.text-bg-warning { background: var(--sl-mustard) !important; color: var(--sl-ink) !important; }
+.text-bg-success { background: var(--sl-green) !important; color: var(--sl-ink) !important; }
+.text-bg-primary { background: var(--sl-ink) !important; color: var(--sl-cream) !important; }
+
+/* Pills/tabs (front page tabs on mobile) */
+.nav-pills {
+    --bs-nav-pills-border-radius: 4px;
+    --bs-nav-pills-link-active-color: var(--sl-cream);
+    --bs-nav-pills-link-active-bg: var(--sl-ink);
+    --bs-nav-link-color: var(--sl-ink);
+    --bs-nav-link-hover-color: var(--sl-ink);
+    gap: 6px;
+}
+
+.nav-pills .nav-link {
+    background: var(--sl-cream);
+    border: 2px solid var(--sl-ink);
+    font-family: var(--sl-pixel);
+    min-height: 44px;
+}
+
+.modal-backdrop.show {
+    opacity: .6;
+    background: var(--sl-ink);
+}
+
+.modal-header, .modal-footer {
+    border-color: rgba(46, 52, 64, .2);
+}
+
+.text-body-secondary {
+    color: var(--sl-muted) !important;
 }
 
 .content {
@@ -25,15 +314,16 @@ h1:focus {
 }
 
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+    outline: 2px solid var(--sl-green);
 }
 
 .invalid {
-    outline: 1px solid #e50000;
+    outline: 2px solid var(--sl-rust);
 }
 
 .validation-message {
-    color: #e50000;
+    color: var(--sl-rust);
+    font-size: 13px;
 }
 
 .blazor-error-boundary {
@@ -50,9 +340,6 @@ h1:focus {
     max-width: 420px;
     margin: 2rem auto;
     padding: 2rem;
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    background: #fff;
 }
 
 .darker-border-checkbox.form-check-input {
@@ -79,14 +366,14 @@ h1:focus {
 
     .loading-progress circle {
         fill: none;
-        stroke: #e0e0e0;
+        stroke: var(--sl-cream);
         stroke-width: 0.6rem;
         transform-origin: 50% 50%;
         transform: rotate(-90deg);
     }
 
         .loading-progress circle:last-child {
-            stroke: #1b6ec2;
+            stroke: var(--sl-mustard);
             stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
             transition: stroke-dasharray 0.05s ease-in-out;
         }
@@ -94,10 +381,16 @@ h1:focus {
 .loading-progress-text {
     position: absolute;
     text-align: center;
-    font-weight: bold;
+    font-family: var(--sl-pixel);
+    color: var(--sl-cream);
     inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
 }
 
     .loading-progress-text:after {
         content: var(--blazor-load-percentage-text, "Indlæser");
     }
+
+.join-code {
+    letter-spacing: 3px;
+    font-size: 17px;
+}

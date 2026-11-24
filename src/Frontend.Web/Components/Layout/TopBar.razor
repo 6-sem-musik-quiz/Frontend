@@ -1,7 +1,7 @@
 @inject IAuthService AuthService
 
-<header class="topbar navbar navbar-expand navbar-dark px-3">
-    <a class="navbar-brand fw-bold" href="">🎵 Slopster</a>
+<header class="topbar navbar navbar-expand container flex-wrap">
+    <a class="navbar-brand" href="">SLOPSTER</a>
 
     <AuthorizeView>
         <Authorized>
@@ -12,8 +12,8 @@
                 </AuthorizeView>
             </nav>
 
-            <span class="navbar-text text-light me-3" data-testid="current-user">@context.User.Identity?.Name</span>
-            <LoadingButton CssClass="btn-outline-light btn-sm" OnClick="LogoutAsync" LoadingText="Logger ud…">Log ud</LoadingButton>
+            <span class="user-chip me-3" data-testid="current-user">@context.User.Identity?.Name</span>
+            <LoadingButton CssClass="btn-sm" OnClick="LogoutAsync" LoadingText="Logger ud…">Log ud</LoadingButton>
         </Authorized>
     </AuthorizeView>
 </header>

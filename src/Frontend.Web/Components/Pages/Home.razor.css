@@ -1,8 +1,8 @@
 /* Three columns side by side on a computer; under 900 px the tabs pick one panel. */
 .home-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1.3fr;
-    gap: 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 28px;
     align-items: start;
 }
 
