@@ -1,0 +1,12 @@
+@* SCRUM-148: the game round's two columns (sidebar | hand). On narrow screens the sidebar becomes
+   a status strip above the hand. *@
+
+<div class="gl">
+    <div class="gl-side">@Side</div>
+    <div class="gl-main">@ChildContent</div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Side { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

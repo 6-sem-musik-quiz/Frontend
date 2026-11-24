@@ -394,3 +394,290 @@ h1:focus {
     letter-spacing: 3px;
     font-size: 17px;
 }
+
+/* ---- Game round (SCRUM-148, UI-design v1 board 3: "hånden er tidslinjen") ---- */
+
+.gl {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+}
+
+/* Sidebar */
+.gs {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.gs-box {
+    padding: 12px 14px;
+}
+.gs-big {
+    font-size: 32px;
+    line-height: 1.1;
+}
+.gs-time {
+    color: var(--sl-rust);
+}
+.gs-bar {
+    height: 8px;
+    margin-top: 6px;
+    border-radius: 2px;
+    background: rgba(46, 52, 64, .13);
+}
+.gs-bar-fill {
+    height: 8px;
+    border-radius: 2px;
+    background: var(--sl-rust);
+    transition: width 1s linear;
+}
+.gs-players li {
+    display: flex;
+    justify-content: space-between;
+    font-size: 15px;
+    line-height: 2;
+}
+.gs-players li.me {
+    font-weight: 600;
+}
+.gs-answered {
+    color: #4E7F3B;
+    font-weight: 700;
+}
+
+/* The round: banner, "?" card, hint, hand, footer */
+.gr {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    user-select: none;
+}
+.gr-mystery-area {
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.gr-mystery-hole {
+    width: 100px;
+    height: 140px;
+    border: 3px dashed var(--sl-cream);
+    border-radius: 6px;
+    opacity: .5;
+}
+.gr-hint {
+    min-height: 1.5em;
+    font-size: 15px;
+    color: var(--sl-cream);
+    text-align: center;
+}
+
+/* One card. Cream, charcoal border, hard shadow; year big in the pixel font. */
+.gc {
+    flex: none;
+    width: 96px;
+    height: 136px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 6px;
+    background: var(--sl-cream);
+    color: var(--sl-ink);
+    border: 3px solid var(--sl-ink);
+    border-radius: 6px;
+    box-shadow: 4px 4px 0 var(--sl-ink);
+    text-align: center;
+}
+.gc-year {
+    font-family: var(--sl-pixel);
+    font-weight: 600;
+    font-size: 24px;
+}
+.gc-title {
+    font-size: 12px;
+    line-height: 1.25;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+.gc-artist {
+    font-size: 11px;
+    color: var(--sl-muted);
+}
+.gc:focus-visible {
+    outline: 3px solid var(--sl-mustard);
+    outline-offset: 3px;
+}
+
+/* The round's song: "?" above the hand, grabbed and dragged. */
+.gc-mystery {
+    width: 100px;
+    height: 140px;
+    justify-content: center;
+    gap: 6px;
+    cursor: grab;
+    transform: rotate(-3deg);
+    transition: transform .2s;
+    touch-action: none; /* a touch on the card drags it instead of scrolling */
+}
+.gc-mystery .gc-year {
+    font-size: 56px;
+    line-height: 1;
+}
+.gr-dragging .gc-mystery {
+    position: relative;
+    z-index: 80;
+    cursor: grabbing;
+    pointer-events: none;
+    transition: none; /* hand.js moves it with transform */
+}
+.gr-locked .gc-mystery {
+    cursor: default;
+}
+.gc-missed {
+    opacity: .55;
+}
+
+/* The hand: a fan of cards sorted by year, with a gap (slot) between every two cards. */
+.gr-hand {
+    display: flex;
+    align-items: flex-end;
+    justify-content: safe center;
+    width: 100%;
+    min-height: 260px;
+    padding: 100px 28px 24px; /* room above for the zoomed card */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--sl-ink) transparent;
+}
+.gr-hand .gc {
+    position: relative;
+    margin: 0 -14px; /* the cards overlap like a hand of cards */
+    transform-origin: 50% 100%;
+    transform: translateY(var(--lift, 0)) rotate(var(--r, 0));
+    transition: transform .25s ease;
+}
+.gr-hand .gc:hover, .gr-hand .gc:focus-visible {
+    z-index: 50;
+    transform: translateY(-70px) scale(1.45) rotate(0deg);
+}
+.gr-dragging .gr-hand .gc:hover {
+    transform: translateY(var(--lift, 0)) rotate(var(--r, 0)); /* no zoom while dragging */
+}
+
+/* A gap: clickable, and it opens up while "?" is dragged over it. */
+.gr-slot {
+    position: relative;
+    z-index: 2; /* above the overlapping card edges, so the gap can be clicked */
+    flex: none;
+    align-self: stretch;
+    width: 16px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    transition: width .2s ease, background .15s;
+}
+.gr-slot:hover:not(:disabled), .gr-slot:focus-visible {
+    background: rgba(224, 164, 58, .55);
+    outline: none;
+}
+.gr-slot.hot {
+    width: 100px;
+    margin: 0 14px; /* clear of the overlapping neighbours */
+    border: 3px dashed var(--sl-cream);
+    background: rgba(243, 233, 210, .15);
+}
+.gr-slot:disabled {
+    cursor: default;
+}
+
+/* The placed "?" in the hand, and how it ends. */
+.gc-placed {
+    background: var(--sl-mustard);
+    justify-content: center;
+    cursor: grab;
+    touch-action: none;
+}
+.gc-placed .gc-year {
+    font-size: 40px;
+}
+.gr-locked .gc-placed {
+    cursor: default;
+}
+.gc-placed.gc-new {
+    justify-content: space-between;
+    animation: gc-flip .45s ease;
+}
+.gc-placed.gc-new .gc-year {
+    font-size: 24px;
+}
+.gc-placed.gc-out {
+    animation: gc-out .8s ease forwards;
+}
+@keyframes gc-flip {
+    from { transform: translateY(var(--lift, 0)) rotate(var(--r, 0)) rotateY(90deg); }
+    to { transform: translateY(var(--lift, 0)) rotate(var(--r, 0)) rotateY(0deg); }
+}
+@keyframes gc-out {
+    to { transform: translateY(120px) rotate(25deg); opacity: 0; }
+}
+
+.gr-footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+}
+.gr-count {
+    color: var(--sl-cream);
+    font-size: 15px;
+}
+.gr-message {
+    flex: 1;
+    min-width: 0;
+    text-align: right;
+    font-size: 15px;
+    color: var(--sl-cream);
+}
+.gr-confirm {
+    min-height: 48px;
+    font-size: 19px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gr-hand .gc, .gr-slot, .gc-mystery, .gs-bar-fill { transition: none; }
+    .gc-placed.gc-new, .gc-placed.gc-out { animation-duration: .01s; }
+}
+
+/* Under 900 px: the sidebar becomes a strip above, the hand scrolls sideways. */
+@media (max-width: 899.98px) {
+    .gl {
+        grid-template-columns: minmax(0, 1fr); /* lets the hand scroll instead of widening the page */
+        gap: 16px;
+    }
+    .gs {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .gs-box { flex: 1 1 90px; padding: 8px 10px; }
+    .gs-big { font-size: 22px; }
+    .gs-players-box { flex-basis: 100%; }
+    .gs-players { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+    .gs-players li { gap: 6px; line-height: 1.6; }
+    .gr-mystery-area { height: 120px; }
+    .gr-hand { justify-content: flex-start; padding: 90px 12px 16px; }
+    .gr-footer { flex-wrap: wrap; }
+    .gr-message { text-align: left; flex-basis: 100%; order: 2; }
+    .gr-confirm { margin-left: auto; }
+}

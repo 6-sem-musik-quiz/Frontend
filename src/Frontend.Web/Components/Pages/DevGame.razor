@@ -1,0 +1,115 @@
+@page "/dev/spil"
+@* SCRUM-148: try the game round's UI without a backend. Only in Development (dotnet run); in a
+   published build the page says it does not exist. Sample data, a local countdown and fake players. *@
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
+@implements IDisposable
+@inject Microsoft.AspNetCore.Components.WebAssembly.Hosting.IWebAssemblyHostEnvironment Environment
+
+<PageTitle>Spil (forhåndsvisning)</PageTitle>
+
+@if (!Environment.IsDevelopment())
+{
+    <p>Siden findes ikke.</p>
+}
+else
+{
+    <GameLayout>
+        <Side>
+            <GameSidebar Round="_round" TotalRounds="10" SecondsLeft="_secondsLeft" AnswerTimeSeconds="AnswerTime"
+                         Players="Players" MyUserId="Me" />
+        </Side>
+        <ChildContent>
+            <HandOfCards Cards="_timeline" Round="_round" Locked="@(_secondsLeft == 0)" Reveal="_reveal" OnConfirm="Confirmed" />
+        </ChildContent>
+    </GameLayout>
+
+    <div class="d-flex gap-2 mt-4 flex-wrap">
+        <button class="btn btn-sm" @onclick="EndRound" disabled="@(_reveal is not null)">Afslut runden</button>
+        <button class="btn btn-sm" @onclick="NextRound" disabled="@(_reveal is null)">Næste runde</button>
+        <span class="text-body-secondary small align-self-center">
+            Forhåndsvisning med eksempeldata (kun i Development). Rundens sang er @Song.Title (@Song.Year).
+        </span>
+    </div>
+}
+
+@code {
+    private const int Me = 1;
+    private const int AnswerTime = 30;
+
+    private static readonly CardDto[] Songs =
+    [
+        new("Billie Jean", ["Michael Jackson"], 1982),
+        new("Wonderwall", ["Oasis"], 1995),
+        new("Hey Ya!", ["OutKast"], 2003),
+        new("Bohemian Rhapsody", ["Queen"], 1975),
+        new("Rolling in the Deep", ["Adele"], 2010)
+    ];
+
+    private List<CardDto> _timeline =
+    [
+        new("Dancing Queen", ["ABBA"], 1976),
+        new("Take On Me", ["a-ha"], 1985),
+        new("Smells Like Teen Spirit", ["Nirvana"], 1991),
+        new("Kun for mig", ["Medina"], 2009),
+        new("Somebody That I Used to Know", ["Gotye", "Kimbra"], 2011)
+    ];
+
+    private int _round = 4;
+    private int _secondsLeft = AnswerTime;
+    private int? _mySlot;
+    private RoundReveal? _reveal;
+    private readonly HashSet<int> _answered = [];
+    private Timer? _timer;
+
+    private CardDto Song => Songs[(_round - 4) % Songs.Length];
+
+    private List<GamePlayerView> Players =>
+    [
+        new(Me, "Mathias", _timeline.Count, _mySlot is not null),
+        new(2, "Asger", 5, _answered.Contains(2)),
+        new(3, "Benjamin", 4, _answered.Contains(3)),
+        new(4, "Frederik", 3, _answered.Contains(4))
+    ];
+
+    protected override void OnInitialized()
+    {
+        if (Environment.IsDevelopment())
+            _timer = new Timer(_ => InvokeAsync(Tick), null, 1000, 1000);
+    }
+
+    private void Tick()
+    {
+        if (_reveal is not null || _secondsLeft == 0)
+            return;
+        _secondsLeft--;
+        // The other players answer along the way.
+        if (_secondsLeft == 24) _answered.Add(2);
+        if (_secondsLeft == 17) _answered.Add(3);
+        if (_secondsLeft == 0) EndRound();
+        StateHasChanged();
+    }
+
+    private void Confirmed(int slot) => _mySlot = slot;
+
+    private void EndRound()
+    {
+        var correct = _mySlot is { } s
+                      && (s == 0 || _timeline[s - 1].Year <= Song.Year)
+                      && (s == _timeline.Count || Song.Year <= _timeline[s].Year);
+        _reveal = new RoundReveal(Song, _mySlot is not null, correct);
+    }
+
+    private void NextRound()
+    {
+        if (_reveal is { Correct: true } && _mySlot is { } slot)
+            _timeline.Insert(slot, Song);
+        _round++;
+        _secondsLeft = AnswerTime;
+        _mySlot = null;
+        _reveal = null;
+        _answered.Clear();
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

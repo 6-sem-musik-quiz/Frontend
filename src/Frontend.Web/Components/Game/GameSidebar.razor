@@ -1,0 +1,56 @@
+@* SCRUM-148: left column of the game round (UI-design v1, board 3): round, countdown and the players.
+   Other players show only their number of cards and a ✓ once they have answered. *@
+@using System.Globalization
+
+<aside class="gs" aria-label="Spilstatus">
+    <div class="card gs-box">
+        <div class="sl-label">Runde</div>
+        <div class="gs-big px" data-testid="round">@Round / @TotalRounds</div>
+    </div>
+
+    <div class="card gs-box">
+        <div class="sl-label">Tid</div>
+        <div class="gs-big px gs-time" data-testid="time" aria-live="off">@(SecondsLeft?.ToString(CultureInfo.InvariantCulture) ?? "–")</div>
+        <div class="gs-bar" aria-hidden="true"><div class="gs-bar-fill" style="@BarStyle" data-testid="time-bar"></div></div>
+    </div>
+
+    <div class="card gs-box gs-players-box">
+        <div class="sl-label">Spillere (kort)</div>
+        <ul class="list-unstyled mb-0 gs-players">
+            @foreach (var player in Players)
+            {
+                <li @key="player.UserId" class="@(player.UserId == MyUserId ? "me" : "")" data-testid="game-player">
+                    <span>
+                        @player.UserName
+                        @if (player.Answered)
+                        {
+                            <span class="gs-answered" aria-label="har svaret" title="Har svaret" data-testid="answered">✓</span>
+                        }
+                    </span>
+                    <b class="px" aria-label="@($"{player.Cards} kort")">@player.Cards</b>
+                </li>
+            }
+        </ul>
+    </div>
+</aside>
+
+@code {
+    [Parameter] public int Round { get; set; }
+    [Parameter] public int TotalRounds { get; set; }
+
+    // Null before the round's playback has started.
+    [Parameter] public int? SecondsLeft { get; set; }
+    [Parameter] public int AnswerTimeSeconds { get; set; } = 30;
+
+    [Parameter] public IReadOnlyList<GamePlayerView> Players { get; set; } = [];
+    [Parameter] public int MyUserId { get; set; }
+
+    private string BarStyle
+    {
+        get
+        {
+            var fraction = SecondsLeft is { } s && AnswerTimeSeconds > 0 ? Math.Clamp(s / (double)AnswerTimeSeconds, 0, 1) : 0;
+            return string.Create(CultureInfo.InvariantCulture, $"width:{fraction * 100:0.#}%");
+        }
+    }
+}
