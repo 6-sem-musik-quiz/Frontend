@@ -1,0 +1,40 @@
+@* Viser lobbyen, brugeren stadig er i (GET /api/lobbies/mine), så man kan komme tilbage til den eller forlade den.
+   Fx hvis man forlod siden uden at trykke "Forlad lobby": ellers kan man hverken oprette eller joine en ny. *@
+@inject ILobbyApiClient Lobbies
+@inject ApiCallHandler ApiCall
+@inject NavigationManager Navigation
+
+<ErrorMessage Message="@_error" />
+
+@if (_lobby is { } lobby)
+{
+    <div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="status" data-testid="current-lobby">
+        <span class="flex-grow-1">
+            Du er stadig i en lobby: <strong>@lobby.Settings.CategoryName</strong>
+            (@lobby.Players.Count/@lobby.Settings.MaxPlayers spillere).
+        </span>
+        <a class="btn btn-primary btn-sm" href="lobby/@lobby.Id">Gå til lobby</a>
+        <LoadingButton CssClass="btn-outline-danger btn-sm" OnClick="LeaveAsync" LoadingText="Forlader…">Forlad lobby</LoadingButton>
+    </div>
+}
+
+@code {
+    private LobbyDto? _lobby;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Only for the banner: if it cannot be loaded, the rest of the page still works.
+        await ApiCall.RunAsync(async () => _lobby = await Lobbies.GetMyLobbyAsync());
+    }
+
+    private async Task LeaveAsync()
+    {
+        if (_lobby is not { } lobby)
+            return;
+
+        _error = await ApiCall.RunAsync(() => Lobbies.LeaveLobbyAsync(lobby.Id), messageFor: LobbyMessages.For);
+        if (_error is null)
+            _lobby = null;
+    }
+}

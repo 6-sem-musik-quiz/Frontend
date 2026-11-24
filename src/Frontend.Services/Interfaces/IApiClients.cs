@@ -22,6 +22,8 @@ public interface ILobbyApiClient
 {
     Task<IReadOnlyList<LobbySummaryDto>> GetLobbiesAsync(CancellationToken ct = default);
     Task<LobbyDto> GetLobbyAsync(Guid id, CancellationToken ct = default);
+    // The waiting lobby the user is in, or null (LobbyService answers 404).
+    Task<LobbyDto?> GetMyLobbyAsync(CancellationToken ct = default);
     Task<LobbyDto> CreateLobbyAsync(CreateLobbyRequest request, CancellationToken ct = default);
     Task<LobbyDto> JoinLobbyAsync(Guid id, CancellationToken ct = default);
     Task<LobbyDto> JoinByCodeAsync(string code, CancellationToken ct = default);
