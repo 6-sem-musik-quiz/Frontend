@@ -1,0 +1,301 @@
+@* SCRUM-148: "hånden er tidslinjen" (UI-design v1, board 3). Presentational only: no hub, no audio.
+   The player drags "?" into a gap between two years (Pointer Events in wwwroot/js/hand.js, mouse and touch),
+   clicks a gap, or uses the arrow keys and Enter. "Bekræft" locks the answer and raises OnConfirm(slotIndex). *@
+@using Frontend.Domain.DTOs.Games
+@using System.Globalization
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="gr @(IsLocked ? "gr-locked" : "") @(_dragging ? "gr-dragging" : "")" @ref="_root" data-testid="hand-of-cards">
+    <div class="sl-banner">· · · @Banner · · ·</div>
+
+    <div class="gr-mystery-area">
+        @if (ShowMystery)
+        {
+            <div class="gc gc-mystery @(Reveal is { Answered: false } ? "gc-missed" : "")" @ref="_mysteryRef"
+                 data-ghost="" data-drag="@(IsLocked ? null : "")" tabindex="@(IsLocked ? -1 : 0)"
+                 role="button" aria-label="Rundens sang. Træk den ned i din hånd, eller brug piletasterne og Enter."
+                 @onkeydown="OnKeyDown" data-testid="mystery">
+                <div class="gc-year">?</div>
+                @if (!IsLocked)
+                {
+                    <div class="gc-artist">træk ned i hånden</div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="gr-mystery-hole" aria-hidden="true"></div>
+        }
+    </div>
+    <div class="gr-hint" data-testid="hint">@Hint</div>
+
+    @* Never scrolls: --n tells the CSS how many cards (+ the "?") to fit into the width. *@
+    <div class="gr-hand" data-hand="" role="group" aria-label="Din tidslinje" style="--n:@(Cards.Count + 1)" data-testid="hand">
+        @{
+            var count = Cards.Count + (ShowPlaced ? 1 : 0);
+            var index = 0;
+        }
+        @for (var i = 0; i <= Cards.Count; i++)
+        {
+            var slot = i;
+            <button type="button" @key="@("slot-" + slot)" class="gr-slot @(_dragging && _hot == slot ? "hot" : "")"
+                    disabled="@IsLocked" aria-label="@SlotLabel(slot)" title="@SlotLabel(slot)"
+                    @onclick="() => PlaceByClick(slot)" data-testid="slot"></button>
+            @if (ShowPlaced && _slot == slot)
+            {
+                <div @key="@("placed")" class="gc gc-placed @RevealClass" style="@Fan(index++, count)" @ref="_placedRef"
+                     data-drag="@(IsLocked ? null : "")" tabindex="@(IsLocked ? -1 : 0)" role="button"
+                     aria-label="@PlacedLabel" @onkeydown="OnKeyDown" data-testid="placed">
+                    @if (Reveal is { Correct: true } reveal)
+                    {
+                        @Face(reveal.Song)
+                    }
+                    else
+                    {
+                        <div class="gc-year">?</div>
+                    }
+                </div>
+            }
+            @if (slot < Cards.Count)
+            {
+                var card = Cards[slot];
+                <div @key="@("card-" + slot)" class="gc" style="@Fan(index++, count)" data-card="" tabindex="0"
+                     aria-label="@($"{card.Year}: {card.Title} – {string.Join(", ", card.Artists)}")" data-testid="card">
+                    @Face(card)
+                </div>
+            }
+        }
+    </div>
+
+    <div class="gr-footer">
+        <span class="gr-count px" data-testid="count">Din hånd · @Cards.Count kort = @Cards.Count point</span>
+        <span class="gr-message" role="status" data-testid="message">@Message</span>
+        <button type="button" class="btn btn-primary gr-confirm" disabled="@IsLocked" @onclick="Confirm" data-testid="confirm">Bekræft</button>
+    </div>
+</div>
+
+@code {
+    // My timeline, sorted by year.
+    [Parameter, EditorRequired] public IReadOnlyList<CardDto> Cards { get; set; } = [];
+
+    // A new round number resets the placement and the lock.
+    [Parameter] public int Round { get; set; }
+
+    // True when the answer time is up: nothing can be placed or confirmed any more.
+    [Parameter] public bool Locked { get; set; }
+
+    // My result once the round has ended; null while it is being played.
+    [Parameter] public RoundReveal? Reveal { get; set; }
+
+    [Parameter] public string Banner { get; set; } = "Nu spiller";
+
+    // The confirmed slotIndex: 0 = before the first card, Cards.Count = after the last.
+    [Parameter] public EventCallback<int> OnConfirm { get; set; }
+
+    private ElementReference _root, _placedRef, _mysteryRef;
+    private IJSObjectReference? _module, _handle;
+    private DotNetObjectReference<HandOfCards>? _self;
+
+    private int _round = int.MinValue;
+    private int? _slot;
+    private bool _dragging;
+    private int _hot = -1;
+    private bool _confirmed;
+    private string? _message;
+    private bool _focusPlaced, _focusMystery;
+
+    private bool IsLocked => Locked || _confirmed || Reveal is not null;
+    private bool ShowPlaced => !_dragging && _slot is not null && Reveal is not { Answered: false };
+    private bool ShowMystery => !ShowPlaced;
+
+    protected override void OnParametersSet()
+    {
+        if (Round == _round)
+            return;
+        _round = Round;
+        _slot = null;
+        _dragging = false;
+        _hot = -1;
+        _confirmed = false;
+        _message = null;
+    }
+
+    private string Hint =>
+        IsLocked ? ""
+        : _dragging ? (_hot >= 0 ? "Slip for at lægge kortet her" : "Træk ned mod hånden")
+        : "Hold musen over et kort for at se det. Træk ? ned mellem to år, eller klik på et hul.";
+
+    private string? Message => Reveal switch
+    {
+        { Answered: false } => "Intet svar – tiden løb ud.",
+        { Correct: true } => "Rigtigt! Kortet bliver i din hånd.",
+        not null => "Forkert – kortet ryger ud.",
+        null when _confirmed => "Svar afgivet – låst",
+        null when Locked => "Tiden er gået.",
+        _ => _message
+    };
+
+    private string RevealClass => Reveal switch
+    {
+        { Correct: true } => "gc-new",
+        { Answered: true } => "gc-out",
+        _ => ""
+    };
+
+    private string PlacedLabel => Reveal is { Correct: true } r
+        ? $"{r.Song.Year}: {r.Song.Title} – rigtigt"
+        : $"Din placering: {SlotLabel(_slot ?? 0)}. Piletasterne flytter, Enter bekræfter.";
+
+    private string SlotLabel(int slot) =>
+        Cards.Count == 0 ? "Læg kortet her"
+        : slot == 0 ? $"Før {Cards[0].Year}"
+        : slot == Cards.Count ? $"Efter {Cards[^1].Year}"
+        : $"Mellem {Cards[slot - 1].Year} og {Cards[slot].Year}";
+
+    // Fan: each card is turned a little and the outer ones sit a little lower. The outermost cards
+    // turn at most 10° and drop at most 14 px in a big hand, so the fan stays inside the hand's
+    // width (the CSS reserves room for that) and clear of the footer.
+    private static string Fan(int index, int count)
+    {
+        var rel = index - (count - 1) / 2.0;
+        var step = Math.Min(4.0, 20.0 / Math.Max(1, count - 1));
+        var lift = Math.Min(count > 8 ? 14 : 30, rel * rel * (count > 8 ? 1 : 3));
+        return string.Create(CultureInfo.InvariantCulture, $"--r:{rel * step:0.#}deg;--lift:{lift:0.#}px");
+    }
+
+    private static RenderFragment Face(CardDto card) => __builder =>
+    {
+        <div class="gc-year">@card.Year</div>
+        <div class="gc-title">@card.Title</div>
+        <div class="gc-artist">@string.Join(", ", card.Artists)</div>
+    };
+
+    private void Place(int slot)
+    {
+        if (IsLocked || slot < 0 || slot > Cards.Count)
+            return;
+        _slot = slot;
+        _message = "Placeret – flyt eller bekræft";
+    }
+
+    private void PlaceByClick(int slot) => Place(slot);
+
+    private async Task Confirm()
+    {
+        if (IsLocked)
+            return;
+        if (_slot is not { } slot)
+        {
+            _message = "Placér kortet først";
+            return;
+        }
+        _confirmed = true;
+        await OnConfirm.InvokeAsync(slot);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (IsLocked)
+            return;
+        var before = _slot;
+        switch (e.Key)
+        {
+            case "ArrowLeft": Place(_slot is { } l ? Math.Max(0, l - 1) : Cards.Count); break;
+            case "ArrowRight": Place(_slot is { } r ? Math.Min(Cards.Count, r + 1) : 0); break;
+            case "Home": Place(0); break;
+            case "End": Place(Cards.Count); break;
+            case "Enter" or " ": await Confirm(); return;
+            case "Escape" when _slot is not null:
+                _slot = null;
+                _message = null;
+                _focusMystery = true;
+                return;
+            default: return;
+        }
+        _focusPlaced = _slot != before || before is null;
+    }
+
+    // ---- Drag and drop, driven by wwwroot/js/hand.js ----
+
+    [JSInvokable]
+    public void DragStarted()
+    {
+        if (IsLocked)
+            return;
+        _dragging = true;
+        _hot = -1;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void HotSlot(int slot)
+    {
+        if (!_dragging)
+            return;
+        _hot = slot;
+        StateHasChanged();
+    }
+
+    // slot -1 = dropped outside the hand: the card goes back where it was.
+    [JSInvokable]
+    public void Dropped(int slot)
+    {
+        if (!_dragging)
+            return;
+        _dragging = false;
+        _hot = -1;
+        Place(slot);
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/hand.js");
+                if (_module is not null)
+                {
+                    _self = DotNetObjectReference.Create(this);
+                    _handle = await _module.InvokeAsync<IJSObjectReference>("attach", _root, _self);
+                }
+            }
+            catch (JSException)
+            {
+                // Without the script, clicking a gap and the keyboard still work.
+            }
+        }
+
+        if (_focusPlaced && ShowPlaced)
+        {
+            _focusPlaced = false;
+            await _placedRef.FocusAsync();
+        }
+        else if (_focusMystery && ShowMystery)
+        {
+            _focusMystery = false;
+            await _mysteryRef.FocusAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_handle is not null)
+            {
+                await _handle.InvokeVoidAsync("dispose");
+                await _handle.DisposeAsync();
+            }
+            if (_module is not null)
+                await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is gone.
+        }
+        _self?.Dispose();
+    }
+}
