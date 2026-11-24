@@ -35,12 +35,22 @@ public interface IGameApiClient
     Task<IReadOnlyList<ScoreDto>> GetScoresAsync(Guid gameId, CancellationToken ct = default);
 }
 
+// MusicService. Writes are admin only (403 for players). Upload goes through ISongUploader in
+// Frontend.Web instead, because it needs the browser's file input and upload progress.
 public interface IMusicApiClient
 {
-    Task<IReadOnlyList<TrackDto>> GetTracksAsync(CancellationToken ct = default);
-    Task<TrackDto> GetRandomTrackAsync(CancellationToken ct = default);
-    Task<TrackDto> CreateTrackAsync(CreateTrackRequest request, CancellationToken ct = default);
-    Task DeleteTrackAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<PlaylistDto>> GetPlaylistsAsync(CancellationToken ct = default);
+    Task<PlaylistDto> GetPlaylistAsync(int id, CancellationToken ct = default);
+    Task<PlaylistDto> CreatePlaylistAsync(string name, CancellationToken ct = default);
+    Task<PlaylistDto> RenamePlaylistAsync(int id, string name, CancellationToken ct = default);
+    Task DeletePlaylistAsync(int id, CancellationToken ct = default);
+
+    Task<IReadOnlyList<SongDto>> GetSongsAsync(int playlistId, CancellationToken ct = default);
+    Task<SongDto> UpdateSongAsync(int songId, UpdateSongRequest request, CancellationToken ct = default);
+    Task RemoveSongAsync(int playlistId, int songId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<ArtistDto>> SearchArtistsAsync(string? search, CancellationToken ct = default);
+    Task<ArtistDto> CreateArtistAsync(string name, CancellationToken ct = default);
 }
 
 public interface IStatisticApiClient

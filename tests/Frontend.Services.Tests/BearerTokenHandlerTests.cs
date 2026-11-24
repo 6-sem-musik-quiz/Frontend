@@ -77,11 +77,11 @@ public class BearerTokenHandlerTests
 
         await using var provider = services.BuildServiceProvider();
         await provider.GetRequiredService<ILobbyApiClient>().GetLobbiesAsync();
-        await provider.GetRequiredService<IMusicApiClient>().GetTracksAsync();
+        await provider.GetRequiredService<IMusicApiClient>().GetPlaylistsAsync();
 
         Assert.Equal(2, stub.Requests.Count);
         Assert.All(stub.Requests, r => Assert.Equal("Bearer user-token", r.Headers.Authorization?.ToString()));
         Assert.Equal(new Uri("http://edge.test/api/lobbyservice/lobbies"), stub.Requests[0].RequestUri);
-        Assert.Equal(new Uri("http://edge.test/api/musicservice/tracks"), stub.Requests[1].RequestUri);
+        Assert.Equal(new Uri("http://edge.test/api/musicservice/playlists"), stub.Requests[1].RequestUri);
     }
 }

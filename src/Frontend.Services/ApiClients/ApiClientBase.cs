@@ -31,6 +31,12 @@ public abstract class ApiClientBase(HttpClient httpClient)
         return await ApiResponse.ReadAsync<TResponse>(response, ct);
     }
 
+    protected async Task<TResponse> PutAsync<TRequest, TResponse>(string route, TRequest body, CancellationToken ct)
+    {
+        using var response = await httpClient.PutAsJsonAsync(route, body, ct);
+        return await ApiResponse.ReadAsync<TResponse>(response, ct);
+    }
+
     protected async Task DeleteAsync(string route, CancellationToken ct)
     {
         using var response = await httpClient.DeleteAsync(route, ct);

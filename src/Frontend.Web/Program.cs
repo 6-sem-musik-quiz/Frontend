@@ -1,6 +1,7 @@
 using Frontend.Services.Extensions;
 using Frontend.Web.Auth;
 using Frontend.Web.Components;
+using Frontend.Web.Music;
 
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -26,5 +27,6 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 
 builder.Services.AddFrontendAuth();
 builder.Services.AddServiceLayer(builder.Configuration);
+builder.Services.AddScoped<ISongUploader, SongUploader>();
 
 await builder.Build().RunAsync();

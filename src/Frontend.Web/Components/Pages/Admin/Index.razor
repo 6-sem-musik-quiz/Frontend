@@ -1,8 +1,180 @@
 @page "/admin"
+@* SCRUM-114: playlist-oversigt. Admin-kravet kommer fra Pages/Admin/_Imports.razor. *@
+@inject IMusicApiClient Music
+@inject ApiCallHandler ApiCall
 
-@* Placeholder for admin-området. Admin-kravet kommer fra Pages/Admin/_Imports.razor. *@
+<PageTitle>Playlister · Admin · Slopster</PageTitle>
 
-<PageTitle>Admin · Slopster</PageTitle>
+<h1 class="mb-3">Playlister</h1>
 
-<h1>Admin</h1>
-<p>Her kommer administration af brugere og musik.</p>
+<ErrorMessage Message="@_error" />
+
+<form class="row g-2 mb-4" @onsubmit="CreateAsync" data-testid="new-playlist-form">
+    <div class="col-sm-6 col-md-4">
+        <label for="new-playlist" class="visually-hidden">Navn på ny playlist</label>
+        <input id="new-playlist" class="form-control" placeholder="Navn på ny playlist" maxlength="@MaxNameLength"
+               @bind="_newName" @bind:event="oninput" />
+    </div>
+    <div class="col-auto">
+        <LoadingButton Type="submit" IsLoading="_creating" LoadingText="Opretter…"
+                       Disabled="@string.IsNullOrWhiteSpace(_newName)">Ny playlist</LoadingButton>
+    </div>
+</form>
+
+@if (_playlists is null)
+{
+    @if (_error is null)
+    {
+        <p class="text-body-secondary">Henter playlister…</p>
+    }
+}
+else
+{
+    <div class="mb-3" style="max-width: 24rem">
+        <label for="search" class="visually-hidden">Søg</label>
+        <input id="search" class="form-control" type="search" placeholder="Søg på navn…"
+               @bind="_search" @bind:event="oninput" />
+    </div>
+
+    @if (Filtered.Count == 0)
+    {
+        <p class="text-body-secondary" data-testid="empty">
+            @(_playlists.Count == 0 ? "Der er ingen playlister endnu." : "Ingen playlister matcher søgningen.")
+        </p>
+    }
+    else
+    {
+        <table class="table align-middle" data-testid="playlists">
+            <thead>
+                <tr>
+                    <th>Navn</th>
+                    <th class="text-end">Sange</th>
+                    <th class="text-end">Handlinger</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var playlist in Filtered)
+                {
+                    <tr @key="playlist.Id" data-testid="playlist-row">
+                        @if (_renamingId == playlist.Id)
+                        {
+                            <td colspan="2">
+                                <form class="d-flex gap-2" @onsubmit="() => RenameAsync(playlist)">
+                                    <input class="form-control form-control-sm" aria-label="Nyt navn" maxlength="@MaxNameLength"
+                                           @bind="_renameName" @bind:event="oninput" />
+                                    <LoadingButton Type="submit" CssClass="btn-primary btn-sm" IsLoading="_renaming" LoadingText="Gemmer…"
+                                                   Disabled="@string.IsNullOrWhiteSpace(_renameName)">Gem</LoadingButton>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelRename">Annuller</button>
+                                </form>
+                            </td>
+                        }
+                        else
+                        {
+                            <td>@playlist.Name</td>
+                            <td class="text-end">@playlist.SongCount</td>
+                        }
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-outline-primary btn-sm" href="admin/playlister/@playlist.Id">Åbn</a>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => StartRename(playlist)">Omdøb</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => _deleting = playlist">Slet</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+<ConfirmDialog Visible="_deleting is not null" Title="Slet playlist" OnConfirm="DeleteAsync" OnCancel="() => _deleting = null">
+    <p>Playlisten <strong>@_deleting?.Name</strong> og dens sange slettes.</p>
+    <p class="mb-0 small text-body-secondary">
+        Sange, der også ligger i en anden playlist, bevares der. Det kan ikke fortrydes.
+    </p>
+</ConfirmDialog>
+
+@code {
+    private const int MaxNameLength = 60;
+
+    private static readonly Dictionary<HttpStatusCode, string> NameTaken = new()
+    {
+        [HttpStatusCode.Conflict] = "Navnet findes allerede."
+    };
+
+    private List<PlaylistDto>? _playlists;
+    private string? _error;
+    private string _search = string.Empty;
+
+    private string _newName = string.Empty;
+    private bool _creating;
+
+    private int? _renamingId;
+    private string _renameName = string.Empty;
+    private bool _renaming;
+
+    private PlaylistDto? _deleting;
+
+    private List<PlaylistDto> Filtered => (_playlists ?? [])
+        .Where(p => string.IsNullOrWhiteSpace(_search) || p.Name.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase))
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _error = await ApiCall.RunAsync(async () => _playlists = (await Music.GetPlaylistsAsync()).ToList());
+    }
+
+    private async Task CreateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newName))
+            return;
+
+        _creating = true;
+        _error = await ApiCall.RunAsync(async () =>
+        {
+            var created = await Music.CreatePlaylistAsync(_newName.Trim());
+            _playlists = [.. _playlists ?? [], created];
+            Sort();
+            _newName = string.Empty;
+        }, statusMessages: NameTaken);
+        _creating = false;
+    }
+
+    private void StartRename(PlaylistDto playlist)
+    {
+        _renamingId = playlist.Id;
+        _renameName = playlist.Name;
+    }
+
+    private void CancelRename() => _renamingId = null;
+
+    private async Task RenameAsync(PlaylistDto playlist)
+    {
+        if (string.IsNullOrWhiteSpace(_renameName))
+            return;
+
+        _renaming = true;
+        _error = await ApiCall.RunAsync(async () =>
+        {
+            var renamed = await Music.RenamePlaylistAsync(playlist.Id, _renameName.Trim());
+            _playlists = (_playlists ?? []).Select(p => p.Id == renamed.Id ? renamed : p).ToList();
+            Sort();
+            _renamingId = null;
+        }, statusMessages: NameTaken);
+        _renaming = false;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_deleting is not { } playlist)
+            return;
+
+        _error = await ApiCall.RunAsync(async () =>
+        {
+            await Music.DeletePlaylistAsync(playlist.Id);
+            _playlists = (_playlists ?? []).Where(p => p.Id != playlist.Id).ToList();
+        });
+        _deleting = null;
+    }
+
+    private void Sort() =>
+        _playlists = _playlists?.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase).ToList();
+}
