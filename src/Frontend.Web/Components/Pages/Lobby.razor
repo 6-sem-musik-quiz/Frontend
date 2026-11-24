@@ -19,88 +19,98 @@
 }
 else if (_lobby is { } lobby)
 {
-    <div class="d-flex flex-wrap align-items-baseline gap-2 mb-3">
-        <h1 class="h3 mb-0 me-auto">Lobby: @lobby.Settings.CategoryName</h1>
-        @if (!_live)
-        {
-            <span class="badge text-bg-warning" data-testid="not-live" title="Live-opdatering virker ikke; siden opdateres hvert 5. sekund.">Ikke live</span>
-        }
-    </div>
+    <div class="lobby-layout">
+        <aside class="lobby-side">
+            <h1 class="sl-plate h5 mb-0">@lobby.Settings.CategoryName</h1>
 
-    <div class="row g-3">
-        <div class="col-md-5">
-            <section class="card h-100">
-                <div class="card-body">
-                    <h2 class="h5">Indstillinger</h2>
-                    <dl class="row mb-0" data-testid="settings">
-                        <dt class="col-6">Playlist</dt><dd class="col-6">@lobby.Settings.CategoryName</dd>
-                        <dt class="col-6">Runder</dt><dd class="col-6">@lobby.Settings.Rounds</dd>
-                        <dt class="col-6">Svartid</dt><dd class="col-6">@lobby.Settings.AnswerTimeSeconds sek.</dd>
-                        <dt class="col-6">Pladser</dt><dd class="col-6">@lobby.Players.Count/@lobby.Settings.MaxPlayers</dd>
-                    </dl>
-                    @if (lobby.IsPrivate && lobby.Code is { } joinCode)
-                    {
-                        <div class="mt-3 text-center">
-                            <div class="small text-body-secondary">Kode</div>
-                            <div class="display-6 fw-bold font-monospace" data-testid="code">@joinCode</div>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => CopyCodeAsync(joinCode)">
-                                @(_copied ? "Kopieret ✓" : "Kopiér")
-                            </button>
-                        </div>
-                    }
-                </div>
+            @if (lobby.IsPrivate && lobby.Code is { } joinCode)
+            {
+                <section class="card p-3">
+                    <div class="sl-label">Kode (privat)</div>
+                    <div class="lobby-code" data-testid="code">@joinCode</div>
+                    <button type="button" class="btn btn-sm mt-2" @onclick="() => CopyCodeAsync(joinCode)">
+                        @(_copied ? "Kopieret ✓" : "Kopiér")
+                    </button>
+                </section>
+            }
+
+            <section class="card px-3 py-1" aria-label="Indstillinger">
+                <dl class="lobby-kv mb-0" data-testid="settings">
+                    <div><dt>Svartid</dt><dd>@lobby.Settings.AnswerTimeSeconds s</dd></div>
+                    <div><dt>Runder</dt><dd>@lobby.Settings.Rounds</dd></div>
+                    <div><dt>Pladser</dt><dd>@lobby.Players.Count / @lobby.Settings.MaxPlayers</dd></div>
+                </dl>
             </section>
-        </div>
 
-        <div class="col-md-7">
-            <section class="card h-100">
-                <div class="card-body">
-                    <h2 class="h5">Spillere</h2>
-                    <ul class="list-group mb-3" data-testid="players">
-                        @foreach (var player in lobby.Players)
-                        {
-                            <li @key="player.UserId" class="list-group-item d-flex align-items-center gap-2" data-testid="player">
-                                <span class="flex-grow-1">
-                                    @if (player.UserId == lobby.HostUserId)
-                                    {
-                                        <span title="Vært" aria-label="Vært">👑 </span>
-                                    }
-                                    @player.UserName
-                                    @if (player.UserId == _userId)
-                                    {
-                                        <span class="text-body-secondary"> (dig)</span>
-                                    }
-                                </span>
-                                @if (player.IsReady)
-                                {
-                                    <span class="text-success fw-bold" aria-label="Klar" data-testid="ready">✓ Klar</span>
-                                }
-                            </li>
-                        }
-                    </ul>
+            <LoadingButton CssClass="btn-outline-danger" OnClick="LeaveAsync" LoadingText="Forlader…">Forlad lobby</LoadingButton>
 
-                    <div class="d-flex flex-wrap gap-2">
-                        <LoadingButton CssClass="@(Me?.IsReady == true ? "btn-outline-success" : "btn-success")" OnClick="ToggleReadyAsync"
-                                       LoadingText="Gemmer…" data-testid="ready-button">
-                            @(Me?.IsReady == true ? "Ikke klar" : "Klar")
-                        </LoadingButton>
-                        <LoadingButton CssClass="btn-outline-danger" OnClick="LeaveAsync" LoadingText="Forlader…">Forlad lobby</LoadingButton>
-                        @if (IsHost)
+            @if (!_live)
+            {
+                <span class="badge text-bg-warning align-self-start" data-testid="not-live" title="Live-opdatering virker ikke; siden opdateres hvert 5. sekund.">Ikke live</span>
+            }
+        </aside>
+
+        <div class="lobby-main">
+            <div class="sl-banner">· · · Venter på spillere · · ·</div>
+
+            <ul class="lobby-seats list-unstyled mb-0" data-testid="players" aria-label="Spillere">
+                @foreach (var player in lobby.Players)
+                {
+                    <li @key="player.UserId" class="card lobby-seat" data-testid="player">
+                        <span class="lobby-seat-name">
+                            @if (player.UserId == lobby.HostUserId)
+                            {
+                                <span title="Vært" aria-label="Vært">👑 </span>
+                            }
+                            @player.UserName
+                            @if (player.UserId == _userId)
+                            {
+                                <span class="text-body-secondary"> (dig)</span>
+                            }
+                        </span>
+                        @if (player.IsReady)
                         {
-                            <LoadingButton CssClass="btn-primary ms-auto" OnClick="StartAsync" LoadingText="Starter…"
-                                           Disabled="@(StartBlockedReason is not null)" data-testid="start-button">Start spil</LoadingButton>
+                            <span class="lobby-pill ready" aria-label="Klar" data-testid="ready">✓ Klar</span>
                         }
-                    </div>
+                        else
+                        {
+                            <span class="lobby-pill">Ikke klar</span>
+                        }
+                    </li>
+                }
+                @for (var i = lobby.Players.Count; i < lobby.Settings.MaxPlayers; i++)
+                {
+                    <li class="lobby-seat empty" aria-hidden="true">Ledig plads</li>
+                }
+            </ul>
+
+            <div class="lobby-bar">
+                <span class="lobby-status">
                     @if (IsHost && StartBlockedReason is { } reason)
                     {
-                        <p class="small text-body-secondary mt-2 mb-0" data-testid="start-reason">@reason</p>
+                        <span data-testid="start-reason">@reason</span>
                     }
-                    else if (!IsHost)
+                    else if (IsHost)
                     {
-                        <p class="small text-body-secondary mt-2 mb-0">Værten starter spillet, når alle er klar.</p>
+                        <span>Alle er klar</span>
+                    }
+                    else
+                    {
+                        <span>Værten starter spillet, når alle er klar.</span>
+                    }
+                </span>
+                <div class="d-flex flex-wrap gap-3">
+                    <LoadingButton CssClass="btn-outline-success" OnClick="ToggleReadyAsync"
+                                   LoadingText="Gemmer…" data-testid="ready-button">
+                        @(Me?.IsReady == true ? "Ikke klar" : "Klar")
+                    </LoadingButton>
+                    @if (IsHost)
+                    {
+                        <LoadingButton CssClass="btn-primary" OnClick="StartAsync" LoadingText="Starter…"
+                                       Disabled="@(StartBlockedReason is not null)" data-testid="start-button">Start spil</LoadingButton>
                     }
                 </div>
-            </section>
+            </div>
         </div>
     </div>
 }

@@ -1,0 +1,46 @@
+/* "Din lobby": a cream card on the front page with a dark plate, the lobby name and the two actions. */
+.current-lobby {
+    display: flex;
+    flex-direction: row; /* Bootstrap's .card is a column */
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 18px;
+    padding: 12px 16px;
+    margin-bottom: 28px;
+    border-left: 10px solid var(--sl-mustard);
+}
+
+.current-lobby-plate {
+    background: var(--sl-ink);
+    color: var(--sl-cream);
+    font-family: var(--sl-pixel);
+    font-size: 15px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 4px;
+    box-shadow: 3px 3px 0 var(--sl-ink-deep);
+}
+
+.current-lobby-text {
+    flex: 1 1 14rem;
+    font-size: 15px;
+}
+
+.current-lobby-name {
+    font-family: var(--sl-pixel);
+    font-size: 19px;
+    font-weight: 600;
+}
+
+.current-lobby-count {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 13px;
+    color: var(--sl-muted);
+}
+
+.current-lobby-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
