@@ -30,7 +30,8 @@
     </div>
     <div class="gr-hint" data-testid="hint">@Hint</div>
 
-    <div class="gr-hand" data-hand="" role="group" aria-label="Din tidslinje">
+    @* Never scrolls: --n tells the CSS how many cards (+ the "?") to fit into the width. *@
+    <div class="gr-hand" data-hand="" role="group" aria-label="Din tidslinje" style="--n:@(Cards.Count + 1)" data-testid="hand">
         @{
             var count = Cards.Count + (ShowPlaced ? 1 : 0);
             var index = 0;
@@ -152,12 +153,14 @@
         : slot == Cards.Count ? $"Efter {Cards[^1].Year}"
         : $"Mellem {Cards[slot - 1].Year} og {Cards[slot].Year}";
 
-    // Fan: each card is turned a little and the outer ones sit a little lower.
+    // Fan: each card is turned a little and the outer ones sit a little lower. The outermost cards
+    // turn at most 10° and drop at most 14 px in a big hand, so the fan stays inside the hand's
+    // width (the CSS reserves room for that) and clear of the footer.
     private static string Fan(int index, int count)
     {
         var rel = index - (count - 1) / 2.0;
-        var step = count > 8 ? 2.0 : 4.0;
-        var lift = Math.Min(30, rel * rel * (count > 8 ? 1 : 3));
+        var step = Math.Min(4.0, 20.0 / Math.Max(1, count - 1));
+        var lift = Math.Min(count > 8 ? 14 : 30, rel * rel * (count > 8 ? 1 : 3));
         return string.Create(CultureInfo.InvariantCulture, $"--r:{rel * step:0.#}deg;--lift:{lift:0.#}px");
     }
 

@@ -233,6 +233,27 @@ public class HandOfCardsTests : BunitContext
     }
 
     [Fact]
+    public void TheHand_TellsTheCssHowManyCardsToFit_SoItNeverScrolls()
+    {
+        var cut = RenderHand();
+
+        // Cards + 1, so the placed "?" also fits. app.css shares the width out by this number.
+        Assert.Equal("--n:4", cut.Find("[data-testid=hand]").GetAttribute("style"));
+    }
+
+    [Fact]
+    public void ABigHand_TurnsLessSoTheFanStaysInside()
+    {
+        var many = Enumerable.Range(0, 20).Select(i => new CardDto($"Sang {i}", ["X"], 1960 + i * 3)).ToList();
+
+        var cut = Render<HandOfCards>(p => p.Add(x => x.Cards, many));
+
+        var styles = cut.FindAll("[data-testid=card]").Select(c => c.GetAttribute("style")!).ToList();
+        Assert.Equal("--r:-10deg;--lift:14px", styles[0]);   // outermost: at most 10° and 14 px
+        Assert.Equal("--r:10deg;--lift:14px", styles[^1]);
+    }
+
+    [Fact]
     public void AnEmptyHand_HasOneGap()
     {
         var cut = Render<HandOfCards>(p => p.Add(x => x.Cards, Array.Empty<CardDto>()));

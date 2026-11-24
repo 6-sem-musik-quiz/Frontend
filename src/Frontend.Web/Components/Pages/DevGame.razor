@@ -27,6 +27,7 @@ else
     <div class="d-flex gap-2 mt-4 flex-wrap">
         <button class="btn btn-sm" @onclick="EndRound" disabled="@(_reveal is not null)">Afslut runden</button>
         <button class="btn btn-sm" @onclick="NextRound" disabled="@(_reveal is null)">Næste runde</button>
+        <button class="btn btn-sm" @onclick="FillHand" data-testid="fill-hand">Fyld hånden (20 kort)</button>
         <span class="text-body-secondary small align-self-center">
             Forhåndsvisning med eksempeldata (kun i Development). Rundens sang er @Song.Title (@Song.Year).
         </span>
@@ -109,6 +110,16 @@ else
         _mySlot = null;
         _reveal = null;
         _answered.Clear();
+    }
+
+    // The biggest hand a 20-round game can give, to check that it fits without a scrollbar.
+    private void FillHand()
+    {
+        var years = new[] { 1958, 1964, 1967, 1969, 1971, 1973, 1977, 1979, 1983, 1987, 1989, 1993, 1997, 2001, 2005, 2014, 2017, 2020 };
+        _timeline = _timeline
+            .Concat(years.Take(Math.Max(0, 20 - _timeline.Count)).Select(y => new CardDto($"Sang fra {y}", ["Kunstner"], y)))
+            .OrderBy(c => c.Year)
+            .ToList();
     }
 
     public void Dispose() => _timer?.Dispose();

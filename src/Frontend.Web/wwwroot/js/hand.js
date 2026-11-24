@@ -78,8 +78,29 @@ export function attach(root, dotnet) {
     root.addEventListener("pointerup", onUp);
     root.addEventListener("pointercancel", onCancel);
 
+    // The hand never scrolls; the CSS overlaps the cards more as it grows. When only a sliver of each
+    // card shows, [data-tight] turns the year sideways along the visible edge (see app.css).
+    // offsetLeft/offsetWidth ignore the fan's transforms, so this measures the real overlap.
+    const hand = root.querySelector("[data-hand]");
+    function measure() {
+        const cards = hand.querySelectorAll("[data-card]");
+        let tight = false;
+        if (cards.length > 1) {
+            const step = cards[1].offsetLeft - cards[0].offsetLeft;
+            tight = step < cards[0].offsetWidth * 0.7;
+        }
+        hand.toggleAttribute("data-tight", tight);
+    }
+    const resized = new ResizeObserver(measure);
+    resized.observe(hand);
+    const changed = new MutationObserver(measure);
+    changed.observe(hand, { childList: true });
+    measure();
+
     return {
         dispose() {
+            resized.disconnect();
+            changed.disconnect();
             root.removeEventListener("pointerdown", onDown);
             root.removeEventListener("pointermove", onMove);
             root.removeEventListener("pointerup", onUp);
