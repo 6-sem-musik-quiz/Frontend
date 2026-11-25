@@ -5,9 +5,11 @@
 @using Frontend.Services.Errors
 @inject ILobbyApiClient Lobbies
 @inject ILobbyHub Hub
+@inject ILobbyAudio Audio
 @inject ApiCallHandler ApiCall
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject TimeProvider TimeProvider
 
 <PageTitle>Lobby · Slopster</PageTitle>
 
@@ -121,6 +123,7 @@ else if (_error is null)
 
 @code {
     public static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan JoinThrottle = TimeSpan.FromMilliseconds(400);
 
     [Parameter] public Guid Id { get; set; }
 
@@ -134,6 +137,7 @@ else if (_error is null)
     private bool _copied;
     private bool _leaving;
     private Timer? _pollTimer;
+    private DateTimeOffset? _lastJoinAt;
 
     private LobbyPlayerDto? Me => _lobby?.Players.FirstOrDefault(p => p.UserId == _userId);
     private bool IsHost => _lobby is not null && _lobby.HostUserId == _userId;
@@ -153,6 +157,22 @@ else if (_error is null)
                 return notReady == 1 ? "Venter på, at 1 spiller bliver klar." : $"Venter på, at {notReady} spillere bliver klar.";
             return null;
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+        double volume = 0.8;
+        try
+        {
+            var stored = await JS.InvokeAsync<string?>("localStorage.getItem", "slopster.sfx-volume");
+            if (stored is not null && double.TryParse(stored, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                volume = Math.Clamp(parsed, 0, 1);
+        }
+        catch (JSException) { }
+        await Audio.SetVolumeAsync(volume);
     }
 
     protected override async Task OnInitializedAsync()
@@ -204,14 +224,60 @@ else if (_error is null)
         });
     }
 
-    private Task OnLobbyUpdated(LobbyDto lobby) => InvokeAsync(() =>
+    private Task OnLobbyUpdated(LobbyDto lobby) => InvokeAsync(async () =>
     {
-        if (lobby.Id == Id)
-            _lobby = lobby;
+        if (lobby.Id != Id)
+            return;
+        var old = _lobby;
+        _lobby = lobby;
+        if (old is not null)
+            await PlayLobbyEventSoundsAsync(old, lobby);
         StateHasChanged();
     });
 
-    private Task OnGameStarted(Guid gameId) => InvokeAsync(() => Navigation.NavigateTo($"spil/{gameId}"));
+    private async Task PlayLobbyEventSoundsAsync(LobbyDto old, LobbyDto next)
+    {
+        var oldIds = old.Players.Select(p => p.UserId).ToHashSet();
+        var newIds = next.Players.Select(p => p.UserId).ToHashSet();
+
+        if (newIds.Except(oldIds).Any())
+        {
+            var now = TimeProvider.GetUtcNow();
+            if (_lastJoinAt is null || (now - _lastJoinAt.Value) >= JoinThrottle)
+            {
+                _lastJoinAt = now;
+                await Audio.PlayPlayerJoinedAsync();
+            }
+        }
+
+        if (oldIds.Except(newIds).Any())
+            await Audio.PlayPlayerLeftAsync();
+
+        bool wasAllReady = old.Players.Count > 0 && old.Players.All(p => p.IsReady);
+
+        foreach (var player in next.Players)
+        {
+            var oldPlayer = old.Players.FirstOrDefault(p => p.UserId == player.UserId);
+            if (oldPlayer is null)
+                continue;
+            if (!oldPlayer.IsReady && player.IsReady)
+                await Audio.PlayPlayerReadyAsync();
+            else if (oldPlayer.IsReady && !player.IsReady)
+                await Audio.PlayPlayerNotReadyAsync();
+        }
+
+        if (next.Players.Count >= 2 && next.Players.All(p => p.IsReady) && !wasAllReady)
+            await Audio.PlayAllReadyAsync();
+
+        if (next.Players.Count == next.Settings.MaxPlayers && old.Players.Count < old.Settings.MaxPlayers)
+            await Audio.PlayLobbyFullAsync();
+    }
+
+    private Task OnGameStarted(Guid gameId) => InvokeAsync(async () =>
+    {
+        await Audio.PlayAllReadyAsync();
+        Navigation.NavigateTo($"spil/{gameId}");
+    });
 
     // The last player left. If that was us, LeaveAsync already navigates.
     private Task OnLobbyClosed() => InvokeAsync(() =>

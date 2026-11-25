@@ -10,6 +10,7 @@ using Frontend.Web.Lobbies;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
 
@@ -23,15 +24,19 @@ public class LobbyPageTests : BunitContext
 
     private readonly ILobbyApiClient _lobbies = Substitute.For<ILobbyApiClient>();
     private readonly FakeLobbyHub _hub = new();
+    private readonly FakeLobbyAudio _audio = new();
+    private readonly FakeTimeProvider _time = new();
     private readonly NavigationManager _navigation;
 
     public LobbyPageTests()
     {
-        JSInterop.Mode = JSRuntimeMode.Loose; // clipboard
+        JSInterop.Mode = JSRuntimeMode.Loose; // clipboard + localStorage
         Services.AddLogging();
         Services.AddSingleton(Substitute.For<IAuthService>());
         Services.AddSingleton(_lobbies);
         Services.AddSingleton<ILobbyHub>(_hub);
+        Services.AddSingleton<ILobbyAudio>(_audio);
+        Services.AddSingleton<TimeProvider>(_time);
         Services.AddScoped<ApiCallHandler>();
         AddAuthorization().SetAuthorized("alice").SetClaims(new Claim("sub", Me.ToString()));
         _navigation = Services.GetRequiredService<NavigationManager>();
@@ -184,6 +189,133 @@ public class LobbyPageTests : BunitContext
 
         Assert.Contains("findes ikke", cut.Markup);
         Assert.Null(_hub.ConnectedTo);
+    }
+
+    // --- Audio tests (SCRUM-162) ---
+
+    [Fact]
+    public void PlayerJoins_PlaysJoinSound()
+    {
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", false)));
+
+        _hub.RaiseLobbyUpdated(Lobby(Me, new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", false)));
+
+        cut.WaitForAssertion(() => Assert.Equal(1, _audio.JoinCalls));
+    }
+
+    [Fact]
+    public void PlayerLeaves_PlaysLeaveSound()
+    {
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", false)));
+
+        _hub.RaiseLobbyUpdated(Lobby(Me, new LobbyPlayerDto(Me, "alice", false)));
+
+        cut.WaitForAssertion(() => Assert.Equal(1, _audio.LeftCalls));
+    }
+
+    [Fact]
+    public void PlayerBecomesReady_PlaysReadySound()
+    {
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", false)));
+
+        _hub.RaiseLobbyUpdated(Lobby(Me, new LobbyPlayerDto(Me, "alice", true), new LobbyPlayerDto(2, "bob", false)));
+
+        cut.WaitForAssertion(() => Assert.Equal(1, _audio.ReadyCalls));
+    }
+
+    [Fact]
+    public void PlayerBecomesNotReady_PlaysNotReadySound()
+    {
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", true), new LobbyPlayerDto(2, "bob", false)));
+
+        _hub.RaiseLobbyUpdated(Lobby(Me, new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", false)));
+
+        cut.WaitForAssertion(() => Assert.Equal(1, _audio.NotReadyCalls));
+    }
+
+    [Fact]
+    public void AllPlayersReady_PlaysAllReadySound()
+    {
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", false)));
+
+        _hub.RaiseLobbyUpdated(Lobby(Me, new LobbyPlayerDto(Me, "alice", true), new LobbyPlayerDto(2, "bob", true)));
+
+        cut.WaitForAssertion(() => Assert.Equal(1, _audio.AllReadyCalls));
+    }
+
+    [Fact]
+    public void LobbyFull_PlaysLobbyFullSound()
+    {
+        // MaxPlayers is 4; lobby starts with 3
+        var initialLobby = new LobbyDto(LobbyId, null, Me, false,
+            new LobbySettingsDto(3, "100 hits", 30, 10, 4),
+            [new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", false), new LobbyPlayerDto(3, "carol", false)],
+            "Waiting");
+        var cut = RenderPage(initialLobby);
+
+        var fullLobby = new LobbyDto(LobbyId, null, Me, false,
+            new LobbySettingsDto(3, "100 hits", 30, 10, 4),
+            [new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", false), new LobbyPlayerDto(3, "carol", false), new LobbyPlayerDto(4, "dave", false)],
+            "Waiting");
+        _hub.RaiseLobbyUpdated(fullLobby);
+
+        cut.WaitForAssertion(() => Assert.Equal(1, _audio.LobbyFullCalls));
+    }
+
+    [Fact]
+    public void TwoJoins_Within400ms_OnlyOneSoundPlayed()
+    {
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", false)));
+
+        // Both events happen at the same FakeTimeProvider instant (well within 400 ms throttle).
+        _hub.RaiseLobbyUpdated(Lobby(Me, new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", false)));
+        _hub.RaiseLobbyUpdated(Lobby(Me, new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", false), new LobbyPlayerDto(3, "carol", false)));
+
+        cut.WaitForAssertion(() => Assert.Equal(1, _audio.JoinCalls));
+    }
+
+    [Fact]
+    public void VolumeInitialisedOnFirstRender()
+    {
+        // In bUnit Loose mode localStorage.getItem returns null → code falls back to the default of 0.8.
+        // The important invariant tested here is that SetVolumeAsync is always called on first render.
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", false)));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(_audio.LastVolume);
+            Assert.Equal(0.8, _audio.LastVolume.Value);
+        });
+    }
+
+    [Fact]
+    public void InitialLoad_AllReady_DoesNotPlayAllReadySound()
+    {
+        // All players are already ready on first load – no transition → no sound.
+        RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", true), new LobbyPlayerDto(2, "bob", true)));
+
+        Assert.Equal(0, _audio.AllReadyCalls);
+    }
+
+    // --- FakeLobbyAudio ---
+
+    private sealed class FakeLobbyAudio : ILobbyAudio
+    {
+        public int JoinCalls;
+        public int LeftCalls;
+        public int ReadyCalls;
+        public int NotReadyCalls;
+        public int AllReadyCalls;
+        public int LobbyFullCalls;
+        public double? LastVolume;
+
+        public Task PlayPlayerJoinedAsync()  { JoinCalls++;     return Task.CompletedTask; }
+        public Task PlayPlayerLeftAsync()    { LeftCalls++;     return Task.CompletedTask; }
+        public Task PlayPlayerReadyAsync()   { ReadyCalls++;    return Task.CompletedTask; }
+        public Task PlayPlayerNotReadyAsync(){ NotReadyCalls++; return Task.CompletedTask; }
+        public Task PlayAllReadyAsync()      { AllReadyCalls++; return Task.CompletedTask; }
+        public Task PlayLobbyFullAsync()     { LobbyFullCalls++; return Task.CompletedTask; }
+        public Task SetVolumeAsync(double v) { LastVolume = v;  return Task.CompletedTask; }
     }
 
     private sealed class FakeLobbyHub : ILobbyHub
