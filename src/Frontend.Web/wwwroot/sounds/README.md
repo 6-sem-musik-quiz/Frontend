@@ -9,7 +9,7 @@ den indbyrdes lydstyrke pr. lyd.
 | lobbyJoin | Casino Audio / card-place-1 | Spiller joiner lobbyen |
 | lobbyLeave | Casino Audio / card-slide-3 | Spiller forlader lobbyen |
 | ready | Casino Audio / chip-lay-2 | Klar |
-| unready | Interface Sounds / toggle_002 | Ikke klar |
+| unready | Casino Audio / chips-handle-1 | Ikke klar (chippen tages op igen) |
 | lobbyFull | Interface Sounds / glass_002 | Sidste plads taget |
 | allReady | Casino Audio / chips-stack-3 | Alle er klar |
 | gameStart | Casino Audio / card-shuffle (1,6 s) | Spillet starter |

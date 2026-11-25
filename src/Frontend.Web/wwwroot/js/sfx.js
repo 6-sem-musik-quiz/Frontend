@@ -27,7 +27,7 @@ const SOUNDS = {
     // Front page, buttons and navigation (SCRUM-163)
     welcome: { gain: 0.9, gap: 2000 },
     click: { gain: 0.6, gap: 60 },
-    hover: { gain: 0.3, gap: 80 },
+    hover: { gain: 0.15, gap: 80 },
     navigate: { gain: 0.6, gap: 400 },
     // Cards in the hand (SCRUM-164)
     cardPickup: { gain: 0.9, gap: 150 },
@@ -146,7 +146,8 @@ export function play(name) {
 // One delegated listener for the whole page instead of code in every component. An element can
 // opt out with data-sfx="none" (also on a parent, e.g. the game's hand, which has its own card
 // sounds), or choose another click sound with data-sfx="<name>". Links make no click sound: the
-// page change has its own sound (MainLayout).
+// page change has its own sound (MainLayout). Form fields (dropdowns, checkboxes, text fields and
+// their labels) make no hover sound, only buttons and links do.
 
 const INTERACTIVE = "button, a[href], [role=button], .btn, summary, select, label[for], input[type=checkbox], input[type=radio]";
 let installed = false;
@@ -159,6 +160,8 @@ function target(e) {
     return el;
 }
 
+const FORM_FIELD = "select, input, textarea, label";
+
 export function installUi() {
     if (installed) return;
     installed = true;
@@ -168,7 +171,7 @@ export function installUi() {
         const el = target(e);
         if (el === hovered) return;
         hovered = el;
-        if (el) play("hover");
+        if (el && !el.matches(FORM_FIELD)) play("hover");
     });
 
     document.addEventListener("click", e => {
