@@ -227,6 +227,30 @@ public class GamePageTests : BunitContext
         Assert.True(_audio.Playing);
     }
 
+    // Found in the end-to-end test: everyone answered with 8 s left, and "Tid" stayed on 8 through the reveal.
+    [Fact]
+    public async Task ARoundThatEndsEarly_SetsTheTimerToZero_AndTheNextRoundStartsItAgain()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0, answer: 15)));
+        for (var i = 0; i < 7; i++)
+            _time.Advance(TimeSpan.FromSeconds(1));
+        cut.WaitForAssertion(() => Assert.Equal("8", Text(cut, "time")));
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+        [
+            new RoundResultDto(Me, "alice", 0, false, 0, [Card(1976)]),
+            new RoundResultDto(Bob, "bob", 0, false, 0, [Card(1976)])
+        ])));
+
+        Assert.Equal("0", Text(cut, "time"));
+        _time.Advance(TimeSpan.FromSeconds(3));
+        Assert.Equal("0", Text(cut, "time")); // stays 0 through the reveal
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 0, answer: 15)));
+        cut.WaitForAssertion(() => Assert.Equal("15", Text(cut, "time")));
+    }
+
     [Fact]
     public async Task TheLastSong_PlaysOnThroughTheReveal_AndStopsAtTheGameEnd()
     {

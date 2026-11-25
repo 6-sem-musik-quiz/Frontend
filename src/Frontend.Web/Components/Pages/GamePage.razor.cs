@@ -394,6 +394,9 @@ public partial class GamePage : IAsyncDisposable
         // nor freed here: the next round does that.
         _roundCts?.Cancel();
         StopCountdown();
+        // The round is over: no time left, also when everyone answered early (the timer would otherwise
+        // stay frozen on the seconds that were left through the whole reveal).
+        _secondsLeft = 0;
 
         var mine = ended.Results.FirstOrDefault(r => r.UserId == _me);
         _reveal = new RoundReveal(ended.Song, Answered: mine?.SlotIndex is not null, Correct: mine?.Correct == true);
