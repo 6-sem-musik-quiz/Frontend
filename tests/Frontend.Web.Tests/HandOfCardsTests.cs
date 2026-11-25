@@ -279,7 +279,7 @@ public class HandOfCardsTests : BunitContext
 
         Assert.Equal([2], _confirmed);
         Assert.Equal(2, PlacedSlot(cut));
-        Assert.Equal("Tiden løb ud – din placering er låst som svar", Message(cut));
+        Assert.Equal("Svar afgivet – låst", Message(cut));
         Assert.True(cut.Find("[data-testid=confirm]").HasAttribute("disabled"));
     }
 

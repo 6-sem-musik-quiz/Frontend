@@ -289,7 +289,7 @@ public class GamePageTests : BunitContext
 
         _time.Advance(TimeSpan.FromMilliseconds(1));
         cut.WaitForAssertion(() => Assert.Equal([(2, 0)], _hub.Answers));
-        Assert.Equal("Tiden løb ud – din placering er låst som svar", Text(cut, "message"));
+        Assert.Equal("Svar afgivet – låst", Text(cut, "message"));
 
         _time.Advance(GamePage.AutoLockLead); // the time is up: still only the one answer
         cut.WaitForAssertion(() => Assert.True(cut.Find("[data-testid=confirm]").HasAttribute("disabled")));

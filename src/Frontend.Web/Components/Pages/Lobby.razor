@@ -133,6 +133,7 @@ else if (_error is null)
     private bool _live;
     private bool _copied;
     private bool _leaving;
+    private bool _gone; // the lobby disappeared under us; we have gone to the front page
     private Timer? _pollTimer;
 
     private LobbyPlayerDto? Me => _lobby?.Players.FirstOrDefault(p => p.UserId == _userId);
@@ -187,9 +188,12 @@ else if (_error is null)
         }
     }
 
-    // 404 = the lobby is gone, or it is private and we are not in it.
+    // 404 = the lobby is gone, or it is private and we are not in it. Opening such a link shows "findes
+    // ikke"; a lobby that disappears while we are on the page (e.g. expired after 10 idle minutes,
+    // SCRUM-160) sends us to the front page instead.
     private async Task LoadAsync()
     {
+        var wasShown = _lobby is not null;
         _error = await ApiCall.RunAsync(async () =>
         {
             try
@@ -198,10 +202,37 @@ else if (_error is null)
             }
             catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
+                if (wasShown)
+                {
+                    LeaveForGoneLobby();
+                    return;
+                }
                 _notFound = true;
                 _lobby = null;
             }
         });
+    }
+
+    // Runs a lobby action. A 404 here means the lobby is gone or we are no longer in it: go to the front
+    // page instead of showing an error on top of a lobby that no longer exists.
+    private Task<string?> RunInLobbyAsync(Func<Task> action) =>
+        ApiCall.RunAsync(async () =>
+        {
+            try
+            {
+                await action();
+            }
+            catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                LeaveForGoneLobby();
+            }
+        }, messageFor: LobbyMessages.For);
+
+    private void LeaveForGoneLobby()
+    {
+        _gone = true;
+        _leaving = true;
+        Navigation.NavigateTo("?lukket=1");
     }
 
     private Task OnLobbyUpdated(LobbyDto lobby) => InvokeAsync(() =>
@@ -223,23 +254,23 @@ else if (_error is null)
     private async Task ToggleReadyAsync()
     {
         var ready = Me?.IsReady != true;
-        _error = await ApiCall.RunAsync(async () => _lobby = await Lobbies.SetReadyAsync(Id, ready), messageFor: LobbyMessages.For);
+        _error = await RunInLobbyAsync(async () => _lobby = await Lobbies.SetReadyAsync(Id, ready));
     }
 
     private async Task LeaveAsync()
     {
         _leaving = true;
-        _error = await ApiCall.RunAsync(() => Lobbies.LeaveLobbyAsync(Id), messageFor: LobbyMessages.For);
-        if (_error is null)
-            Navigation.NavigateTo("");
-        else
+        _error = await RunInLobbyAsync(() => Lobbies.LeaveLobbyAsync(Id));
+        if (_error is not null)
             _leaving = false;
+        else if (!_gone)
+            Navigation.NavigateTo(""); // a gone lobby has already gone to ?lukket=1
     }
 
     private async Task StartAsync()
     {
         StartGameResponse? started = null;
-        _error = await ApiCall.RunAsync(async () => started = await Lobbies.StartGameAsync(Id), messageFor: LobbyMessages.For);
+        _error = await RunInLobbyAsync(async () => started = await Lobbies.StartGameAsync(Id));
         if (started is not null)
             Navigation.NavigateTo($"spil/{started.GameId}");
     }
