@@ -10,6 +10,8 @@
 const VOLUME_KEY = "slopster.sound.volume";
 const MUTED_KEY = "slopster.sound.muted";
 const DEFAULT_VOLUME = 0.6;
+// The sounds are mixed at half strength, so even 100 % on the volume slider stays below the song.
+const MASTER = 0.5;
 
 // The same sound again within this many ms is skipped, and at most MAX_BURST sounds start within
 // BURST_MS, so many joins at once do not become a wall of sound.
@@ -166,7 +168,7 @@ export function play(name) {
     recent.push(now);
 
     const out = c.createGain();
-    out.gain.value = volume;
+    out.gain.value = volume * MASTER;
     out.connect(c.destination);
     sound(c, out);
     return true;
