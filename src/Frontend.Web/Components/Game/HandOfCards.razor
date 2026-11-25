@@ -160,10 +160,10 @@
         }
     }
 
+    // Only while dragging; no standing instruction under the "?" (the screen-reader label still explains it).
     private string Hint =>
-        IsLocked ? ""
-        : _dragging ? (_hot >= 0 ? "Slip for at lægge kortet her" : "Træk ned mod hånden")
-        : "Hold musen over et kort for at se det. Træk ? ned mellem to år, eller klik på et hul.";
+        IsLocked || !_dragging ? ""
+        : _hot >= 0 ? "Slip for at lægge kortet her" : "Træk ned mod hånden";
 
     private string? Message => Reveal switch
     {

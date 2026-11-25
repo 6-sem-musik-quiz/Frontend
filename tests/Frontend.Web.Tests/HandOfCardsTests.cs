@@ -149,6 +149,7 @@ public class HandOfCardsTests : BunitContext
     public async Task Dragging_OpensTheHotGap_AndDroppingPlacesTheCardThere()
     {
         var cut = RenderHand();
+        Assert.Equal("", cut.Find("[data-testid=hint]").TextContent); // no standing instruction
 
         await cut.InvokeAsync(() => cut.Instance.DragStarted());
         Assert.Equal("Træk ned mod hånden", cut.Find("[data-testid=hint]").TextContent);
@@ -160,6 +161,7 @@ public class HandOfCardsTests : BunitContext
 
         Assert.Equal(2, PlacedSlot(cut));
         Assert.DoesNotContain(cut.FindAll("[data-testid=slot]"), s => s.ClassList.Contains("hot"));
+        Assert.Equal("", cut.Find("[data-testid=hint]").TextContent);
     }
 
     [Fact]
