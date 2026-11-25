@@ -33,6 +33,9 @@ public interface IGameHubClient : IAsyncDisposable
     // The file for the round is downloaded and ready to play.
     Task ReadyAsync(Guid gameId, int round, CancellationToken ct = default);
 
+    // SCRUM-168: the server's UTC time, to work out the clock offset (ClockSync). Throws GameHubException.
+    Task<DateTimeOffset> ServerTimeAsync(CancellationToken ct = default);
+
     // Places the round's song at slotIndex in my timeline: 0 = before the first card, n = after the last.
     Task SubmitAnswerAsync(Guid gameId, int round, int slotIndex, CancellationToken ct = default);
 }
@@ -85,6 +88,9 @@ public sealed class GameHubClient(
 
     public Task SubmitAnswerAsync(Guid gameId, int round, int slotIndex, CancellationToken ct = default) =>
         Call(() => Connected().InvokeAsync("SubmitAnswer", gameId, round, slotIndex, ct));
+
+    public Task<DateTimeOffset> ServerTimeAsync(CancellationToken ct = default) =>
+        Call(() => Connected().InvokeAsync<DateTimeOffset>("ServerTime", ct));
 
     private HubConnection Build()
     {

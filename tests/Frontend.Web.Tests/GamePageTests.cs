@@ -118,6 +118,73 @@ public class GamePageTests : BunitContext
         cut.WaitForAssertion(() => Assert.Equal("29", Text(cut, "time")));
     }
 
+    // ---- SCRUM-168: everyone starts at the server's PlaybackStartsAt ----
+
+    private static readonly TimeSpan ServerAhead = TimeSpan.FromMinutes(7); // a wrong device clock must not matter
+
+    private DateTimeOffset ServerNow => _time.GetUtcNow() + ServerAhead;
+
+    [Fact]
+    public async Task WithAServerClock_PlaysAtPlaybackStartsAt_NotStartsInMsAfterArrival()
+    {
+        _hub.ServerClock = () => ServerNow;
+        var cut = RenderPage();
+        Assert.Equal(ClockSync.Samples, _hub.ServerTimeCalls);
+
+        // The message was 1 s on its way: startsInMs still says 3000, but playback is 2 s from now.
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 3000) with { PlaybackStartsAt = ServerNow.AddSeconds(2) }));
+        _time.Advance(TimeSpan.FromMilliseconds(1999));
+        Assert.Empty(_audio.Played);
+
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => Assert.Equal(("blob:" + Url(1), 40.0), _audio.Played.Single()));
+        cut.WaitForAssertion(() => Assert.Equal("30", Text(cut, "time")));
+    }
+
+    [Fact]
+    public async Task ArrivingLate_PlaysAtOnce_FurtherIntoTheSong_WithLessTimeLeft()
+    {
+        _hub.ServerClock = () => ServerNow;
+        var cut = RenderPage();
+
+        // Playback started 1.5 s ago on the server.
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0, offset: 40, answer: 30) with { PlaybackStartsAt = ServerNow.AddSeconds(-1.5) }));
+
+        cut.WaitForAssertion(() => Assert.Equal(("blob:" + Url(1), 41.5), _audio.Played.Single()));
+        cut.WaitForAssertion(() => Assert.Equal("29", Text(cut, "time"))); // 28.5 s left
+        _time.Advance(TimeSpan.FromMilliseconds(500));                       // on the server's whole second
+        cut.WaitForAssertion(() => Assert.Equal("28", Text(cut, "time")));
+        _time.Advance(TimeSpan.FromSeconds(28));
+        cut.WaitForAssertion(() => Assert.Equal("Tiden er gået.", Text(cut, "message"))); // exactly at the server's end
+    }
+
+    [Fact]
+    public void ARejoinBetweenWholeSeconds_StartsTheSongAtTheExactMillisecond()
+    {
+        _hub.ServerClock = () => ServerNow;
+        // The server moved the int fields by 5 whole seconds and playbackStartsAt with them; 400 ms more have gone.
+        _hub.State = State(round: 1, current: Round(1, startsInMs: 0, offset: 45, answer: 25) with { PlaybackStartsAt = ServerNow.AddMilliseconds(-400) },
+            prefetchRounds: [1, 2]);
+
+        RenderPage();
+
+        Assert.Equal(("blob:" + Url(1), 45.4), _audio.Played.Single());
+    }
+
+    [Fact]
+    public async Task WithoutServerTime_AnOlderServer_FallsBackToStartsInMs()
+    {
+        _hub.ServerClock = null;
+        var cut = RenderPage();
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 3000) with { PlaybackStartsAt = DateTimeOffset.UnixEpoch }));
+        _time.Advance(TimeSpan.FromMilliseconds(2999));
+        Assert.Empty(_audio.Played);
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+
+        cut.WaitForAssertion(() => Assert.Equal(("blob:" + Url(1), 40.0), _audio.Played.Single()));
+    }
+
     [Fact]
     public async Task WhenTheTimeIsUp_TheHandLocks_AndTheSongPlaysOn()
     {

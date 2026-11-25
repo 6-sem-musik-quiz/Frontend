@@ -25,20 +25,27 @@ export async function prefetch(url) {
     }
 }
 
-// Plays from offsetSeconds. Returns false if the browser blocked autoplay (NotAllowedError).
+// Plays from offsetSeconds, where the song is at the moment of this call. Returns false if the
+// browser blocked autoplay (NotAllowedError).
+// SCRUM-168: loading (a streamed URL when the prefetch failed) and buffering take time, so the
+// position is moved on by however long that took: a slow player joins the others where they are
+// instead of hearing the song late.
 export async function play(source, offsetSeconds) {
+    const called = performance.now();
+    const due = () => Math.max(0, offsetSeconds + (performance.now() - called) / 1000);
     const a = player();
     a.pause();
     if (a.src !== source) a.src = source;
     await metadataLoaded(a);
-    a.currentTime = Math.max(0, offsetSeconds);
+    a.currentTime = due();
     try {
         await a.play();
-        return true;
     } catch (e) {
         if (e && e.name === "NotAllowedError") return false;
         throw e;
     }
+    if (Math.abs(a.currentTime - due()) > 0.15) a.currentTime = due();
+    return true;
 }
 
 export function stop() {

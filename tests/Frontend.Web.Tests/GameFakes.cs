@@ -35,6 +35,18 @@ public sealed class FakeGameHub : IGameHubClient
         return Task.CompletedTask;
     }
 
+    // SCRUM-168: the server's clock. Null = an older server without ServerTime.
+    public Func<DateTimeOffset>? ServerClock { get; set; }
+    public int ServerTimeCalls { get; private set; }
+
+    public Task<DateTimeOffset> ServerTimeAsync(CancellationToken ct = default)
+    {
+        ServerTimeCalls++;
+        return ServerClock is { } clock
+            ? Task.FromResult(clock())
+            : Task.FromException<DateTimeOffset>(new GameHubException("Ukendt metode."));
+    }
+
     public Task RaisePrefetch(params PrefetchDto[] files) => Prefetch?.Invoke(files) ?? Task.CompletedTask;
     public Task RaiseRoundStarted(RoundStartedDto round) => RoundStarted?.Invoke(round) ?? Task.CompletedTask;
     public Task RaisePlayerAnswered(int userId, int afterMs = 0) =>
