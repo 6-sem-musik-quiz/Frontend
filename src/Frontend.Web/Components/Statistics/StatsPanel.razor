@@ -1,0 +1,71 @@
+@* SCRUM-116: the front page's leaderboard column. Loads the week and my stats on page view and every 60 s. *@
+@implements IDisposable
+@inject IStatisticApiClient Statistics
+@inject ApiCallHandler ApiCall
+
+<h2 class="h5">Leaderboard</h2>
+
+<ErrorMessage Message="@_error" />
+
+@if (_week is null && _me is null)
+{
+    @if (_error is null)
+    {
+        <p class="text-body-secondary" data-testid="stats-loading">Henter statistik…</p>
+    }
+}
+else
+{
+    @if (_week is not null)
+    {
+        <div class="mb-4"><WeeklyLeaderboard Week="_week" MeId="_meId" /></div>
+    }
+    @if (_me is not null)
+    {
+        <MyStats Stats="_me" />
+    }
+}
+
+@code {
+    // How often the data is refreshed. A parameter so tests need not wait.
+    [Parameter] public TimeSpan RefreshInterval { get; set; } = TimeSpan.FromSeconds(60);
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private WeeklyLeaderboardDto? _week;
+    private MyStatsDto? _me;
+    private int? _meId;
+    private string? _error;
+    private Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState is not null && int.TryParse((await AuthState).User.FindFirst("sub")?.Value, out var id))
+            _meId = id;
+
+        await RefreshAsync();
+        _timer = new Timer(_ => InvokeAsync(async () =>
+        {
+            await RefreshAsync();
+            StateHasChanged();
+        }), null, RefreshInterval, RefreshInterval);
+    }
+
+    // A failed refresh keeps the last data and shows why; the next successful one clears it.
+    private async Task RefreshAsync()
+    {
+        WeeklyLeaderboardDto? week = null;
+        MyStatsDto? me = null;
+        _error = await ApiCall.RunAsync(async () =>
+        {
+            var weekTask = Statistics.GetWeeklyLeaderboardAsync();
+            var meTask = Statistics.GetMyStatsAsync();
+            week = await weekTask;
+            me = await meTask;
+        });
+        if (week is not null) _week = week;
+        if (me is not null) _me = me;
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

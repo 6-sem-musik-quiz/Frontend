@@ -1,0 +1,48 @@
+@* SCRUM-116: the signed-in user's own stats (all time). *@
+
+<h3 class="h6 mb-2">Mine stats</h3>
+
+@if (Stats.GamesPlayed == 0)
+{
+    <p class="text-body-secondary small mb-0" data-testid="no-games">Ingen spil endnu.</p>
+}
+else
+{
+    <dl class="row small mb-0" data-testid="my-stats">
+        <dt class="col-6 fw-normal text-body-secondary">Spil</dt>
+        <dd class="col-6 text-end mb-1" data-testid="games">@Stats.GamesPlayed</dd>
+
+        <dt class="col-6 fw-normal text-body-secondary">Sejre</dt>
+        <dd class="col-6 text-end mb-1" data-testid="wins">@Stats.Wins</dd>
+
+        <dt class="col-6 fw-normal text-body-secondary">Win%</dt>
+        <dd class="col-6 text-end mb-1" data-testid="win-rate">@StatsFormat.Percent(Stats.WinRate)</dd>
+
+        <dt class="col-6 fw-normal text-body-secondary">Accuracy</dt>
+        <dd class="col-6 text-end mb-1" data-testid="accuracy">@StatsFormat.Percent(Stats.Accuracy)</dd>
+
+        <dt class="col-6 fw-normal text-body-secondary">Runder</dt>
+        <dd class="col-6 text-end mb-1" data-testid="rounds">@Stats.RoundsPlayed</dd>
+
+        <dt class="col-6 fw-normal text-body-secondary">Spilletid</dt>
+        <dd class="col-6 text-end mb-1" data-testid="play-time">@StatsFormat.PlayTime(Stats.TimePlayedSeconds)</dd>
+
+        @if (Stats.MostPlayedCategory is { } category)
+        {
+            <dt class="col-6 fw-normal text-body-secondary">Mest spillede kategori</dt>
+            <dd class="col-6 text-end mb-1" data-testid="category">@category.CategoryName (@Games(category.Games))</dd>
+        }
+
+        @if (Stats.MostCommonFriend is { } friend)
+        {
+            <dt class="col-6 fw-normal text-body-secondary">Spiller oftest med</dt>
+            <dd class="col-6 text-end mb-1" data-testid="friend">@friend.UserName (@Games(friend.GamesTogether))</dd>
+        }
+    </dl>
+}
+
+@code {
+    [Parameter, EditorRequired] public MyStatsDto Stats { get; set; } = null!;
+
+    private static string Games(int count) => count == 1 ? "1 spil" : $"{count} spil";
+}

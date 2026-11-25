@@ -108,9 +108,9 @@ public class StatisticApiClient(HttpClient httpClient) : ApiClientBase(httpClien
 {
     private const string Route = "statistics";
 
-    public Task<PlayerStatisticDto> GetPlayerStatisticAsync(Guid userId, CancellationToken ct = default) =>
-        GetAsync<PlayerStatisticDto>($"{Route}/players/{userId}", ct);
+    public Task<WeeklyLeaderboardDto> GetWeeklyLeaderboardAsync(string week = "current", CancellationToken ct = default) =>
+        GetAsync<WeeklyLeaderboardDto>($"{Route}/weekly?week={Uri.EscapeDataString(week)}", ct);
 
-    public async Task<IReadOnlyList<LeaderboardEntryDto>> GetLeaderboardAsync(CancellationToken ct = default) =>
-        await GetAsync<List<LeaderboardEntryDto>>($"{Route}/leaderboard", ct);
+    public Task<MyStatsDto> GetMyStatsAsync(CancellationToken ct = default) =>
+        GetAsync<MyStatsDto>($"{Route}/me", ct);
 }
