@@ -1,0 +1,59 @@
+@* SCRUM-116: the week's top 10 in three tabs. The signed-in user's row is highlighted. *@
+
+<h3 class="h6 mb-1">Ugens leaderboard</h3>
+<p class="small text-body-secondary mb-2" data-testid="week-title">@StatsFormat.WeekTitle(Week.WeekStart, Week.WeekEnd)</p>
+
+<nav class="nav nav-pills nav-fill small mb-2" aria-label="Leaderboard-lister">
+    @foreach (var tab in Tabs)
+    {
+        <button type="button" class="nav-link py-1 @(_tab == tab.Key ? "active" : "")" data-testid="tab-@tab.Key"
+                aria-pressed="@(_tab == tab.Key)" @onclick="() => _tab = tab.Key">@tab.Title</button>
+    }
+</nav>
+
+@if (Rows.Count == 0)
+{
+    <p class="text-body-secondary small mb-1" data-testid="no-rows">
+        @(_tab == "wins" ? "Ingen sejre denne uge endnu." : "Ingen har spillet 5 spil denne uge endnu.")
+    </p>
+}
+else
+{
+    <ol class="list-group list-group-numbered small mb-1" data-testid="leaderboard-rows">
+        @foreach (var row in Rows)
+        {
+            var mine = row.UserId == MeId;
+            <li @key="row.UserId" class="list-group-item d-flex align-items-center @(mine ? "list-group-item-primary fw-semibold" : "")"
+                data-testid="@(mine ? "own-row" : "row")" aria-current="@(mine ? "true" : null)">
+                <span class="ms-2 flex-grow-1 text-truncate">@row.UserName</span>
+                <span class="ms-2 text-nowrap" data-testid="value">@row.Value</span>
+            </li>
+        }
+    </ol>
+}
+
+@if (_tab != "wins")
+{
+    <p class="small text-body-secondary mb-0" data-testid="min-games">Kræver mindst 5 spil denne uge.</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public WeeklyLeaderboardDto Week { get; set; } = null!;
+
+    // The signed-in user (the token's "sub"), or null.
+    [Parameter] public int? MeId { get; set; }
+
+    private static readonly (string Key, string Title)[] Tabs =
+        [("wins", "Flest sejre"), ("winrate", "Win%"), ("accuracy", "Accuracy")];
+
+    private string _tab = "wins";
+
+    private record Row(int UserId, string UserName, string Value);
+
+    private IReadOnlyList<Row> Rows => _tab switch
+    {
+        "winrate" => Week.WinRate.Select(r => new Row(r.UserId, r.UserName, StatsFormat.Percent(r.WinRate))).ToList(),
+        "accuracy" => Week.Accuracy.Select(r => new Row(r.UserId, r.UserName, StatsFormat.Percent(r.Accuracy))).ToList(),
+        _ => Week.MostWins.Select(r => new Row(r.UserId, r.UserName, r.Wins == 1 ? "1 sejr" : $"{r.Wins} sejre")).ToList()
+    };
+}
