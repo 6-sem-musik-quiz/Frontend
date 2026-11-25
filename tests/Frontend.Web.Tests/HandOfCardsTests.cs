@@ -187,7 +187,7 @@ public class HandOfCardsTests : BunitContext
         cut.Render(p => p.Add(x => x.Reveal, new RoundReveal(Song, Answered: true, Correct: true)));
 
         var placed = cut.Find("[data-testid=placed]");
-        Assert.Contains("gc-new", placed.ClassList);
+        Assert.Contains("gc-new", placed.QuerySelector(".gc")!.ClassList);
         Assert.Equal("1982", placed.QuerySelector(".gc-year")!.TextContent);
         Assert.Contains("Billie Jean", placed.TextContent);
         Assert.Equal("Rigtigt! Kortet bliver i din hånd.", Message(cut));
@@ -202,7 +202,7 @@ public class HandOfCardsTests : BunitContext
 
         cut.Render(p => p.Add(x => x.Reveal, new RoundReveal(Song, Answered: true, Correct: false)));
 
-        Assert.Contains("gc-out", cut.Find("[data-testid=placed]").ClassList);
+        Assert.Contains("gc-out", cut.Find("[data-testid=placed] > .gc").ClassList);
         Assert.DoesNotContain("1982", cut.Find("[data-testid=placed]").TextContent); // the song is not shown in the hand
         Assert.Equal("Forkert – kortet ryger ud.", Message(cut));
     }
