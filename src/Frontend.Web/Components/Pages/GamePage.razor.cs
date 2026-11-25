@@ -74,6 +74,9 @@ public partial class GamePage : IAsyncDisposable
     private ITimer? _autoLockTimer;
     private bool _disposed;
 
+    // SCRUM-168: our clock + this = the server's clock. Null: play on startsInMs instead.
+    private TimeSpan? _clockOffset;
+
     // Lock the placed card just before the time is up (or at the latest when it is). Not when the server
     // already has my answer, e.g. after a reload where the hand no longer knows it was confirmed.
     private bool AutoConfirm =>
@@ -113,6 +116,8 @@ public partial class GamePage : IAsyncDisposable
         {
             var state = await Hub.JoinGameAsync(GameId);
             ApplyState(state);
+            // Before Ready goes out, so the clock is known when the first round starts.
+            _clockOffset = await ClockSync.MeasureAsync(() => Hub.ServerTimeAsync(), Time);
             StartPrefetch(state.Prefetch);
             if (state.CurrentRound is { } running)
                 _ = StartRoundAsync(running);
@@ -224,6 +229,7 @@ public partial class GamePage : IAsyncDisposable
 
     private async Task StartRoundAsync(RoundStartedDto round)
     {
+        var received = Time.GetTimestamp();
         _roundCts?.Cancel();
         StopCountdown();
         var cts = _roundCts = new CancellationTokenSource();
@@ -247,11 +253,29 @@ public partial class GamePage : IAsyncDisposable
         }
         StateHasChanged();
 
+        // The last round's song played on through its reveal (SCRUM-159): stop it and free the old songs now.
         try
         {
-            // Relative timer only: the device clock is never used, so a wrong clock does not matter.
-            if (round.StartsInMs > 0)
-                await Task.Delay(TimeSpan.FromMilliseconds(round.StartsInMs), Time, cts.Token);
+            await Audio.StopAsync();
+            foreach (var old in _sources.Keys.Where(r => r < round.Round).ToList())
+                await ReleaseAsync(old);
+        }
+        catch (JSException)
+        {
+            // Nothing to stop.
+        }
+        if (cts.IsCancellationRequested)
+            return;
+
+        // SCRUM-168: everyone plays at the server's PlaybackStartsAt, whatever their network delay. Without
+        // a clock offset (or from an older server), count startsInMs from when the message arrived.
+        var wait = round.PlaybackStartsAt is { } at && _clockOffset is { } offset
+            ? at - (Time.GetUtcNow() + offset)
+            : TimeSpan.FromMilliseconds(round.StartsInMs) - Time.GetElapsedTime(received);
+        try
+        {
+            if (wait > TimeSpan.Zero)
+                await Task.Delay(wait, Time, cts.Token);
         }
         catch (OperationCanceledException)
         {
@@ -260,12 +284,26 @@ public partial class GamePage : IAsyncDisposable
         if (cts.IsCancellationRequested)
             return;
 
-        _playbackStarted = Time.GetTimestamp();
-        _secondsLeft = round.AnswerTimeSeconds;
-        _countdown = Time.CreateTimer(_ => InvokeAsync(Tick), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
-        var lockIn = TimeSpan.FromSeconds(round.AnswerTimeSeconds) - AutoLockLead;
-        _autoLockTimer = Time.CreateTimer(_ => InvokeAsync(AutoLock), null,
-            lockIn > TimeSpan.Zero ? lockIn : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+        // Already late (a slow message, or a rejoin between whole seconds): start at once, further into the
+        // song, with that much less time to answer, as the server measures from PlaybackStartsAt.
+        var late = wait < TimeSpan.Zero ? -wait : TimeSpan.Zero;
+        _playbackStarted = Time.GetTimestamp() - (long)(late.TotalSeconds * Time.TimestampFrequency);
+        var remaining = TimeSpan.FromSeconds(round.AnswerTimeSeconds) - late;
+        if (remaining <= TimeSpan.Zero)
+        {
+            _secondsLeft = 0;
+            _timeUp = true;
+        }
+        else
+        {
+            // E.g. 29.4 s left: show 30 and tick to 29 after 0.4 s, so 0 lands on the server's end of time.
+            _secondsLeft = (int)Math.Ceiling(remaining.TotalSeconds);
+            _countdown = Time.CreateTimer(_ => InvokeAsync(Tick), null,
+                remaining - TimeSpan.FromSeconds(_secondsLeft.Value - 1), TimeSpan.FromSeconds(1));
+            var lockIn = remaining - AutoLockLead;
+            _autoLockTimer = Time.CreateTimer(_ => InvokeAsync(AutoLock), null,
+                lockIn > TimeSpan.Zero ? lockIn : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
+        }
         _needsPlay = !await PlayAsync();
         StateHasChanged();
     }
@@ -304,9 +342,9 @@ public partial class GamePage : IAsyncDisposable
         _secondsLeft--;
         if (_secondsLeft == 0)
         {
+            // The song keeps playing through the reveal (SCRUM-159); the next round or the game end stops it.
             _timeUp = true;
             StopCountdown();
-            _ = Audio.StopAsync();
         }
         StateHasChanged();
     }
@@ -352,9 +390,13 @@ public partial class GamePage : IAsyncDisposable
 
     private Task OnRoundEnded(RoundEndedDto ended) => InvokeAsync(async () =>
     {
+        // The song keeps playing while the round is revealed (SCRUM-159), so it is neither stopped
+        // nor freed here: the next round does that.
         _roundCts?.Cancel();
         StopCountdown();
-        await Audio.StopAsync();
+        // The round is over: no time left, also when everyone answered early (the timer would otherwise
+        // stay frozen on the seconds that were left through the whole reveal).
+        _secondsLeft = 0;
 
         var mine = ended.Results.FirstOrDefault(r => r.UserId == _me);
         _reveal = new RoundReveal(ended.Song, Answered: mine?.SlotIndex is not null, Correct: mine?.Correct == true);
@@ -372,7 +414,6 @@ public partial class GamePage : IAsyncDisposable
                 player.Reveal = new RivalReveal(ended.Song, result.Correct, result.SlotIndex);
             }
         }
-        await ReleaseAsync(ended.Round);
         StateHasChanged();
     });
 
@@ -402,11 +443,13 @@ public partial class GamePage : IAsyncDisposable
     });
 
     // After a reconnect the server does not resend what was missed: start over from its state.
-    private Task OnRejoined(GameStateDto state) => InvokeAsync(() =>
+    private Task OnRejoined(GameStateDto state) => InvokeAsync(async () =>
     {
         _connectionLost = false;
         _error = null;
         ApplyState(state);
+        // The new connection may take another route: measure again, keeping the old offset if that fails.
+        _clockOffset = await ClockSync.MeasureAsync(() => Hub.ServerTimeAsync(), Time) ?? _clockOffset;
         StartPrefetch(state.Prefetch);
         if (state.CurrentRound is { } running)
             _ = StartRoundAsync(running);

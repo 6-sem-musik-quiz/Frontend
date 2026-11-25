@@ -39,8 +39,12 @@ public record CardDto(string Title, IReadOnlyList<string> Artists, int Year);
 public record PrefetchDto(int Round, string AudioUrl);
 
 // startsInMs is relative: start a local timer when the message arrives and play when it runs out.
+// SCRUM-168 (gameservice.gamehub v1.1): PlaybackStartsAt is the server time at which the song is at
+// StartOffsetSeconds, and the answer time ends AnswerTimeSeconds later. With the clock offset from
+// ServerTime, every player starts at that same instant; without it (or from an older server), use startsInMs.
 // In GameStateDto.CurrentRound (after a reconnect) the values are what is left of the round.
-public record RoundStartedDto(int Round, int TotalRounds, int StartsInMs, int StartOffsetSeconds, int AnswerTimeSeconds);
+public record RoundStartedDto(int Round, int TotalRounds, int StartsInMs, int StartOffsetSeconds, int AnswerTimeSeconds,
+    DateTimeOffset? PlaybackStartsAt = null);
 
 // Someone answered; the answer stays hidden until RoundEnded. AnsweredAfterMs is measured by the
 // server from when the song started playing.

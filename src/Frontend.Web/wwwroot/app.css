@@ -568,45 +568,63 @@ h1:focus {
     padding: 100px var(--pad) 24px; /* room above for the zoomed card */
     overflow-x: clip; /* never a scrollbar; the zoomed card still shows above (y stays visible) */
 }
-.gr-hand .gc {
+/* A card's place in the hand (.gh): its spot in the fan. It never moves when the card zooms, so it is
+   the hover target: the card cannot zoom out from under the pointer and flicker (zoom, lose the hover,
+   drop back, zoom again). The zoomed card is inside it, so hovering the zoomed card counts too. */
+.gr-hand .gh {
     position: relative;
+    flex: none;
     width: var(--cw);
     height: var(--ch);
     margin: 0 var(--m); /* the cards overlap like a hand of cards */
     transform-origin: 50% 100%;
     transform: translateY(var(--lift, 0)) rotate(var(--r, 0));
     transition: transform .25s ease;
+    outline: none; /* the card inside shows the focus */
+}
+.gr-hand .gh > .gc {
+    width: 100%;
+    height: 100%;
+    transform-origin: 50% 100%;
+    transition: transform .25s ease;
 }
 /* No outward overlap at the ends, or the first and last card would stick out of the hand. */
-.gr-hand > .gr-slot:first-child + .gc {
+.gr-hand > .gr-slot:first-child + .gh {
     margin-left: 0;
 }
-.gr-hand > .gc:last-child, .gr-hand > .gc:has(+ .gr-slot:last-child) {
+.gr-hand > .gh:last-child, .gr-hand > .gh:has(+ .gr-slot:last-child) {
     margin-right: 0;
 }
-.gr-hand .gc:hover, .gr-hand .gc:focus-visible {
+.gr-hand .gh:hover, .gr-hand .gh:focus-visible {
     z-index: 50;
-    transform: translateY(-70px) scale(1.45) rotate(0deg);
 }
-.gr-dragging .gr-hand .gc:hover {
-    transform: translateY(var(--lift, 0)) rotate(var(--r, 0)); /* no zoom while dragging */
+/* Zoom straight up: undo the fan's tilt and lift (on .gh), then 70 px up and 1.45x. */
+.gr-hand .gh:hover > .gc, .gr-hand .gh:focus-visible > .gc {
+    transform: rotate(calc(-1 * var(--r, 0deg))) translateY(calc(-70px - var(--lift, 0px))) scale(1.45);
+}
+.gr-hand .gh:focus-visible > .gc {
+    outline: 3px solid var(--sl-mustard);
+    outline-offset: 3px;
+}
+.gr-dragging .gr-hand .gh:hover > .gc {
+    transform: none; /* no zoom while dragging */
 }
 
 /* Tight hand (set by hand.js when a card shows less than ~70 % of itself): only each card's left
    edge is visible, so the year runs up that edge like a playing card's corner index.
    Hover or focus shows the whole card again. */
-.gr-hand[data-tight] .gc:not(:hover):not(:focus-visible) {
+.gr-hand[data-tight] .gh:not(:hover):not(:focus-visible) > .gc {
     justify-content: flex-start;
     align-items: flex-start;
     padding: 8px 1px;
 }
-.gr-hand[data-tight] .gc:not(:hover):not(:focus-visible) .gc-year {
+.gr-hand[data-tight] .gh:not(:hover):not(:focus-visible) .gc-year {
     writing-mode: vertical-rl;
     transform: rotate(180deg);
     font-size: clamp(10px, calc(var(--s) * .95), 18px); /* fits the visible strip */
     line-height: 1;
 }
-.gr-hand[data-tight] .gc:not(:hover):not(:focus-visible) :is(.gc-title, .gc-artist) {
+.gr-hand[data-tight] .gh:not(:hover):not(:focus-visible) :is(.gc-title, .gc-artist) {
     display: none;
 }
 
@@ -663,9 +681,9 @@ h1:focus {
 .gc-placed.gc-out {
     animation: gc-out .8s ease forwards;
 }
-@keyframes gc-flip {
-    from { transform: translateY(var(--lift, 0)) rotate(var(--r, 0)) rotateY(90deg); }
-    to { transform: translateY(var(--lift, 0)) rotate(var(--r, 0)) rotateY(0deg); }
+@keyframes gc-flip { /* the fan is on the .gh around the card */
+    from { transform: rotateY(90deg); }
+    to { transform: rotateY(0deg); }
 }
 @keyframes gc-out {
     to { transform: translateY(120px) rotate(25deg); opacity: 0; }
@@ -694,7 +712,7 @@ h1:focus {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .gr-hand .gc, .gr-slot, .gc-mystery, .gs-bar-fill { transition: none; }
+    .gr-hand .gh, .gr-hand .gc, .gr-slot, .gc-mystery, .gs-bar-fill { transition: none; }
     .gc-placed.gc-new, .gc-placed.gc-out { animation-duration: .01s; }
 }
 

@@ -118,8 +118,75 @@ public class GamePageTests : BunitContext
         cut.WaitForAssertion(() => Assert.Equal("29", Text(cut, "time")));
     }
 
+    // ---- SCRUM-168: everyone starts at the server's PlaybackStartsAt ----
+
+    private static readonly TimeSpan ServerAhead = TimeSpan.FromMinutes(7); // a wrong device clock must not matter
+
+    private DateTimeOffset ServerNow => _time.GetUtcNow() + ServerAhead;
+
     [Fact]
-    public async Task WhenTheTimeIsUp_TheHandLocks_AndTheSongStops()
+    public async Task WithAServerClock_PlaysAtPlaybackStartsAt_NotStartsInMsAfterArrival()
+    {
+        _hub.ServerClock = () => ServerNow;
+        var cut = RenderPage();
+        Assert.Equal(ClockSync.Samples, _hub.ServerTimeCalls);
+
+        // The message was 1 s on its way: startsInMs still says 3000, but playback is 2 s from now.
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 3000) with { PlaybackStartsAt = ServerNow.AddSeconds(2) }));
+        _time.Advance(TimeSpan.FromMilliseconds(1999));
+        Assert.Empty(_audio.Played);
+
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => Assert.Equal(("blob:" + Url(1), 40.0), _audio.Played.Single()));
+        cut.WaitForAssertion(() => Assert.Equal("30", Text(cut, "time")));
+    }
+
+    [Fact]
+    public async Task ArrivingLate_PlaysAtOnce_FurtherIntoTheSong_WithLessTimeLeft()
+    {
+        _hub.ServerClock = () => ServerNow;
+        var cut = RenderPage();
+
+        // Playback started 1.5 s ago on the server.
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0, offset: 40, answer: 30) with { PlaybackStartsAt = ServerNow.AddSeconds(-1.5) }));
+
+        cut.WaitForAssertion(() => Assert.Equal(("blob:" + Url(1), 41.5), _audio.Played.Single()));
+        cut.WaitForAssertion(() => Assert.Equal("29", Text(cut, "time"))); // 28.5 s left
+        _time.Advance(TimeSpan.FromMilliseconds(500));                       // on the server's whole second
+        cut.WaitForAssertion(() => Assert.Equal("28", Text(cut, "time")));
+        _time.Advance(TimeSpan.FromSeconds(28));
+        cut.WaitForAssertion(() => Assert.Equal("Tiden er gået.", Text(cut, "message"))); // exactly at the server's end
+    }
+
+    [Fact]
+    public void ARejoinBetweenWholeSeconds_StartsTheSongAtTheExactMillisecond()
+    {
+        _hub.ServerClock = () => ServerNow;
+        // The server moved the int fields by 5 whole seconds and playbackStartsAt with them; 400 ms more have gone.
+        _hub.State = State(round: 1, current: Round(1, startsInMs: 0, offset: 45, answer: 25) with { PlaybackStartsAt = ServerNow.AddMilliseconds(-400) },
+            prefetchRounds: [1, 2]);
+
+        RenderPage();
+
+        Assert.Equal(("blob:" + Url(1), 45.4), _audio.Played.Single());
+    }
+
+    [Fact]
+    public async Task WithoutServerTime_AnOlderServer_FallsBackToStartsInMs()
+    {
+        _hub.ServerClock = null;
+        var cut = RenderPage();
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 3000) with { PlaybackStartsAt = DateTimeOffset.UnixEpoch }));
+        _time.Advance(TimeSpan.FromMilliseconds(2999));
+        Assert.Empty(_audio.Played);
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+
+        cut.WaitForAssertion(() => Assert.Equal(("blob:" + Url(1), 40.0), _audio.Played.Single()));
+    }
+
+    [Fact]
+    public async Task WhenTheTimeIsUp_TheHandLocks_AndTheSongPlaysOn()
     {
         var cut = RenderPage();
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0, answer: 15)));
@@ -130,7 +197,77 @@ public class GamePageTests : BunitContext
 
         cut.WaitForAssertion(() => Assert.Equal("Tiden er gået.", Text(cut, "message")));
         Assert.True(cut.Find("[data-testid=confirm]").HasAttribute("disabled"));
-        Assert.Equal(1, _audio.Stops);
+        Assert.True(_audio.Playing); // SCRUM-159: it stops at the next round or the game end
+    }
+
+    // SCRUM-159: everyone answered, so the round ends early; the song plays on through the reveal.
+    [Fact]
+    public async Task TheSong_PlaysOnThroughTheReveal_AndStopsWhenTheNextRoundStarts()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+        cut.WaitForAssertion(() => Assert.True(_audio.Playing));
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+        [
+            new RoundResultDto(Me, "alice", 1, true, 1, [Card(1976), Card(1982)]),
+            new RoundResultDto(Bob, "bob", 0, false, 0, [Card(1976)])
+        ])));
+
+        Assert.True(_audio.Playing);
+        Assert.DoesNotContain("blob:" + Url(1), _audio.Revoked); // still playing from it
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 3000)));
+
+        cut.WaitForAssertion(() => Assert.False(_audio.Playing)); // silent during "Gør dig klar"
+        Assert.Contains("blob:" + Url(1), _audio.Revoked);
+        Assert.DoesNotContain("blob:" + Url(2), _audio.Revoked); // the next song is kept
+        _time.Advance(TimeSpan.FromSeconds(3));
+        cut.WaitForAssertion(() => Assert.Equal(("blob:" + Url(2), 40.0), _audio.Played[^1]));
+        Assert.True(_audio.Playing);
+    }
+
+    // Found in the end-to-end test: everyone answered with 8 s left, and "Tid" stayed on 8 through the reveal.
+    [Fact]
+    public async Task ARoundThatEndsEarly_SetsTheTimerToZero_AndTheNextRoundStartsItAgain()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0, answer: 15)));
+        for (var i = 0; i < 7; i++)
+            _time.Advance(TimeSpan.FromSeconds(1));
+        cut.WaitForAssertion(() => Assert.Equal("8", Text(cut, "time")));
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+        [
+            new RoundResultDto(Me, "alice", 0, false, 0, [Card(1976)]),
+            new RoundResultDto(Bob, "bob", 0, false, 0, [Card(1976)])
+        ])));
+
+        Assert.Equal("0", Text(cut, "time"));
+        _time.Advance(TimeSpan.FromSeconds(3));
+        Assert.Equal("0", Text(cut, "time")); // stays 0 through the reveal
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 0, answer: 15)));
+        cut.WaitForAssertion(() => Assert.Equal("15", Text(cut, "time")));
+    }
+
+    [Fact]
+    public async Task TheLastSong_PlaysOnThroughTheReveal_AndStopsAtTheGameEnd()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+        [
+            new RoundResultDto(Me, "alice", 0, false, 0, [Card(1976)]),
+            new RoundResultDto(Bob, "bob", 0, false, 0, [Card(1976)])
+        ])));
+        Assert.True(_audio.Playing);
+
+        await cut.InvokeAsync(() => _hub.RaiseGameEnded(new GameEndedDto(GameId,
+            [new StandingDto(Me, "alice", 0, 0, 1, 1, []), new StandingDto(Bob, "bob", 0, 0, 1, 1, [])])));
+
+        Assert.False(_audio.Playing);
+        Assert.Contains("blob:" + Url(1), _audio.Revoked);
     }
 
     [Fact]
@@ -176,7 +313,7 @@ public class GamePageTests : BunitContext
 
         _time.Advance(TimeSpan.FromMilliseconds(1));
         cut.WaitForAssertion(() => Assert.Equal([(2, 0)], _hub.Answers));
-        Assert.Equal("Tiden løb ud – din placering er låst som svar", Text(cut, "message"));
+        Assert.Equal("Svar afgivet – låst", Text(cut, "message"));
 
         _time.Advance(GamePage.AutoLockLead); // the time is up: still only the one answer
         cut.WaitForAssertion(() => Assert.True(cut.Find("[data-testid=confirm]").HasAttribute("disabled")));
@@ -267,7 +404,7 @@ public class GamePageTests : BunitContext
     }
 
     [Fact]
-    public async Task RoundEnded_RevealsMyResult_FreesTheSong_AndTheNextRoundShowsMyNewHand()
+    public async Task RoundEnded_RevealsMyResult_AndTheNextRoundFreesTheSong_AndShowsMyNewHand()
     {
         var cut = RenderPage();
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
@@ -282,10 +419,10 @@ public class GamePageTests : BunitContext
         ])));
 
         Assert.Equal("Rigtigt! Kortet bliver i din hånd.", Text(cut, "message"));
-        Assert.Contains("blob:" + Url(1), _audio.Revoked);
         Assert.Single(cut.FindAll("[data-testid=card]")); // the reveal still shows the placed card, not a duplicate
 
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 0)));
+        cut.WaitForAssertion(() => Assert.Contains("blob:" + Url(1), _audio.Revoked));
 
         cut.WaitForAssertion(() => Assert.Equal(["1976", "1982"],
             cut.FindAll("[data-testid=card] .gc-year").Select(e => e.TextContent)));

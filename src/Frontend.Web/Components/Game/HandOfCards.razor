@@ -51,27 +51,31 @@
             <button type="button" @key="@("slot-" + slot)" class="gr-slot @(_dragging && _hot == slot ? "hot" : "")"
                     disabled="@IsLocked" aria-label="@SlotLabel(slot)" title="@SlotLabel(slot)"
                     @onclick="() => PlaceByClick(slot)" data-testid="slot"></button>
+            @* Each card sits in a .gh: its place in the fan, which never moves and is the hover target.
+               Only the .gc inside zooms, so the card can never move out from under the pointer. *@
             @if (ShowPlaced && _slot == slot)
             {
-                <div @key="@("placed")" class="gc gc-placed @RevealClass" style="@Fan(index++, count)" @ref="_placedRef"
+                <div @key="@("placed")" class="gh" style="@Fan(index++, count)" @ref="_placedRef"
                      data-drag="@(IsLocked ? null : "")" tabindex="@(IsLocked ? -1 : 0)" role="button"
                      aria-label="@PlacedLabel" @onkeydown="OnKeyDown" data-testid="placed">
-                    @if (Reveal is { Correct: true } reveal)
-                    {
-                        @Face(reveal.Song)
-                    }
-                    else
-                    {
-                        <div class="gc-year">?</div>
-                    }
+                    <div class="gc gc-placed @RevealClass">
+                        @if (Reveal is { Correct: true } reveal)
+                        {
+                            @Face(reveal.Song)
+                        }
+                        else
+                        {
+                            <div class="gc-year">?</div>
+                        }
+                    </div>
                 </div>
             }
             @if (slot < Cards.Count)
             {
                 var card = Cards[slot];
-                <div @key="@("card-" + slot)" class="gc" style="@Fan(index++, count)" data-card="" tabindex="0"
+                <div @key="@("card-" + slot)" class="gh" style="@Fan(index++, count)" data-card="" tabindex="0"
                      aria-label="@($"{card.Year}: {card.Title} – {string.Join(", ", card.Artists)}")" data-testid="card">
-                    @Face(card)
+                    <div class="gc">@Face(card)</div>
                 </div>
             }
         }
@@ -128,7 +132,6 @@
     private bool _dragging;
     private int _hot = -1;
     private bool _confirmed;
-    private bool _autoConfirmed;
     private string? _message;
     private bool _focusPlaced, _focusMystery;
 
@@ -145,7 +148,6 @@
             _dragging = false;
             _hot = -1;
             _confirmed = false;
-            _autoConfirmed = false;
             _message = null;
         }
 
@@ -153,24 +155,22 @@
         if (AutoConfirm && !_confirmed && Reveal is null && _slot is { } slot)
         {
             _confirmed = true;
-            _autoConfirmed = true;
             _dragging = false;
             _hot = -1;
             await OnConfirm.InvokeAsync(slot);
         }
     }
 
+    // Only while dragging; no standing instruction under the "?" (the screen-reader label still explains it).
     private string Hint =>
-        IsLocked ? ""
-        : _dragging ? (_hot >= 0 ? "Slip for at lægge kortet her" : "Træk ned mod hånden")
-        : "Hold musen over et kort for at se det. Træk ? ned mellem to år, eller klik på et hul.";
+        IsLocked || !_dragging ? ""
+        : _hot >= 0 ? "Slip for at lægge kortet her" : "Træk ned mod hånden";
 
     private string? Message => Reveal switch
     {
         { Answered: false } => "Intet svar – tiden løb ud.",
         { Correct: true } => "Rigtigt! Kortet bliver i din hånd.",
         not null => "Forkert – kortet ryger ud.",
-        null when _autoConfirmed => "Tiden løb ud – din placering er låst som svar",
         null when _confirmed => "Svar afgivet – låst",
         null when Locked => LockedText,
         _ => _message
