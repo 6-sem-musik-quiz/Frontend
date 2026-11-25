@@ -119,7 +119,7 @@ public class GamePageTests : BunitContext
     }
 
     [Fact]
-    public async Task WhenTheTimeIsUp_TheHandLocks_AndTheSongStops()
+    public async Task WhenTheTimeIsUp_TheHandLocks_AndTheSongPlaysOn()
     {
         var cut = RenderPage();
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0, answer: 15)));
@@ -130,7 +130,53 @@ public class GamePageTests : BunitContext
 
         cut.WaitForAssertion(() => Assert.Equal("Tiden er gået.", Text(cut, "message")));
         Assert.True(cut.Find("[data-testid=confirm]").HasAttribute("disabled"));
-        Assert.Equal(1, _audio.Stops);
+        Assert.True(_audio.Playing); // SCRUM-159: it stops at the next round or the game end
+    }
+
+    // SCRUM-159: everyone answered, so the round ends early; the song plays on through the reveal.
+    [Fact]
+    public async Task TheSong_PlaysOnThroughTheReveal_AndStopsWhenTheNextRoundStarts()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+        cut.WaitForAssertion(() => Assert.True(_audio.Playing));
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+        [
+            new RoundResultDto(Me, "alice", 1, true, 1, [Card(1976), Card(1982)]),
+            new RoundResultDto(Bob, "bob", 0, false, 0, [Card(1976)])
+        ])));
+
+        Assert.True(_audio.Playing);
+        Assert.DoesNotContain("blob:" + Url(1), _audio.Revoked); // still playing from it
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 3000)));
+
+        cut.WaitForAssertion(() => Assert.False(_audio.Playing)); // silent during "Gør dig klar"
+        Assert.Contains("blob:" + Url(1), _audio.Revoked);
+        Assert.DoesNotContain("blob:" + Url(2), _audio.Revoked); // the next song is kept
+        _time.Advance(TimeSpan.FromSeconds(3));
+        cut.WaitForAssertion(() => Assert.Equal(("blob:" + Url(2), 40.0), _audio.Played[^1]));
+        Assert.True(_audio.Playing);
+    }
+
+    [Fact]
+    public async Task TheLastSong_PlaysOnThroughTheReveal_AndStopsAtTheGameEnd()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+        [
+            new RoundResultDto(Me, "alice", 0, false, 0, [Card(1976)]),
+            new RoundResultDto(Bob, "bob", 0, false, 0, [Card(1976)])
+        ])));
+        Assert.True(_audio.Playing);
+
+        await cut.InvokeAsync(() => _hub.RaiseGameEnded(new GameEndedDto(GameId,
+            [new StandingDto(Me, "alice", 0, 0, 1, 1, []), new StandingDto(Bob, "bob", 0, 0, 1, 1, [])])));
+
+        Assert.False(_audio.Playing);
+        Assert.Contains("blob:" + Url(1), _audio.Revoked);
     }
 
     [Fact]
@@ -267,7 +313,7 @@ public class GamePageTests : BunitContext
     }
 
     [Fact]
-    public async Task RoundEnded_RevealsMyResult_FreesTheSong_AndTheNextRoundShowsMyNewHand()
+    public async Task RoundEnded_RevealsMyResult_AndTheNextRoundFreesTheSong_AndShowsMyNewHand()
     {
         var cut = RenderPage();
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
@@ -282,10 +328,10 @@ public class GamePageTests : BunitContext
         ])));
 
         Assert.Equal("Rigtigt! Kortet bliver i din hånd.", Text(cut, "message"));
-        Assert.Contains("blob:" + Url(1), _audio.Revoked);
         Assert.Single(cut.FindAll("[data-testid=card]")); // the reveal still shows the placed card, not a duplicate
 
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 0)));
+        cut.WaitForAssertion(() => Assert.Contains("blob:" + Url(1), _audio.Revoked));
 
         cut.WaitForAssertion(() => Assert.Equal(["1976", "1982"],
             cut.FindAll("[data-testid=card] .gc-year").Select(e => e.TextContent)));

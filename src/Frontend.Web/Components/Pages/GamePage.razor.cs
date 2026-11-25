@@ -247,6 +247,20 @@ public partial class GamePage : IAsyncDisposable
         }
         StateHasChanged();
 
+        // The last round's song played on through its reveal (SCRUM-159): stop it and free the old songs now.
+        try
+        {
+            await Audio.StopAsync();
+            foreach (var old in _sources.Keys.Where(r => r < round.Round).ToList())
+                await ReleaseAsync(old);
+        }
+        catch (JSException)
+        {
+            // Nothing to stop.
+        }
+        if (cts.IsCancellationRequested)
+            return;
+
         try
         {
             // Relative timer only: the device clock is never used, so a wrong clock does not matter.
@@ -304,9 +318,9 @@ public partial class GamePage : IAsyncDisposable
         _secondsLeft--;
         if (_secondsLeft == 0)
         {
+            // The song keeps playing through the reveal (SCRUM-159); the next round or the game end stops it.
             _timeUp = true;
             StopCountdown();
-            _ = Audio.StopAsync();
         }
         StateHasChanged();
     }
@@ -352,9 +366,10 @@ public partial class GamePage : IAsyncDisposable
 
     private Task OnRoundEnded(RoundEndedDto ended) => InvokeAsync(async () =>
     {
+        // The song keeps playing while the round is revealed (SCRUM-159), so it is neither stopped
+        // nor freed here: the next round does that.
         _roundCts?.Cancel();
         StopCountdown();
-        await Audio.StopAsync();
 
         var mine = ended.Results.FirstOrDefault(r => r.UserId == _me);
         _reveal = new RoundReveal(ended.Song, Answered: mine?.SlotIndex is not null, Correct: mine?.Correct == true);
@@ -372,7 +387,6 @@ public partial class GamePage : IAsyncDisposable
                 player.Reveal = new RivalReveal(ended.Song, result.Correct, result.SlotIndex);
             }
         }
-        await ReleaseAsync(ended.Round);
         StateHasChanged();
     });
 
