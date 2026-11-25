@@ -12,6 +12,11 @@ public partial class GamePage : IAsyncDisposable
 {
     public const string VolumeKey = "slopster.volume";
 
+    // SCRUM-171: a placed but unconfirmed card is sent this long before the time runs out. The server
+    // takes answers until EndsAt + 1 s, so the margin covers the network; an auto-locked answer comes
+    // in at nearly the full time and earns no speed bonus, which is fair.
+    public static readonly TimeSpan AutoLockLead = TimeSpan.FromMilliseconds(300);
+
     [Parameter] public Guid GameId { get; set; }
 
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
@@ -53,6 +58,7 @@ public partial class GamePage : IAsyncDisposable
     private RoundStartedDto? _roundInfo;
     private int? _secondsLeft;
     private bool _timeUp;
+    private bool _autoLock;
     private bool _needsPlay;
     private long _playbackStarted;
     private RoundReveal? _reveal;
@@ -65,7 +71,13 @@ public partial class GamePage : IAsyncDisposable
 
     private CancellationTokenSource? _roundCts;
     private ITimer? _countdown;
+    private ITimer? _autoLockTimer;
     private bool _disposed;
+
+    // Lock the placed card just before the time is up (or at the latest when it is). Not when the server
+    // already has my answer, e.g. after a reload where the hand no longer knows it was confirmed.
+    private bool AutoConfirm =>
+        (_autoLock || _timeUp) && !(_me is { } me && _players.TryGetValue(me, out var self) && self.Stamp is not null);
 
     private string Banner =>
         _reveal is not null ? "Runden er slut"
@@ -225,6 +237,7 @@ public partial class GamePage : IAsyncDisposable
         _roundInfo = round;
         _reveal = null;
         _timeUp = false;
+        _autoLock = false;
         _needsPlay = false;
         _secondsLeft = null;
         foreach (var p in _players.Values)
@@ -250,6 +263,9 @@ public partial class GamePage : IAsyncDisposable
         _playbackStarted = Time.GetTimestamp();
         _secondsLeft = round.AnswerTimeSeconds;
         _countdown = Time.CreateTimer(_ => InvokeAsync(Tick), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        var lockIn = TimeSpan.FromSeconds(round.AnswerTimeSeconds) - AutoLockLead;
+        _autoLockTimer = Time.CreateTimer(_ => InvokeAsync(AutoLock), null,
+            lockIn > TimeSpan.Zero ? lockIn : TimeSpan.Zero, Timeout.InfiniteTimeSpan);
         _needsPlay = !await PlayAsync();
         StateHasChanged();
     }
@@ -295,10 +311,20 @@ public partial class GamePage : IAsyncDisposable
         StateHasChanged();
     }
 
+    private void AutoLock()
+    {
+        if (_roundInfo is null || _reveal is not null)
+            return;
+        _autoLock = true;
+        StateHasChanged();
+    }
+
     private void StopCountdown()
     {
         _countdown?.Dispose();
         _countdown = null;
+        _autoLockTimer?.Dispose();
+        _autoLockTimer = null;
     }
 
     private async Task ConfirmAsync(int slotIndex)

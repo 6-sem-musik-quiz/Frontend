@@ -162,6 +162,57 @@ public class GamePageTests : BunitContext
         Assert.Equal([(3, 1)], _hub.Answers);
     }
 
+    // SCRUM-171: a card placed without "Bekræft" is sent just before the time runs out.
+    [Fact]
+    public async Task APlacedCard_IsLockedAutomatically_JustBeforeTheTimeRunsOut()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 0, answer: 15)));
+        cut.WaitForAssertion(() => Assert.False(cut.Find("[data-testid=confirm]").HasAttribute("disabled")));
+        cut.FindAll("[data-testid=slot]")[0].Click(); // before 1976
+
+        _time.Advance(TimeSpan.FromSeconds(15) - GamePage.AutoLockLead - TimeSpan.FromMilliseconds(1));
+        Assert.Empty(_hub.Answers);
+
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => Assert.Equal([(2, 0)], _hub.Answers));
+        Assert.Equal("Tiden løb ud – din placering er låst som svar", Text(cut, "message"));
+
+        _time.Advance(GamePage.AutoLockLead); // the time is up: still only the one answer
+        cut.WaitForAssertion(() => Assert.True(cut.Find("[data-testid=confirm]").HasAttribute("disabled")));
+        Assert.Single(_hub.Answers);
+    }
+
+    [Fact]
+    public async Task WithNothingPlaced_NoAnswerIsSent_WhenTheTimeRunsOut()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0, answer: 15)));
+        cut.WaitForAssertion(() => Assert.Equal("15", Text(cut, "time")));
+
+        for (var i = 0; i < 15; i++)
+            _time.Advance(TimeSpan.FromSeconds(1));
+
+        cut.WaitForAssertion(() => Assert.Equal("Tiden er gået.", Text(cut, "message")));
+        Assert.Empty(_hub.Answers);
+    }
+
+    [Fact]
+    public async Task AConfirmedAnswer_IsNotSentAgain_WhenTheTimeRunsOut()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0, answer: 15)));
+        cut.WaitForAssertion(() => Assert.False(cut.Find("[data-testid=confirm]").HasAttribute("disabled")));
+        cut.FindAll("[data-testid=slot]")[1].Click();
+        cut.Find("[data-testid=confirm]").Click();
+
+        for (var i = 0; i < 15; i++)
+            _time.Advance(TimeSpan.FromSeconds(1));
+
+        cut.WaitForAssertion(() => Assert.True(cut.Find("[data-testid=confirm]").HasAttribute("disabled")));
+        Assert.Equal([(1, 1)], _hub.Answers);
+    }
+
     [Fact]
     public async Task PlayerAnswered_StampsTheRivalsSeat_WithOrderAndTime_AndANewRoundClearsIt()
     {

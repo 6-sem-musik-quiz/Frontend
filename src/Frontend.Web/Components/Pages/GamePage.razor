@@ -67,7 +67,8 @@ else
                 <button type="button" class="btn btn-primary game-play" @onclick="PlayClickedAsync" data-testid="play">Afspil sangen</button>
             }
             <HandOfCards Cards="_cards" Round="_round" Banner="@Banner" Reveal="_reveal"
-                         Locked="@(_timeUp || _roundInfo is null)" LockedText="@LockedText" OnConfirm="ConfirmAsync">
+                         Locked="@(_timeUp || _roundInfo is null)" LockedText="@LockedText" OnConfirm="ConfirmAsync"
+                         AutoConfirm="AutoConfirm">
                 <Left><DeckPile RoundsLeft="@Math.Max(0, _state.TotalRounds - _round)" /></Left>
                 <Right><DiscardPile Songs="_played" /></Right>
             </HandOfCards>
