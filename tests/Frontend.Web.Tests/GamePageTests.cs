@@ -5,6 +5,7 @@ using Bunit;
 using Frontend.Domain.DTOs.Games;
 using Frontend.Web.Components.Pages;
 using Frontend.Web.Games;
+using Frontend.Web.Sound;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
@@ -20,6 +21,7 @@ public class GamePageTests : BunitContext
     private readonly FakeGameHub _hub = new();
     private readonly FakeGameAudio _audio = new();
     private readonly FakeTimeProvider _time = new();
+    private readonly FakeSoundEffects _sounds = new();
 
     public GamePageTests()
     {
@@ -27,6 +29,7 @@ public class GamePageTests : BunitContext
         Services.AddSingleton<IGameHubClient>(_hub);
         Services.AddSingleton<IGameAudio>(_audio);
         Services.AddSingleton<TimeProvider>(_time);
+        Services.AddSingleton<ISoundEffects>(_sounds);
         AddAuthorization().SetAuthorized("alice").SetClaims(new Claim("sub", Me.ToString()));
         _hub.State = State();
     }
@@ -359,5 +362,61 @@ public class GamePageTests : BunitContext
         Assert.Contains(JSInterop.Invocations, i => i.Identifier == "localStorage.setItem"
                                                     && (string?)i.Arguments[0] == GamePage.VolumeKey
                                                     && (string?)i.Arguments[1] == "0.4");
+    }
+
+    // SCRUM-164/165: sounds in the round.
+
+    [Fact]
+    public async Task Round_PlaysTheStartSound_TicksTheLastFiveSeconds_AndTimeUp()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0, answer: 15)));
+        cut.WaitForAssertion(() => Assert.Equal([Sfx.RoundStart], _sounds.Played));
+
+        for (var i = 0; i < 15; i++)
+            _time.Advance(TimeSpan.FromSeconds(1));
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            [Sfx.RoundStart, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.TimeUp], _sounds.Played));
+    }
+
+    [Fact]
+    public async Task Confirm_PlaysTheLockInSound_AndACorrectAnswerPlaysCorrect()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+        cut.WaitForAssertion(() => Assert.False(cut.Find("[data-testid=confirm]").HasAttribute("disabled")));
+        cut.FindAll("[data-testid=slot]")[1].Click();
+        cut.Find("[data-testid=confirm]").Click();
+        Assert.Equal(Sfx.LockIn, _sounds.Played[^1]);
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+            [new RoundResultDto(Me, "alice", 1, true, 1, [Card(1976), Card(1982)])])));
+
+        Assert.Equal(Sfx.Correct, _sounds.Played[^1]);
+    }
+
+    [Fact]
+    public async Task NoAnswer_PlaysWrong()
+    {
+        var cut = RenderPage();
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+            [new RoundResultDto(Me, "alice", null, false, 0, [Card(1976)])])));
+
+        Assert.Equal([Sfx.Wrong], _sounds.Played);
+    }
+
+    [Theory]
+    [InlineData(1, Sfx.Winner)]
+    [InlineData(2, Sfx.GameOver)]
+    public async Task GameEnded_PlaysWinnerOnlyForFirstPlace(int myPlacement, Sfx expected)
+    {
+        var cut = RenderPage();
+
+        await cut.InvokeAsync(() => _hub.RaiseGameEnded(new GameEndedDto(GameId,
+            [new StandingDto(Me, "alice", 5, 5, 10, myPlacement, [])])));
+
+        Assert.Equal([expected], _sounds.Played);
     }
 }

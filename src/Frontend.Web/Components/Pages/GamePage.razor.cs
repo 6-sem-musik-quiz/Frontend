@@ -1,6 +1,7 @@
 using Frontend.Domain.DTOs.Games;
 using Frontend.Web.Components.Game;
 using Frontend.Web.Games;
+using Frontend.Web.Sound;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -20,6 +21,7 @@ public partial class GamePage : IAsyncDisposable
     [Inject] private IGameAudio Audio { get; set; } = null!;
     [Inject] private TimeProvider Time { get; set; } = null!;
     [Inject] private IJSRuntime JS { get; set; } = null!;
+    [Inject] private ISoundEffects Sounds { get; set; } = null!;
 
     // What the card table (SCRUM-152) knows about a player. Everything here is public.
     private sealed class Player(string name, int score)
@@ -247,6 +249,7 @@ public partial class GamePage : IAsyncDisposable
         if (cts.IsCancellationRequested)
             return;
 
+        await Sounds.PlayAsync(Sfx.RoundStart); // the cards are fanned out as the song begins
         _playbackStarted = Time.GetTimestamp();
         _secondsLeft = round.AnswerTimeSeconds;
         _countdown = Time.CreateTimer(_ => InvokeAsync(Tick), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
@@ -286,8 +289,11 @@ public partial class GamePage : IAsyncDisposable
         if (_secondsLeft is not > 0)
             return;
         _secondsLeft--;
+        if (_secondsLeft is > 0 and <= 5)
+            _ = Sounds.PlayAsync(Sfx.Tick);
         if (_secondsLeft == 0)
         {
+            _ = Sounds.PlayAsync(Sfx.TimeUp);
             _timeUp = true;
             StopCountdown();
             _ = Audio.StopAsync();
@@ -307,6 +313,7 @@ public partial class GamePage : IAsyncDisposable
         {
             // My own stamp arrives with PlayerAnswered like everyone else's.
             await Hub.SubmitAnswerAsync(GameId, _round, slotIndex);
+            await Sounds.PlayAsync(Sfx.LockIn); // a chip on the table: the answer is locked
         }
         catch (GameHubException e)
         {
@@ -332,6 +339,7 @@ public partial class GamePage : IAsyncDisposable
 
         var mine = ended.Results.FirstOrDefault(r => r.UserId == _me);
         _reveal = new RoundReveal(ended.Song, Answered: mine?.SlotIndex is not null, Correct: mine?.Correct == true);
+        await Sounds.PlayAsync(_reveal.Correct ? Sfx.Correct : Sfx.Wrong);
         // The hand keeps showing the reveal; the new timeline replaces it when the next round starts.
         _nextTimeline = mine?.Timeline;
         _played.RemoveAll(p => p.Round == ended.Round);
@@ -356,6 +364,8 @@ public partial class GamePage : IAsyncDisposable
         StopCountdown();
         _ended = ended;
         await Audio.StopAsync();
+        var me = ended.Standings.FirstOrDefault(s => s.UserId == _me);
+        await Sounds.PlayAsync(me?.Placement == 1 ? Sfx.Winner : Sfx.GameOver);
         foreach (var round in _sources.Keys.ToList())
             await ReleaseAsync(round);
         StateHasChanged();

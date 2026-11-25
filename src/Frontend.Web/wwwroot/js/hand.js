@@ -1,4 +1,7 @@
 // Drag and drop for HandOfCards (SCRUM-148), with Pointer Events, so mouse and touch work the same.
+// Card sounds (SCRUM-164): picked up, the neighbours sliding aside, laid in the hand or sliding back.
+
+import { play } from "./sfx.js";
 //
 // Blazor owns the state; this script only moves the "?" card under the pointer and tells .NET
 // which gap ("slot") it is over: DragStarted(), HotSlot(slot) when it changes, Dropped(slot).
@@ -18,6 +21,7 @@ export function attach(root, dotnet) {
         e.preventDefault();
         root.setPointerCapture(e.pointerId);
         drag = { id: e.pointerId, base: null, centers: null, hand: null, hot: -1 };
+        play("cardPickup");
         dotnet.invokeMethodAsync("DragStarted");
     }
 
@@ -45,6 +49,7 @@ export function attach(root, dotnet) {
         const hot = slotAt(e.clientX, e.clientY);
         if (hot !== drag.hot) {
             drag.hot = hot;
+            if (hot >= 0) play("cardShift");
             dotnet.invokeMethodAsync("HotSlot", hot);
         }
     }
@@ -62,6 +67,7 @@ export function attach(root, dotnet) {
         if (ghost) ghost.style.transform = "";
         try { root.releasePointerCapture(drag.id); } catch { /* already released */ }
         drag = null;
+        play(slot >= 0 ? "cardPlace" : "cardReturn");
         dotnet.invokeMethodAsync("Dropped", slot);
     }
 

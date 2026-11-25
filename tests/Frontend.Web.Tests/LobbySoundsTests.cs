@@ -100,5 +100,13 @@ public sealed class FakeSoundEffects : ISoundEffects
         return Task.CompletedTask;
     }
 
+    public bool UiInstalled { get; private set; }
+
+    public Task InstallUiAsync()
+    {
+        UiInstalled = true;
+        return Task.CompletedTask;
+    }
+
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

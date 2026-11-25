@@ -2,9 +2,10 @@ using Microsoft.JSInterop;
 
 namespace Frontend.Web.Sound;
 
-// The sound effects the app can play (wwwroot/js/sfx.js synthesizes them).
+// The sound effects the app can play: wwwroot/sounds/<name>.mp3, played by wwwroot/js/sfx.js.
 public enum Sfx
 {
+    // Lobby (SCRUM-162)
     LobbyJoin,
     LobbyLeave,
     Ready,
@@ -12,6 +13,24 @@ public enum Sfx
     LobbyFull,
     AllReady,
     GameStart,
+
+    // Front page and navigation (SCRUM-163). Click and hover are played by sfx.js itself (InstallUiAsync).
+    Welcome,
+    Navigate,
+
+    // Cards (SCRUM-164). Pick up, slide and drop are played by hand.js; lock-in by the game page.
+    LockIn,
+
+    // The round
+    RoundStart,
+    Tick,
+    TimeUp,
+
+    // Results (SCRUM-165)
+    Correct,
+    Wrong,
+    Winner,
+    GameOver,
 }
 
 // The shared sound-effect player (SCRUM-161). Volume and mute are stored in the browser and read by
@@ -27,6 +46,10 @@ public interface ISoundEffects : IAsyncDisposable
     Task SetVolumeAsync(double volume);
 
     Task SetMutedAsync(bool muted);
+
+    // Hover and click sounds on every button and link (one listener for the whole page). Called once
+    // by MainLayout; later calls do nothing.
+    Task InstallUiAsync();
 }
 
 public sealed class SoundEffects(IJSRuntime js) : ISoundEffects
@@ -48,6 +71,8 @@ public sealed class SoundEffects(IJSRuntime js) : ISoundEffects
     public Task SetVolumeAsync(double volume) => Safe(m => m.InvokeVoidAsync("setVolume", Math.Clamp(volume, 0, 1)).AsTask());
 
     public Task SetMutedAsync(bool muted) => Safe(m => m.InvokeVoidAsync("setMuted", muted).AsTask());
+
+    public Task InstallUiAsync() => Safe(m => m.InvokeVoidAsync("installUi").AsTask());
 
     private async Task Safe(Func<IJSObjectReference, Task> call)
     {

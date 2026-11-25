@@ -1,26 +1,57 @@
-// Sound effects (SCRUM-161 "Lydeffekter", first used by the lobby in SCRUM-162). Called from SoundEffects.cs.
+// Sound effects for the whole app (SCRUM-161 "Lydeffekter"). Called from SoundEffects.cs, hand.js and
+// MainLayout (installUi).
 //
-// The sounds are synthesized with the Web Audio API instead of loaded from files: short 8-bit
-// triangle/sine bleeps plus filtered noise for cards on the table, which fits the retro card-table
-// theme and needs no assets or licences.
+// The sounds are recorded CC0 sounds from Kenney (kenney.nl: Casino Audio, Interface Sounds, UI Audio;
+// see wwwroot/sounds/LICENSE-kenney.txt): cards, chips and soft clicks that fit the card-table theme.
+// They were cut, levelled to the same peak and low-passed at 5.5 kHz so none of them is shrill.
 //
-// This is the shared player for every sound effect. Volume and mute live in localStorage, so the
-// settings menu (SCRUM-166) only has to call setVolume / setMuted; the player reads them on every play.
+// Volume and mute live in localStorage, so the settings menu (SCRUM-166) only has to call
+// setVolume / setMuted; the player reads them on every play.
 
 const VOLUME_KEY = "slopster.sound.volume";
 const MUTED_KEY = "slopster.sound.muted";
 const DEFAULT_VOLUME = 0.6;
-// The sounds are mixed at half strength, so even 100 % on the volume slider stays below the song.
+// Effects are mixed at half strength, so even 100 % stays below the round's song.
 const MASTER = 0.5;
 
-// The same sound again within this many ms is skipped, and at most MAX_BURST sounds start within
-// BURST_MS, so many joins at once do not become a wall of sound.
-const MIN_GAP_MS = 300;
+// Per sound: how loud next to the others, and the shortest time between two plays of it.
+const SOUNDS = {
+    // Lobby (SCRUM-162)
+    lobbyJoin: { gain: 1, gap: 300 },
+    lobbyLeave: { gain: 0.8, gap: 300 },
+    ready: { gain: 1, gap: 250 },
+    unready: { gain: 0.8, gap: 250 },
+    lobbyFull: { gain: 0.7, gap: 1000 },
+    allReady: { gain: 1, gap: 1000 },
+    gameStart: { gain: 0.9, gap: 2000 },
+    // Front page, buttons and navigation (SCRUM-163)
+    welcome: { gain: 0.9, gap: 2000 },
+    click: { gain: 0.6, gap: 60 },
+    hover: { gain: 0.3, gap: 80 },
+    navigate: { gain: 0.6, gap: 400 },
+    // Cards in the hand (SCRUM-164)
+    cardPickup: { gain: 0.9, gap: 150 },
+    cardShift: { gain: 0.5, gap: 120 },
+    cardPlace: { gain: 1, gap: 150 },
+    cardReturn: { gain: 0.7, gap: 150 },
+    lockIn: { gain: 1, gap: 300 },
+    // The round
+    roundStart: { gain: 0.9, gap: 1000 },
+    tick: { gain: 0.45, gap: 500 },
+    timeUp: { gain: 0.8, gap: 1000 },
+    // Results (SCRUM-165)
+    correct: { gain: 1, gap: 500 },
+    wrong: { gain: 0.8, gap: 500 },
+    winner: { gain: 1, gap: 2000 },
+    gameOver: { gain: 0.9, gap: 2000 },
+};
+
+// At most MAX_BURST sounds start within BURST_MS, so many events at once are not a wall of sound.
 const BURST_MS = 500;
-const MAX_BURST = 3;
+const MAX_BURST = 4;
 
 let ctx = null;
-let noiseBuffer = null;
+const buffers = new Map();   // name -> Promise<AudioBuffer | null>
 const lastPlayed = new Map();
 let recent = [];
 
@@ -34,14 +65,28 @@ function context() {
     return ctx;
 }
 
-// Browsers only allow audio after a click or key press; the first one unlocks the context.
-function unlock() {
-    context();
-    window.removeEventListener("pointerdown", unlock);
-    window.removeEventListener("keydown", unlock);
+function load(name) {
+    if (!buffers.has(name)) {
+        const c = context();
+        buffers.set(name, !c ? Promise.resolve(null) :
+            fetch(`./sounds/${name}.mp3`)
+                .then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status))
+                .then(data => c.decodeAudioData(data))
+                .catch(() => null));
+    }
+    return buffers.get(name);
 }
-window.addEventListener("pointerdown", unlock);
-window.addEventListener("keydown", unlock);
+
+// Browsers only allow audio after a click or key press; the first one unlocks the context and
+// loads all sounds (about 170 kB), so the first real sound is not late.
+function unlock() {
+    if (!context()) return;
+    Object.keys(SOUNDS).forEach(load);
+    window.removeEventListener("pointerdown", unlock, true);
+    window.removeEventListener("keydown", unlock, true);
+}
+window.addEventListener("pointerdown", unlock, true);
+window.addEventListener("keydown", unlock, true);
 
 function read(key) {
     try { return localStorage.getItem(key); } catch { return null; }
@@ -65,91 +110,6 @@ export function setMuted(muted) {
     write(MUTED_KEY, muted ? "true" : "false");
 }
 
-function noise(c) {
-    if (!noiseBuffer) {
-        noiseBuffer = c.createBuffer(1, c.sampleRate * 0.5, c.sampleRate);
-        const data = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    }
-    return noiseBuffer;
-}
-
-// One note: wave type, frequency (optionally sliding to `to`), start offset and length in seconds.
-// Triangle by default: rounder than the square wave, which sounded shrill.
-function tone(c, out, { type = "triangle", freq, to, at = 0, dur, gain = 0.18 }) {
-    const t = c.currentTime + at;
-    const osc = c.createOscillator();
-    const env = c.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t);
-    if (to) osc.frequency.exponentialRampToValueAtTime(to, t + dur);
-    env.gain.setValueAtTime(0.0001, t);
-    env.gain.exponentialRampToValueAtTime(gain, t + 0.008);
-    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    osc.connect(env).connect(out);
-    osc.start(t);
-    osc.stop(t + dur + 0.03);
-}
-
-// A short burst of filtered noise: a card laid on the table, a riffle, a stamp's click.
-// Around 1.1 kHz it sounds like cardboard rather than a sharp click.
-function swish(c, out, { at = 0, dur, freq = 1100, q = 0.8, gain = 0.25 }) {
-    const t = c.currentTime + at;
-    const src = c.createBufferSource();
-    const filter = c.createBiquadFilter();
-    const env = c.createGain();
-    src.buffer = noise(c);
-    filter.type = "bandpass";
-    filter.frequency.value = freq;
-    filter.Q.value = q;
-    env.gain.setValueAtTime(gain, t);
-    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    src.connect(filter).connect(env).connect(out);
-    src.start(t);
-    src.stop(t + dur + 0.03);
-}
-
-const SOUNDS = {
-    // A card is laid on the table, then a friendly rising two-note bleep.
-    lobbyJoin(c, out) {
-        swish(c, out, { dur: 0.06, gain: 0.3 });
-        tone(c, out, { freq: 392, at: 0.05, dur: 0.1 });
-        tone(c, out, { freq: 523, at: 0.13, dur: 0.16 });
-    },
-    // The opposite of join: two soft falling notes and no card.
-    lobbyLeave(c, out) {
-        tone(c, out, { freq: 440, dur: 0.09, gain: 0.14 });
-        tone(c, out, { freq: 330, at: 0.08, dur: 0.14, gain: 0.11 });
-    },
-    // Ready: a stamp (a low thump and a click) and a small blip.
-    ready(c, out) {
-        tone(c, out, { type: "sine", freq: 130, to: 55, dur: 0.12, gain: 0.35 });
-        swish(c, out, { dur: 0.03, freq: 1800, q: 1.5, gain: 0.18 });
-        tone(c, out, { freq: 659, at: 0.07, dur: 0.08, gain: 0.1 });
-    },
-    // Not ready: a light falling click, clearly different from the stamp.
-    unready(c, out) {
-        swish(c, out, { dur: 0.02, freq: 1500, q: 1.5, gain: 0.12 });
-        tone(c, out, { freq: 523, to: 330, at: 0.01, dur: 0.12, gain: 0.13 });
-    },
-    // The last seat is taken: a discreet chime.
-    lobbyFull(c, out) {
-        tone(c, out, { type: "sine", freq: 880, dur: 0.35, gain: 0.09 });
-        tone(c, out, { type: "sine", freq: 1175, at: 0.1, dur: 0.4, gain: 0.07 });
-    },
-    // Everyone is ready: a rising arpeggio.
-    allReady(c, out) {
-        [392, 494, 587, 784].forEach((freq, i) => tone(c, out, { freq, at: i * 0.08, dur: 0.12, gain: 0.13 }));
-    },
-    // The game starts: the deck is shuffled, then a short fanfare leads into round one.
-    gameStart(c, out) {
-        for (let i = 0; i < 8; i++) swish(c, out, { at: i * 0.05, dur: 0.04, freq: 1000 + (i % 2) * 300, gain: 0.22 });
-        tone(c, out, { freq: 523, at: 0.45, dur: 0.12, gain: 0.13 });
-        tone(c, out, { freq: 784, at: 0.56, dur: 0.3, gain: 0.13 });
-        tone(c, out, { type: "sine", freq: 262, at: 0.56, dur: 0.3, gain: 0.12 });
-    },
-};
-
 // Plays one sound by name. Returns false when it was skipped (muted, throttled, unknown or no audio).
 export function play(name) {
     const sound = SOUNDS[name];
@@ -159,24 +119,63 @@ export function play(name) {
     if (muted || volume <= 0) return false;
 
     const now = performance.now();
-    if (now - (lastPlayed.get(name) ?? -Infinity) < MIN_GAP_MS) return false;
+    if (now - (lastPlayed.get(name) ?? -Infinity) < sound.gap) return false;
     recent = recent.filter(t => now - t < BURST_MS);
     if (recent.length >= MAX_BURST) return false;
 
     const c = context();
-    if (!c) return false;
+    if (!c || c.state !== "running") return false;
 
     lastPlayed.set(name, now);
     recent.push(now);
 
-    // A low-pass filter over each sound takes off the sharp treble.
-    const out = c.createGain();
-    const soften = c.createBiquadFilter();
-    soften.type = "lowpass";
-    soften.frequency.value = 2600;
-    soften.Q.value = 0.5;
-    out.gain.value = volume * MASTER;
-    out.connect(soften).connect(c.destination);
-    sound(c, out);
+    load(name).then(buffer => {
+        if (!buffer) return;
+        const src = c.createBufferSource();
+        const gain = c.createGain();
+        src.buffer = buffer;
+        gain.gain.value = volume * MASTER * sound.gain;
+        src.connect(gain).connect(c.destination);
+        src.start();
+    });
     return true;
+}
+
+// ---- Hover and click on every button and link in the app ----
+//
+// One delegated listener for the whole page instead of code in every component. An element can
+// opt out with data-sfx="none" (also on a parent, e.g. the game's hand, which has its own card
+// sounds), or choose another click sound with data-sfx="<name>". Links make no click sound: the
+// page change has its own sound (MainLayout).
+
+const INTERACTIVE = "button, a[href], [role=button], .btn, summary, select, label[for], input[type=checkbox], input[type=radio]";
+let installed = false;
+let hovered = null;
+
+function target(e) {
+    const el = e.target instanceof Element ? e.target.closest(INTERACTIVE) : null;
+    if (!el || el.matches(":disabled, [aria-disabled=true]")) return null;
+    if (el.closest("[data-sfx=none]")) return null;
+    return el;
+}
+
+export function installUi() {
+    if (installed) return;
+    installed = true;
+
+    document.addEventListener("pointerover", e => {
+        if (e.pointerType !== "mouse") return; // no hover sounds on touch
+        const el = target(e);
+        if (el === hovered) return;
+        hovered = el;
+        if (el) play("hover");
+    });
+
+    document.addEventListener("click", e => {
+        const el = target(e);
+        if (!el) return;
+        const custom = el.closest("[data-sfx]")?.getAttribute("data-sfx");
+        if (custom) play(custom);
+        else if (!el.matches("a[href]")) play("click");
+    });
 }

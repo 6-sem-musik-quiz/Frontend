@@ -3,6 +3,7 @@
 @inject IAuthService AuthService
 @inject ApiCallHandler ApiCall
 @inject NavigationManager Navigation
+@inject ISoundEffects Sounds
 
 <PageTitle>Log ind · Slopster</PageTitle>
 
@@ -49,6 +50,7 @@
 
         if (_error is null)
         {
+            await Sounds.PlayAsync(Sfx.Welcome); // a fresh deck is opened (SCRUM-163)
             Navigation.NavigateTo(LoginUrl.SafeReturnUrl(ReturnUrl));
         }
     }
