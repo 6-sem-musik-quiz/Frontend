@@ -588,6 +588,21 @@ h1:focus {
     z-index: 50;
     transform: translateY(-70px) scale(1.45) rotate(0deg);
 }
+/* The zoomed card moves up and away from its bottom 70 px. Without this, a pointer near the bottom of a
+   card ends up below it, the hover ends, the card drops back under the pointer, and it zooms again: a
+   flicker loop. An invisible strip under the hovered card covers the spot it left (70 px on screen =
+   70 / 1.45 px inside the scaled card), so the hover holds until the pointer really leaves. */
+.gr-hand .gc:hover::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: calc(70px / 1.45 + 4px);
+}
+.gr-dragging .gr-hand .gc:hover::after {
+    content: none; /* no zoom while dragging, so nothing to cover */
+}
 .gr-dragging .gr-hand .gc:hover {
     transform: translateY(var(--lift, 0)) rotate(var(--r, 0)); /* no zoom while dragging */
 }
