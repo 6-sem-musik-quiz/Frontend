@@ -1,7 +1,7 @@
 // Sound effects (SCRUM-161 "Lydeffekter", first used by the lobby in SCRUM-162). Called from SoundEffects.cs.
 //
 // The sounds are synthesized with the Web Audio API instead of loaded from files: short 8-bit
-// square/triangle bleeps plus filtered noise for cards on the table, which fits the retro card-table
+// triangle/sine bleeps plus filtered noise for cards on the table, which fits the retro card-table
 // theme and needs no assets or licences.
 //
 // This is the shared player for every sound effect. Volume and mute live in localStorage, so the
@@ -75,7 +75,8 @@ function noise(c) {
 }
 
 // One note: wave type, frequency (optionally sliding to `to`), start offset and length in seconds.
-function tone(c, out, { type = "square", freq, to, at = 0, dur, gain = 0.2 }) {
+// Triangle by default: rounder than the square wave, which sounded shrill.
+function tone(c, out, { type = "triangle", freq, to, at = 0, dur, gain = 0.18 }) {
     const t = c.currentTime + at;
     const osc = c.createOscillator();
     const env = c.createGain();
@@ -83,15 +84,16 @@ function tone(c, out, { type = "square", freq, to, at = 0, dur, gain = 0.2 }) {
     osc.frequency.setValueAtTime(freq, t);
     if (to) osc.frequency.exponentialRampToValueAtTime(to, t + dur);
     env.gain.setValueAtTime(0.0001, t);
-    env.gain.exponentialRampToValueAtTime(gain, t + 0.005);
+    env.gain.exponentialRampToValueAtTime(gain, t + 0.008);
     env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     osc.connect(env).connect(out);
     osc.start(t);
-    osc.stop(t + dur + 0.02);
+    osc.stop(t + dur + 0.03);
 }
 
 // A short burst of filtered noise: a card laid on the table, a riffle, a stamp's click.
-function swish(c, out, { at = 0, dur, freq = 2000, q = 1, gain = 0.3 }) {
+// Around 1.1 kHz it sounds like cardboard rather than a sharp click.
+function swish(c, out, { at = 0, dur, freq = 1100, q = 0.8, gain = 0.25 }) {
     const t = c.currentTime + at;
     const src = c.createBufferSource();
     const filter = c.createBiquadFilter();
@@ -104,47 +106,47 @@ function swish(c, out, { at = 0, dur, freq = 2000, q = 1, gain = 0.3 }) {
     env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     src.connect(filter).connect(env).connect(out);
     src.start(t);
-    src.stop(t + dur + 0.02);
+    src.stop(t + dur + 0.03);
 }
 
 const SOUNDS = {
     // A card is laid on the table, then a friendly rising two-note bleep.
     lobbyJoin(c, out) {
-        swish(c, out, { dur: 0.07, freq: 1800, gain: 0.35 });
-        tone(c, out, { freq: 659, at: 0.05, dur: 0.08 });
-        tone(c, out, { freq: 880, at: 0.12, dur: 0.12 });
+        swish(c, out, { dur: 0.06, gain: 0.3 });
+        tone(c, out, { freq: 392, at: 0.05, dur: 0.1 });
+        tone(c, out, { freq: 523, at: 0.13, dur: 0.16 });
     },
-    // The opposite of join: a softer, shorter falling bleep and no card.
+    // The opposite of join: two soft falling notes and no card.
     lobbyLeave(c, out) {
-        tone(c, out, { type: "triangle", freq: 523, at: 0, dur: 0.07, gain: 0.18 });
-        tone(c, out, { type: "triangle", freq: 349, at: 0.07, dur: 0.1, gain: 0.14 });
+        tone(c, out, { freq: 440, dur: 0.09, gain: 0.14 });
+        tone(c, out, { freq: 330, at: 0.08, dur: 0.14, gain: 0.11 });
     },
-    // Ready: a stamp (a low thump and a click) and a bright blip.
+    // Ready: a stamp (a low thump and a click) and a small blip.
     ready(c, out) {
-        tone(c, out, { freq: 150, to: 60, dur: 0.09, gain: 0.3 });
-        swish(c, out, { dur: 0.03, freq: 3500, q: 2, gain: 0.25 });
-        tone(c, out, { freq: 1047, at: 0.06, dur: 0.06, gain: 0.12 });
+        tone(c, out, { type: "sine", freq: 130, to: 55, dur: 0.12, gain: 0.35 });
+        swish(c, out, { dur: 0.03, freq: 1800, q: 1.5, gain: 0.18 });
+        tone(c, out, { freq: 659, at: 0.07, dur: 0.08, gain: 0.1 });
     },
     // Not ready: a light falling click, clearly different from the stamp.
     unready(c, out) {
-        swish(c, out, { dur: 0.02, freq: 2500, q: 2, gain: 0.15 });
-        tone(c, out, { type: "triangle", freq: 784, to: 392, at: 0.01, dur: 0.1, gain: 0.16 });
+        swish(c, out, { dur: 0.02, freq: 1500, q: 1.5, gain: 0.12 });
+        tone(c, out, { freq: 523, to: 330, at: 0.01, dur: 0.12, gain: 0.13 });
     },
-    // The last seat is taken: a quiet two-note chime.
+    // The last seat is taken: a discreet chime.
     lobbyFull(c, out) {
-        tone(c, out, { type: "triangle", freq: 1319, dur: 0.25, gain: 0.1 });
-        tone(c, out, { type: "triangle", freq: 1760, at: 0.09, dur: 0.3, gain: 0.08 });
+        tone(c, out, { type: "sine", freq: 880, dur: 0.35, gain: 0.09 });
+        tone(c, out, { type: "sine", freq: 1175, at: 0.1, dur: 0.4, gain: 0.07 });
     },
     // Everyone is ready: a rising arpeggio.
     allReady(c, out) {
-        [523, 659, 784, 1047].forEach((freq, i) => tone(c, out, { freq, at: i * 0.07, dur: 0.09, gain: 0.15 }));
+        [392, 494, 587, 784].forEach((freq, i) => tone(c, out, { freq, at: i * 0.08, dur: 0.12, gain: 0.13 }));
     },
     // The game starts: the deck is shuffled, then a short fanfare leads into round one.
     gameStart(c, out) {
-        for (let i = 0; i < 8; i++) swish(c, out, { at: i * 0.045, dur: 0.035, freq: 2200 + (i % 2) * 600, gain: 0.25 });
-        tone(c, out, { freq: 784, at: 0.42, dur: 0.1, gain: 0.15 });
-        tone(c, out, { freq: 1047, at: 0.52, dur: 0.22, gain: 0.15 });
-        tone(c, out, { type: "triangle", freq: 523, at: 0.52, dur: 0.22, gain: 0.12 });
+        for (let i = 0; i < 8; i++) swish(c, out, { at: i * 0.05, dur: 0.04, freq: 1000 + (i % 2) * 300, gain: 0.22 });
+        tone(c, out, { freq: 523, at: 0.45, dur: 0.12, gain: 0.13 });
+        tone(c, out, { freq: 784, at: 0.56, dur: 0.3, gain: 0.13 });
+        tone(c, out, { type: "sine", freq: 262, at: 0.56, dur: 0.3, gain: 0.12 });
     },
 };
 
@@ -167,9 +169,14 @@ export function play(name) {
     lastPlayed.set(name, now);
     recent.push(now);
 
+    // A low-pass filter over each sound takes off the sharp treble.
     const out = c.createGain();
+    const soften = c.createBiquadFilter();
+    soften.type = "lowpass";
+    soften.frequency.value = 2600;
+    soften.Q.value = 0.5;
     out.gain.value = volume * MASTER;
-    out.connect(c.destination);
+    out.connect(soften).connect(c.destination);
     sound(c, out);
     return true;
 }
