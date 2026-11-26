@@ -29,6 +29,7 @@ public class AuthorizationRoutingTests : BunitContext
         Services.AddScoped<ApiCallHandler>();
         Services.AddSingleton<ISoundEffects>(new FakeSoundEffects()); // MainLayout installs the UI sounds
         Services.AddSingleton<Frontend.Web.Games.IGameAudio>(new FakeGameAudio()); // the options menu sets the music volume
+        Services.AddSingleton<IBackgroundMusic>(new FakeBackgroundMusic()); // MainLayout starts/stops the menu music
         Services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(
             new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build()); // /admin reads Grafana:DashboardUrl
         Services.AddSingleton(Substitute.For<Frontend.Services.Interfaces.IMusicApiClient>()); // /admin and / list playlists

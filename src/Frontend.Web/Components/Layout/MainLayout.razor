@@ -1,5 +1,8 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 @inject ISoundEffects Sounds
+@inject IBackgroundMusic Music
+@inject NavigationManager Navigation
 
 <div class="page">
     <TopBar />
@@ -19,9 +22,18 @@
 
 @code {
     // SCRUM-163: hover and click sounds on every button and link.
+    // SCRUM-167: quiet music on the front page and in the lobby; it fades out on the other pages.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-            await Sounds.InstallUiAsync();
+        if (!firstRender)
+            return;
+        Navigation.LocationChanged += OnLocationChanged;
+        await Sounds.InstallUiAsync();
+        await Music.SetPageAsync(Navigation.ToBaseRelativePath(Navigation.Uri));
     }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        _ = Music.SetPageAsync(Navigation.ToBaseRelativePath(e.Location));
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
 }
