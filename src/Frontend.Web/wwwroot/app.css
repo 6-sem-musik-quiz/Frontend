@@ -747,7 +747,14 @@ h1:focus {
 /* ---- Game page (SCRUM-112) ---- */
 /* Sliders (game sidebar and the options menu): a mustard thumb with an ink border on a cream track,
    instead of Bootstrap's blue. Bootstrap draws the range itself, so accent-color alone does nothing. */
+/* Track: 8px + 2px border = 12px. Thumb: 16px + 2px border = 20px. WebKit places the thumb from the
+   top of the track's content box, so it must move up (20 - 8) / 2 = 6px to sit in the middle.
+   Bootstrap's -0.25rem only fits a track without a border. Firefox centres the thumb itself. */
 .form-range::-webkit-slider-thumb {
+    box-sizing: content-box;
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
     background-color: var(--sl-mustard);
     border: 2px solid var(--sl-ink);
     box-shadow: 2px 2px 0 var(--sl-ink);
@@ -756,10 +763,15 @@ h1:focus {
     background-color: var(--sl-rust);
 }
 .form-range::-webkit-slider-runnable-track {
+    box-sizing: content-box;
+    height: 8px;
     background-color: var(--sl-teal-dark);
     border: 2px solid var(--sl-ink);
 }
 .form-range::-moz-range-thumb {
+    box-sizing: content-box;
+    width: 16px;
+    height: 16px;
     background-color: var(--sl-mustard);
     border: 2px solid var(--sl-ink);
     box-shadow: 2px 2px 0 var(--sl-ink);
@@ -768,6 +780,8 @@ h1:focus {
     background-color: var(--sl-rust);
 }
 .form-range::-moz-range-track {
+    box-sizing: content-box;
+    height: 8px;
     background-color: var(--sl-teal-dark);
     border: 2px solid var(--sl-ink);
 }
