@@ -43,7 +43,10 @@ public interface IGameHubClient : IAsyncDisposable
 // Thrown by IGameHubClient. Message is Danish and can be shown to the player as is.
 public sealed class GameHubException(string message, Exception? inner = null) : Exception(message, inner);
 
-// Hub: <GameService base>/hubs/game, i.e. /api/gameservice/hubs/game through the edge.
+// Hub: <GameService base>/hubs/game?gameId={gameId}, i.e. /api/gameservice/hubs/game?gameId=... through the edge.
+// ADR-0004 / gameservice.gamehub@1.3: every game lives in one GameService pod, and the edge routes the
+// connection there by the gameId in the URL. So one connection serves one game: joining another game
+// opens a new connection.
 // The JWT goes as a Bearer header on negotiate and as ?access_token= on the WebSocket (SignalR does that).
 // configureHttp is for tests (e.g. a TestServer handler); DI leaves it null.
 public sealed class GameHubClient(
@@ -53,6 +56,7 @@ public sealed class GameHubClient(
 {
     private HubConnection? _connection;
     private Guid _gameId;
+    private Guid _connectedGameId; // the game in the current connection's URL
 
     public event Func<IReadOnlyList<PrefetchDto>, Task>? Prefetch;
     public event Func<RoundStartedDto, Task>? RoundStarted;
@@ -65,9 +69,16 @@ public sealed class GameHubClient(
     public async Task<GameStateDto> JoinGameAsync(Guid gameId, CancellationToken ct = default)
     {
         _gameId = gameId;
+        if (_connection is not null && _connectedGameId != gameId)
+        {
+            // The new game may live in another GameService pod.
+            var old = _connection;
+            _connection = null;
+            await old.DisposeAsync();
+        }
         if (_connection is null)
         {
-            var connection = Build();
+            var connection = Build(gameId);
             try
             {
                 await connection.StartAsync(ct);
@@ -78,6 +89,7 @@ public sealed class GameHubClient(
                 throw new GameHubException("Kunne ikke forbinde til spillet. Tjek din forbindelse og prøv igen.", e);
             }
             _connection = connection;
+            _connectedGameId = gameId;
         }
 
         return await Call(() => _connection.InvokeAsync<GameStateDto>("JoinGame", gameId, ct));
@@ -92,10 +104,10 @@ public sealed class GameHubClient(
     public Task<DateTimeOffset> ServerTimeAsync(CancellationToken ct = default) =>
         Call(() => Connected().InvokeAsync<DateTimeOffset>("ServerTime", ct));
 
-    private HubConnection Build()
+    private HubConnection Build(Guid gameId)
     {
         var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(serviceUrls.Value.GameService, "hubs/game"), options =>
+            .WithUrl(new Uri(serviceUrls.Value.GameService, $"hubs/game?gameId={gameId}"), options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult(tokens.GetAccessToken());
                 configureHttp?.Invoke(options);
@@ -110,7 +122,8 @@ public sealed class GameHubClient(
         connection.On<GameEndedDto>("GameEnded", game => Raise(GameEnded, h => h(game)));
 
         connection.Reconnecting += _ => Raise(ConnectionLost, h => h());
-        connection.Closed += _ => Raise(ConnectionLost, h => h());
+        // Not when we closed it ourselves to switch game (it is no longer _connection then).
+        connection.Closed += _ => connection == _connection ? Raise(ConnectionLost, h => h()) : Task.CompletedTask;
         // The server forgets the connection's group on reconnect, so join again.
         connection.Reconnected += async _ =>
         {

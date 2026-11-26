@@ -24,12 +24,15 @@ public class GameHubClientTests : IAsyncLifetime
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
     private static readonly Guid GameId = Guid.Parse("11111111-2222-3333-4444-555555555555");
+    private static readonly Guid OtherGameId = Guid.Parse("66666666-7777-8888-9999-000000000000");
 
     // What the fake server received.
     public sealed class Calls
     {
         public ConcurrentQueue<string> Received { get; } = new();
         public ConcurrentQueue<string?> Authorization { get; } = new();
+        // ADR-0004: (gameId in the hub URL, connection id) for each JoinGame.
+        public ConcurrentQueue<(string? UrlGameId, string ConnectionId)> Joins { get; } = new();
     }
 
     // Answers like GameService (SCRUM-102/103/104): JoinGame returns a state, unknown games and
@@ -40,7 +43,8 @@ public class GameHubClientTests : IAsyncLifetime
         {
             calls.Authorization.Enqueue(Context.GetHttpContext()?.Request.Headers.Authorization.ToString());
             calls.Received.Enqueue($"JoinGame {gameId}");
-            if (gameId != GameId)
+            calls.Joins.Enqueue((Context.GetHttpContext()?.Request.Query["gameId"].ToString(), Context.ConnectionId));
+            if (gameId != GameId && gameId != OtherGameId)
                 throw new HubException("The game does not exist.");
             return new
             {
@@ -128,6 +132,35 @@ public class GameHubClientTests : IAsyncLifetime
         var received = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         handler = value => { received.TrySetResult(value); return Task.CompletedTask; };
         return received;
+    }
+
+    // ADR-0004 / gameservice.gamehub@1.3: the edge routes the connection to the game's pod by ?gameId=.
+    [Fact]
+    public async Task HubUrl_CarriesTheGameId()
+    {
+        var client = Client();
+
+        await client.JoinGameAsync(GameId);
+
+        Assert.Equal(GameId.ToString(), Assert.Single(_calls.Joins).UrlGameId);
+    }
+
+    [Fact]
+    public async Task JoiningAnotherGame_OpensANewConnection_ForThatGame()
+    {
+        var client = Client();
+        var lost = 0;
+        client.ConnectionLost += () => { lost++; return Task.CompletedTask; };
+
+        await client.JoinGameAsync(GameId);
+        await client.JoinGameAsync(GameId);      // same game: same connection
+        await client.JoinGameAsync(OtherGameId); // another game: may be another pod
+
+        var joins = _calls.Joins.ToArray();
+        Assert.Equal([GameId.ToString(), GameId.ToString(), OtherGameId.ToString()], joins.Select(j => j.UrlGameId));
+        Assert.Equal(joins[0].ConnectionId, joins[1].ConnectionId);
+        Assert.NotEqual(joins[1].ConnectionId, joins[2].ConnectionId);
+        Assert.Equal(0, lost); // closing the old connection on purpose is not a lost connection
     }
 
     [Fact]
