@@ -15,7 +15,6 @@ public enum Sfx
     GameStart,
 
     // Front page and navigation (SCRUM-163). Click and hover are played by sfx.js itself (InstallUiAsync).
-    Navigate,
 
     // Cards (SCRUM-164). Pick up, slide and drop are played by hand.js; lock-in by the game page.
     LockIn,

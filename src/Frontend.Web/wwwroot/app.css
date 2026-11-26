@@ -745,8 +745,37 @@ h1:focus {
 }
 
 /* ---- Game page (SCRUM-112) ---- */
-.game-volume .form-range {
-    accent-color: var(--sl-mustard);
+/* Sliders (game sidebar and the options menu): a mustard thumb with an ink border on a cream track,
+   instead of Bootstrap's blue. Bootstrap draws the range itself, so accent-color alone does nothing. */
+.form-range::-webkit-slider-thumb {
+    background-color: var(--sl-mustard);
+    border: 2px solid var(--sl-ink);
+    box-shadow: 2px 2px 0 var(--sl-ink);
+}
+.form-range::-webkit-slider-thumb:active {
+    background-color: var(--sl-rust);
+}
+.form-range::-webkit-slider-runnable-track {
+    background-color: var(--sl-teal-dark);
+    border: 2px solid var(--sl-ink);
+}
+.form-range::-moz-range-thumb {
+    background-color: var(--sl-mustard);
+    border: 2px solid var(--sl-ink);
+    box-shadow: 2px 2px 0 var(--sl-ink);
+}
+.form-range::-moz-range-thumb:active {
+    background-color: var(--sl-rust);
+}
+.form-range::-moz-range-track {
+    background-color: var(--sl-teal-dark);
+    border: 2px solid var(--sl-ink);
+}
+.form-range:focus::-webkit-slider-thumb {
+    box-shadow: 2px 2px 0 var(--sl-ink), 0 0 0 3px rgba(224, 164, 58, .45);
+}
+.form-range:focus::-moz-range-thumb {
+    box-shadow: 2px 2px 0 var(--sl-ink), 0 0 0 3px rgba(224, 164, 58, .45);
 }
 .game-play {
     align-self: center;

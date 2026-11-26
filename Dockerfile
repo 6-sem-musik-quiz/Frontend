@@ -11,6 +11,19 @@ RUN dotnet restore src/Frontend.Web/Frontend.Web.csproj
 COPY src/ src/
 RUN dotnet publish src/Frontend.Web/Frontend.Web.csproj -c Release -o /app/publish --no-restore
 
+# app.css and Frontend.Web.styles.css keep their names between deploys. Cloudflare tells browsers to
+# keep them for 4 hours, so a browser could run new HTML with old CSS (unstyled new components).
+# Put a hash of each file in its URL in index.html: a changed file is a new URL. The precompressed
+# index.html.gz/.br are rebuilt, since nginx serves those first (gzip_static).
+RUN cd /app/publish/wwwroot \
+ && for f in app.css Frontend.Web.styles.css; do \
+      h=$(sha256sum "$f" | cut -c1-12); \
+      sed -i "s#href=\"$f\"#href=\"$f?v=$h\"#" index.html; \
+    done \
+ && grep -q 'styles.css?v=' index.html \
+ && rm -f index.html.gz index.html.br \
+ && gzip -9 -k index.html
+
 # Blazor WebAssembly is only static files, so nginx serves them. No .NET runtime in this image.
 # nginx-unprivileged runs as user 101 and listens on 8080.
 FROM nginxinc/nginx-unprivileged:1.29-alpine AS final

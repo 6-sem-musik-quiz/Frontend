@@ -39,10 +39,6 @@
     text-align: right;
 }
 
-.options-row .form-range {
-    accent-color: var(--sl-mustard);
-}
-
 .options-row .form-range:disabled {
     opacity: .4;
 }

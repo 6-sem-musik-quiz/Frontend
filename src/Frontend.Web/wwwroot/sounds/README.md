@@ -6,8 +6,8 @@ den indbyrdes lydstyrke pr. lyd.
 
 | Fil | Kilde (pakke/fil) | Bruges til |
 |---|---|---|
-| lobbyJoin | Casino Audio / card-place-1 | Spiller joiner lobbyen |
-| lobbyLeave | Casino Audio / card-slide-3 | Spiller forlader lobbyen |
+| lobbyJoin | Interface Sounds / open_002 | Spiller joiner lobbyen |
+| lobbyLeave | Interface Sounds / close_002 | Spiller forlader lobbyen |
 | ready | Casino Audio / chip-lay-2 | Klar |
 | unready | Casino Audio / chips-handle-1 | Ikke klar (chippen tages op igen) |
 | lobbyFull | Interface Sounds / glass_002 | Sidste plads taget |
@@ -15,7 +15,6 @@ den indbyrdes lydstyrke pr. lyd.
 | gameStart | Interface Sounds / confirmation_002 | Spillet starter |
 | click | UI Audio / click3 | Klik på knapper |
 | hover | UI Audio / rollover2 | Musen over knapper og links |
-| navigate | Casino Audio / card-slide-2 | Sideskift |
 | cardPickup | Interface Sounds / select_001 | Kortet tages op (blødt klik) |
 | cardMove | UI Audio / rollover3 | Pladsen under kortet skifter (svagt tik) |
 | cardPlace | Interface Sounds / drop_001 | Kortet slippes (i hånden eller tilbage) |
