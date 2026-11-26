@@ -1,5 +1,5 @@
 // Drag and drop for HandOfCards (SCRUM-148), with Pointer Events, so mouse and touch work the same.
-// Card sounds (SCRUM-164): picked up, the neighbours sliding aside, laid in the hand or sliding back.
+// Card sounds (SCRUM-164): picked up, laid in the hand or sliding back.
 
 import { play } from "./sfx.js";
 //
@@ -49,7 +49,6 @@ export function attach(root, dotnet) {
         const hot = slotAt(e.clientX, e.clientY);
         if (hot !== drag.hot) {
             drag.hot = hot;
-            if (hot >= 0) play("cardShift");
             dotnet.invokeMethodAsync("HotSlot", hot);
         }
     }

@@ -12,13 +12,11 @@ den indbyrdes lydstyrke pr. lyd.
 | unready | Casino Audio / chips-handle-1 | Ikke klar (chippen tages op igen) |
 | lobbyFull | Interface Sounds / glass_002 | Sidste plads taget |
 | allReady | Casino Audio / chips-stack-3 | Alle er klar |
-| gameStart | Casino Audio / card-shuffle (1,6 s) | Spillet starter |
 | welcome | Casino Audio / cards-pack-open-1 | Logget ind |
 | click | UI Audio / click3 | Klik på knapper |
 | hover | UI Audio / rollover2 | Musen over knapper og links |
 | navigate | Casino Audio / card-slide-2 | Sideskift |
 | cardPickup | Casino Audio / card-slide-5 | Kortet tages op |
-| cardShift | Casino Audio / card-shove-1 | Naboerne glider til side |
 | cardPlace | Casino Audio / card-place-2 | Kortet lægges i hånden |
 | cardReturn | Casino Audio / card-slide-6 | Kortet slippes uden for hånden |
 | lockIn | Casino Audio / chip-lay-3 | Bekræft (svaret låses) |

@@ -12,7 +12,6 @@ public enum Sfx
     Unready,
     LobbyFull,
     AllReady,
-    GameStart,
 
     // Front page and navigation (SCRUM-163). Click and hover are played by sfx.js itself (InstallUiAsync).
     Welcome,

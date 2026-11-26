@@ -23,7 +23,6 @@ const SOUNDS = {
     unready: { gain: 0.8, gap: 250 },
     lobbyFull: { gain: 0.7, gap: 1000 },
     allReady: { gain: 1, gap: 1000 },
-    gameStart: { gain: 0.9, gap: 2000 },
     // Front page, buttons and navigation (SCRUM-163)
     welcome: { gain: 0.9, gap: 2000 },
     click: { gain: 0.6, gap: 60 },
@@ -31,7 +30,6 @@ const SOUNDS = {
     navigate: { gain: 0.6, gap: 400 },
     // Cards in the hand (SCRUM-164)
     cardPickup: { gain: 0.9, gap: 150 },
-    cardShift: { gain: 0.5, gap: 120 },
     cardPlace: { gain: 1, gap: 150 },
     cardReturn: { gain: 0.7, gap: 150 },
     lockIn: { gain: 1, gap: 300 },
