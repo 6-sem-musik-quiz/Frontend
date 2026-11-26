@@ -4,8 +4,9 @@ using Microsoft.JSInterop;
 
 namespace Frontend.Web.Auth;
 
-// Token og bruger, som de gemmes i browserens sessionStorage (ryddes, når fanen lukkes).
-public sealed record StoredSession(string Token, string? UserName, string? Role);
+// Tokens og bruger, som de gemmes i browserens sessionStorage (ryddes, når fanen lukkes).
+// RefreshToken er null for sessioner gemt før refresh tokens (de logges ud, når adgangstokenet udløber).
+public sealed record StoredSession(string Token, string? UserName, string? Role, string? RefreshToken = null);
 
 public interface ITokenStorage
 {
