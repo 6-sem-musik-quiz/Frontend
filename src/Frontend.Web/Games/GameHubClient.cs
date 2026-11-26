@@ -2,6 +2,7 @@ using Frontend.Domain.DTOs.Games;
 using Frontend.Services.Auth;
 using Frontend.Services.Options;
 
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Http.Connections.Client;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -110,6 +111,11 @@ public sealed class GameHubClient(
             .WithUrl(new Uri(serviceUrls.Value.GameService, $"hubs/game?gameId={gameId}"), options =>
             {
                 options.AccessTokenProvider = () => Task.FromResult(tokens.GetAccessToken());
+                // GameService runs several pods (ADR-0004, games in Redis). Negotiate and the WebSocket after
+                // it are two requests that can land on different pods, so skip negotiate and open the
+                // WebSocket directly (as LobbyHub, SCRUM-128).
+                options.SkipNegotiation = true;
+                options.Transports = HttpTransportType.WebSockets;
                 configureHttp?.Invoke(options);
             })
             .WithAutomaticReconnect()
