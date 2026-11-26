@@ -20,7 +20,10 @@ public class OptionsMenuTests : BunitContext
         JSInterop.Mode = JSRuntimeMode.Loose; // localStorage
         Services.AddSingleton<ISoundEffects>(_sounds);
         Services.AddSingleton<IGameAudio>(_audio);
+        Services.AddSingleton<IBackgroundMusic>(_music);
     }
+
+    private readonly FakeBackgroundMusic _music = new();
 
     private IRenderedComponent<OptionsMenu> Open()
     {
@@ -55,6 +58,7 @@ public class OptionsMenuTests : BunitContext
                                                     && (string?)i.Arguments[0] == GamePage.VolumeKey
                                                     && (string?)i.Arguments[1] == "0.25");
         Assert.Null(_sounds.Volume);
+        Assert.Equal(1, _music.Refreshes); // the menu music follows "Musik"
     }
 
     [Fact]

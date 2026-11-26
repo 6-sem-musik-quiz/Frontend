@@ -3,6 +3,7 @@
 @using Frontend.Web.Components.Pages
 @inject ISoundEffects Sounds
 @inject IGameAudio Audio
+@inject IBackgroundMusic Music
 @inject IJSRuntime JS
 
 <button type="button" class="btn btn-sm options-button" @onclick="OpenAsync" data-testid="options-button"
@@ -105,6 +106,7 @@
         {
             // Storage blocked: the volume still applies for this visit.
         }
+        await Music.RefreshVolumeAsync(); // the menu music follows "Musik" (SCRUM-167)
     }
 
     // The number follows the slider while dragging; the level is stored and a tick played on release.

@@ -114,3 +114,24 @@ public sealed class FakeSoundEffects : ISoundEffects
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
+
+// Records which pages the layout asked for menu music on.
+public sealed class FakeBackgroundMusic : Frontend.Web.Sound.IBackgroundMusic
+{
+    public List<string> Pages { get; } = [];
+    public int Refreshes { get; private set; }
+
+    public Task SetPageAsync(string relativePath)
+    {
+        Pages.Add(relativePath);
+        return Task.CompletedTask;
+    }
+
+    public Task RefreshVolumeAsync()
+    {
+        Refreshes++;
+        return Task.CompletedTask;
+    }
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}

@@ -36,6 +36,7 @@ builder.Services.AddTransient<ILobbyHub, LobbyHub>();
 builder.Services.AddTransient<IGameHubClient, GameHubClient>();
 builder.Services.AddScoped<IGameAudio, GameAudio>();
 builder.Services.AddScoped<ISoundEffects, SoundEffects>(); // sound effects, shared by all pages (SCRUM-161)
+builder.Services.AddScoped<IBackgroundMusic, BackgroundMusic>(); // quiet menu music on the front page and in the lobby (SCRUM-167)
 builder.Services.AddSingleton(TimeProvider.System); // the game page's timers; tests use a fake
 
 await builder.Build().RunAsync();
