@@ -1,0 +1,40 @@
+@* SCRUM-169: the "next round" screen between RoundStarted and the song. Shows which round is coming,
+   where I stand, and counts 3 - 2 - 1 down to the moment the song starts (the server's PlaybackStartsAt,
+   or startsInMs from the message), then "Nu!" for a moment. The game page drives the numbers. *@
+
+@if (StartsIn is { } seconds || Go)
+{
+    <div class="rc" role="status" aria-live="assertive" data-testid="round-countdown">
+        <div class="rc-card card">
+            <div class="sl-label">Runde @Round af @TotalRounds</div>
+            @if (Go)
+            {
+                <div class="rc-number rc-go" data-testid="countdown-number">Nu!</div>
+            }
+            else
+            {
+                @* The key makes Blazor replace the element, so the pop animation plays for every number. *@
+                <div class="rc-number" @key="StartsIn" data-testid="countdown-number">@StartsIn</div>
+                <div class="rc-hint">Gør dig klar</div>
+            }
+            @if (Standing is { } standing)
+            {
+                <div class="rc-standing text-body-secondary" data-testid="countdown-standing">@standing</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Round { get; set; }
+    [Parameter] public int TotalRounds { get; set; }
+
+    // Whole seconds until the song starts (3, 2, 1); null when no countdown is running.
+    [Parameter] public int? StartsIn { get; set; }
+
+    // The song has just started: "Nu!".
+    [Parameter] public bool Go { get; set; }
+
+    // E.g. "Du har 4 point · nr. 2 af 5". Null hides it.
+    [Parameter] public string? Standing { get; set; }
+}

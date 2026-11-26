@@ -23,6 +23,9 @@ public partial class GamePage : IAsyncDisposable
     // in at nearly the full time and earns no speed bonus, which is fair.
     public static readonly TimeSpan AutoLockLead = TimeSpan.FromMilliseconds(300);
 
+    // SCRUM-169: how long "Nu!" stays up after the countdown, when the song has started.
+    public static readonly TimeSpan GoShownFor = TimeSpan.FromMilliseconds(800);
+
     [Parameter] public Guid GameId { get; set; }
 
     // SCRUM-172: the lobby the game was started from (?lobby=), so "Spil igen" can lead back to it.
@@ -97,6 +100,13 @@ public partial class GamePage : IAsyncDisposable
     private CancellationTokenSource? _roundCts;
     private ITimer? _countdown;
     private ITimer? _autoLockTimer;
+
+    // SCRUM-169: the countdown to the song. _startsIn is 3, 2, 1 while it runs (the hand is locked then),
+    // _go shows "Nu!" for a moment when the song starts.
+    private int? _startsIn;
+    private bool _go;
+    private ITimer? _preRollTimer;
+    private ITimer? _goTimer;
     private bool _disposed;
 
     // SCRUM-168: our clock + this = the server's clock. Null: play on startsInMs instead.
@@ -115,7 +125,17 @@ public partial class GamePage : IAsyncDisposable
 
     private string LockedText => _roundInfo is null
         ? (_round == 0 ? "Spillet starter, når alle er forbundet." : "Næste runde starter om lidt.")
+        : _startsIn is not null ? "Sangen starter om lidt."
         : "Tiden er gået.";
+
+    // The hand can only be used while the song plays: not before the countdown is over, not after the time.
+    private bool HandLocked => _timeUp || _roundInfo is null || _startsIn is not null;
+
+    // SCRUM-169: where I stand, on the countdown screen from round 2 on (in round 1 everyone has 0).
+    private string? Standing =>
+        _round > 1 && _me is { } me && _players.TryGetValue(me, out var self)
+            ? $"Du har {self.Score} point · nr. {1 + _players.Values.Count(p => p.Score > self.Score)} af {_players.Count}"
+            : null;
 
     // Everyone but me, in lobby order.
     private List<RivalView> Rivals =>
@@ -337,6 +357,10 @@ public partial class GamePage : IAsyncDisposable
         var wait = round.PlaybackStartsAt is { } at && _clockOffset is { } offset
             ? at - (Time.GetUtcNow() + offset)
             : TimeSpan.FromMilliseconds(round.StartsInMs) - Time.GetElapsedTime(received);
+        // SCRUM-169: count down to the same instant the song starts, so it hits zero for everyone together.
+        // A player who (re)joins in the middle of it sees what is left.
+        if (wait > TimeSpan.Zero)
+            StartPreRoll(wait);
         try
         {
             if (wait > TimeSpan.Zero)
@@ -348,6 +372,8 @@ public partial class GamePage : IAsyncDisposable
         }
         if (cts.IsCancellationRequested)
             return;
+        if (_startsIn is not null)
+            ShowGo();
 
         // Already late (a slow message, or a rejoin between whole seconds): start at once, further into the
         // song, with that much less time to answer, as the server measures from PlaybackStartsAt.
@@ -435,6 +461,54 @@ public partial class GamePage : IAsyncDisposable
         _countdown = null;
         _autoLockTimer?.Dispose();
         _autoLockTimer = null;
+        StopPreRoll();
+        _goTimer?.Dispose();
+        _goTimer = null;
+        _go = false;
+    }
+
+    // ---- SCRUM-169: 3 - 2 - 1 - "Nu!" before the song ----
+
+    // `wait` until the song: show the whole seconds left (e.g. 2.4 s shows 3) and tick down on the
+    // boundaries, so the last number goes away exactly when the song starts. A tick sound per number.
+    private void StartPreRoll(TimeSpan wait)
+    {
+        StopPreRoll();
+        _startsIn = Math.Max(1, (int)Math.Ceiling(wait.TotalSeconds));
+        _ = Sounds.PlayAsync(Sfx.Tick);
+        var first = wait - TimeSpan.FromSeconds(_startsIn.Value - 1);
+        _preRollTimer = Time.CreateTimer(_ => InvokeAsync(PreRollTick), null, first, TimeSpan.FromSeconds(1));
+        StateHasChanged();
+    }
+
+    // The song's own start (StartRoundAsync) takes "1" away, so this never goes below 1.
+    private void PreRollTick()
+    {
+        if (_startsIn is not > 1)
+            return;
+        _startsIn--;
+        _ = Sounds.PlayAsync(Sfx.Tick);
+        StateHasChanged();
+    }
+
+    private void StopPreRoll()
+    {
+        _preRollTimer?.Dispose();
+        _preRollTimer = null;
+        _startsIn = null;
+    }
+
+    private void ShowGo()
+    {
+        StopPreRoll();
+        _go = true;
+        _ = Sounds.PlayAsync(Sfx.GameStart);
+        _goTimer?.Dispose();
+        _goTimer = Time.CreateTimer(_ => InvokeAsync(() =>
+        {
+            _go = false;
+            StateHasChanged();
+        }), null, GoShownFor, Timeout.InfiniteTimeSpan);
     }
 
     // I have answered this round: sent from this page, or the server has my stamp (e.g. after a reload).

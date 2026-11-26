@@ -825,6 +825,39 @@ h1:focus {
     .er-contenders li { transition: none; }
     .er-banner, .er-stamp, .er-row.shown, .er-row.champ { animation-duration: .01s; animation-delay: 0s; }
     .er-cv.wait { animation: none; }
+/* SCRUM-169: the "next round" screen and the 3-2-1 countdown before each song. */
+.rc {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgba(30, 35, 43, 0.55);
+}
+.rc-card {
+    min-width: min(320px, 100%);
+    padding: 24px 32px;
+    text-align: center;
+}
+.rc-number {
+    font-family: var(--sl-pixel);
+    font-size: 120px;
+    line-height: 1;
+    margin: 12px 0 4px;
+    color: var(--sl-ink);
+    animation: rc-pop .9s ease-out both;
+}
+.rc-go { color: var(--sl-rust); }
+.rc-hint { font-family: var(--sl-pixel); font-size: 20px; }
+.rc-standing { margin-top: 12px; font-size: 15px; }
+@keyframes rc-pop {
+    0% { transform: scale(1.6); opacity: 0; }
+    25% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(.92); opacity: .85; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rc-number { animation: none; }
 }
 
 /* Under 900 px: the sidebar becomes a strip above, the hand scrolls sideways. */
