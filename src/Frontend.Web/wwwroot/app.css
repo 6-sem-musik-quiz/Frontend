@@ -716,6 +716,115 @@ h1:focus {
     .gc-placed.gc-new, .gc-placed.gc-out { animation-duration: .01s; }
 }
 
+/* SCRUM-155: the end screen as a staged reveal (design "Slopster Rivals v3", Slutresultat). */
+.er { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.er-grid {
+    width: 100%;
+    max-width: 960px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+.er-stage {
+    min-height: 290px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+}
+.er-kicker { font-family: var(--sl-pixel); font-size: 13px; color: var(--sl-muted); }
+.er-title { font-family: var(--sl-pixel); font-size: 26px; line-height: 1.1; margin: 0; }
+.er-rule { font-size: 13px; color: var(--sl-muted); margin: 0; }
+.er-banner {
+    margin: auto;
+    font-family: var(--sl-pixel);
+    font-size: clamp(32px, 6vw, 52px);
+    text-align: center;
+    animation: er-pop .5s cubic-bezier(.2, 1.4, .4, 1);
+}
+.er-contenders { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.er-contenders li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    border: 2px solid var(--sl-ink);
+    border-radius: 4px;
+    padding: 6px 10px;
+    background: var(--sl-cream);
+    transition: background .3s, transform .3s;
+}
+.er-contenders li.out { opacity: .5; }
+.er-contenders li.win { background: var(--sl-mustard); transform: scale(1.03); }
+.er-cn { font-family: var(--sl-pixel); font-size: 16px; }
+.er-cv { font-family: var(--sl-pixel); font-size: 18px; font-variant-numeric: tabular-nums; min-width: 72px; text-align: right; }
+.er-cv.wait { color: var(--sl-muted); animation: er-blink .8s steps(2) infinite; }
+.er-stamp {
+    position: absolute; /* top right, beside the title: below, it would cover the last contender's value */
+    right: 16px;
+    top: 14px;
+    font-family: var(--sl-pixel);
+    font-size: 34px;
+    background: var(--sl-green);
+    border: 3px solid var(--sl-ink);
+    border-radius: 6px;
+    padding: 2px 12px;
+    box-shadow: 3px 3px 0 var(--sl-ink);
+    transform: rotate(-8deg);
+    animation: er-stamp .35s cubic-bezier(.2, 1.6, .4, 1);
+}
+/* Rows are placed by --i (their place in the current order), so a new order slides instead of jumping. */
+.er-standings { position: relative; margin: 0; height: calc(var(--rows) * 64px); }
+.er-row {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 56px;
+    padding: 6px 12px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    transform: translateY(calc(var(--i) * 64px));
+    transition: transform .7s cubic-bezier(.3, .8, .3, 1);
+}
+.er-row.me { box-shadow: 4px 4px 0 var(--sl-ink), inset 0 0 0 2px var(--sl-mustard); }
+.er-row.gain { animation: er-gain .7s ease; }
+.er-row.champ { animation: er-champ 1.2s ease; }
+.er-name { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.er-name > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.er-score { font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.er-place {
+    width: 34px;
+    height: 34px;
+    font-size: 22px;
+    border: 2px dashed var(--sl-ink);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sl-muted);
+}
+.er-place.shown { border-style: solid; color: var(--sl-ink); animation: er-flip .45s ease; }
+.er-place.first { background: var(--sl-mustard); }
+@keyframes er-pop { from { transform: scale(.3); opacity: 0; } }
+@keyframes er-blink { 50% { opacity: .2; } }
+@keyframes er-stamp { from { transform: rotate(-8deg) scale(2.4); opacity: 0; } }
+@keyframes er-gain { 30% { background: var(--sl-green); } }
+@keyframes er-champ { 20% { transform: translateY(calc(var(--i) * 64px)) scale(1.06); } 40% { transform: translateY(calc(var(--i) * 64px)); } }
+@keyframes er-flip { from { transform: rotateY(90deg); } }
+@media (max-width: 759.98px) {
+    .er-grid { grid-template-columns: minmax(0, 1fr); }
+    .er-stage { min-height: 220px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .er-row, .er-contenders li { transition: none; }
+    .er-banner, .er-stamp, .er-row.gain, .er-row.champ, .er-place.shown { animation-duration: .01s; }
+    .er-cv.wait { animation: none; }
+}
+
 /* Under 900 px: the sidebar becomes a strip above, the hand scrolls sideways. */
 @media (max-width: 899.98px) {
     .gl {

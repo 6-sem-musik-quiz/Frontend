@@ -666,6 +666,28 @@ public class GamePageTests : BunitContext
         Assert.Equal([expected], _sounds.Played);
     }
 
+    // SCRUM-155: with awards, the end is revealed step by step; buttons and the end sound come after it.
+    [Fact]
+    public async Task GameEndedWithAwards_RevealsStepByStep_ThenShowsTheButtonsAndPlaysTheSound()
+    {
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"spil/{GameId}?lobby={LobbyId}");
+        var cut = RenderPage();
+
+        await cut.InvokeAsync(() => _hub.RaiseGameEnded(new GameEndedDto(GameId,
+            [new StandingDto(Me, "alice", 4, 3, 3, 1, []), new StandingDto(Bob, "bob", 2, 2, 3, 2, [])],
+            [new AwardDto("streak", [Me], [new AwardContenderDto(Me, 3, true), new AwardContenderDto(Bob, 1, false)])])));
+
+        Assert.Equal("Bonus!", Text(cut, "er-banner"));
+        Assert.Empty(cut.FindAll("[data-testid=play-again]"));
+        Assert.Empty(_sounds.Played);
+
+        cut.Find("[data-testid=skip]").Click();
+
+        Assert.Equal("Spil igen", Text(cut, "play-again"));
+        Assert.Equal([Sfx.Winner], _sounds.Played);
+        Assert.Contains("4 point (+1 bonus)", cut.Find("[data-user='1']").TextContent);
+    }
+
     // SCRUM-172: "Spil igen" and "Forlad" on the end screen.
     private IRenderedComponent<GamePage> RenderEndScreen(bool withLobby = true)
     {

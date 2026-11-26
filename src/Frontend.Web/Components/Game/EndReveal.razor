@@ -1,0 +1,123 @@
+@* SCRUM-155: the end screen as a staged reveal (design "Slopster Rivals v3", Slutresultat). The stage on
+   the left shows "Bonus!", each award (Lynet, Stimen) and the finale; the standings on the right start as
+   after the last round with hidden placements, take each +1 and slide to their new order (rows are placed
+   by a transform, so a new order animates), then the placements flip in from last place up.
+   "Spring til resultatet" is always there. Runs on each client from GameEnded; nobody waits for the server.
+   The beats are in EndRevealScript. *@
+@implements IDisposable
+@inject TimeProvider Time
+
+<section class="er" aria-labelledby="er-title">
+    <h1 id="er-title" class="sl-banner">· · · Slutresultat · · ·</h1>
+    <div class="er-grid">
+        <div class="er-stage card" aria-live="polite" data-testid="er-stage">
+            @if (_script.Current is { } award)
+            {
+                <span class="er-kicker">@award.Kicker</span>
+                <h2 class="er-title" data-testid="er-award">@award.Title</h2>
+                <p class="er-rule">@award.Rule</p>
+                <ul class="er-contenders">
+                    @foreach (var c in award.Contenders)
+                    {
+                        <li class="@(c.Won ? "win" : "") @(c.Shown && !c.Qualified ? "out" : "")" data-testid="er-contender">
+                            <span class="er-cn">@c.Name</span>
+                            <span class="er-cv @(c.Shown ? "" : "wait")">@(c.Shown ? c.Value : "…")</span>
+                        </li>
+                    }
+                </ul>
+                @if (award.Stamped)
+                {
+                    <div class="er-stamp" data-testid="er-stamp">+1</div>
+                }
+                else if (award.Contenders.All(c => c.Shown) && award.Winners.Count == 0)
+                {
+                    <p class="er-rule">Ingen fik prisen.</p>
+                }
+            }
+            else
+            {
+                <div class="er-banner" @key="_script.Banner" data-testid="er-banner">@_script.Banner</div>
+            }
+        </div>
+
+        <ol class="er-standings list-unstyled" style="--rows: @_script.Rows.Count" aria-label="Stilling" data-testid="standings">
+            @{ var ordered = _script.Ordered; }
+            @foreach (var row in _script.Rows)
+            {
+                var s = row.Standing;
+                var mine = s.UserId == Me;
+                <li @key="s.UserId" class="card er-row @(mine ? "me" : "") @(row.Gained ? "gain" : "") @(row.Champion ? "champ" : "")"
+                    style="--i: @ordered.ToList().IndexOf(row)" data-testid="standing" data-user="@s.UserId">
+                    <span class="px er-place @(row.PlacementShown ? "shown" : "") @(row.PlacementShown && s.Placement == 1 ? "first" : "")"
+                          data-testid="placement">@(row.PlacementShown ? s.Placement.ToString() : "?")</span>
+                    <span class="er-name">
+                        <span class="px">@s.UserName@(mine ? " (dig)" : "")</span>
+                        <span class="text-body-secondary small">@s.Correct rigtige af @s.Answered besvarede</span>
+                    </span>
+                    <span class="px er-score" data-testid="score">@row.ScoreShown point@(row.BonusShown > 0 ? $" (+{row.BonusShown} bonus)" : "")</span>
+                </li>
+            }
+        </ol>
+    </div>
+
+    @if (_script.Done)
+    {
+        @Actions
+    }
+    else
+    {
+        <button type="button" class="btn" @onclick="Skip" data-testid="skip">Spring til resultatet</button>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public GameEndedDto Ended { get; set; } = null!;
+    [Parameter] public int? Me { get; set; }
+
+    // The end screen's buttons ("Spil igen", "Til forsiden", "Se alle sange"), shown when the reveal is over.
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    // The reveal is over (played to the end or skipped), e.g. to play the winner sound.
+    [Parameter] public EventCallback OnDone { get; set; }
+
+    private EndRevealScript _script = null!;
+    private ITimer? _timer;
+
+    protected override void OnInitialized()
+    {
+        _script = new EndRevealScript(Ended);
+        ScheduleNext();
+    }
+
+    private void ScheduleNext()
+    {
+        _timer?.Dispose();
+        _timer = _script.NextWait is { } wait
+            ? Time.CreateTimer(_ => InvokeAsync(StepAsync), null, wait, Timeout.InfiniteTimeSpan)
+            : null;
+    }
+
+    private async Task StepAsync()
+    {
+        if (_script.NextWait is null)
+            return;
+        _script.Step();
+        StateHasChanged();
+        if (_script.Done)
+            await OnDone.InvokeAsync();
+        else
+            ScheduleNext();
+    }
+
+    private async Task Skip()
+    {
+        _timer?.Dispose();
+        _timer = null;
+        var wasDone = _script.Done;
+        _script.SkipToEnd();
+        if (!wasDone)
+            await OnDone.InvokeAsync();
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}
