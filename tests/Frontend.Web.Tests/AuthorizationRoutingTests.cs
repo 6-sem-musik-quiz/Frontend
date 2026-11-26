@@ -4,6 +4,7 @@ using Bunit.TestDoubles;
 using Frontend.Web.Auth;
 using Frontend.Web.Components;
 using Frontend.Web.Components.Layout;
+using Frontend.Web.Sound;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
@@ -26,6 +27,7 @@ public class AuthorizationRoutingTests : BunitContext
         Services.AddLogging();
         Services.AddSingleton(Substitute.For<IAuthService>());
         Services.AddScoped<ApiCallHandler>();
+        Services.AddSingleton<ISoundEffects>(new FakeSoundEffects()); // MainLayout installs the UI sounds
         Services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(
             new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build()); // /admin reads Grafana:DashboardUrl
         Services.AddSingleton(Substitute.For<Frontend.Services.Interfaces.IMusicApiClient>()); // /admin and / list playlists

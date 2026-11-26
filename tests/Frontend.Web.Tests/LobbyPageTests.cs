@@ -7,6 +7,7 @@ using Frontend.Services.Interfaces;
 using Frontend.Web.Auth;
 using Frontend.Web.Components.Pages;
 using Frontend.Web.Lobbies;
+using Frontend.Web.Sound;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,7 @@ public class LobbyPageTests : BunitContext
 
     private readonly ILobbyApiClient _lobbies = Substitute.For<ILobbyApiClient>();
     private readonly FakeLobbyHub _hub = new();
+    private readonly FakeSoundEffects _sounds = new();
     private readonly NavigationManager _navigation;
 
     public LobbyPageTests()
@@ -32,6 +34,7 @@ public class LobbyPageTests : BunitContext
         Services.AddSingleton(Substitute.For<IAuthService>());
         Services.AddSingleton(_lobbies);
         Services.AddSingleton<ILobbyHub>(_hub);
+        Services.AddSingleton<ISoundEffects>(_sounds);
         Services.AddScoped<ApiCallHandler>();
         AddAuthorization().SetAuthorized("alice").SetClaims(new Claim("sub", Me.ToString()));
         _navigation = Services.GetRequiredService<NavigationManager>();
@@ -258,5 +261,52 @@ public class LobbyPageTests : BunitContext
         public void RaiseLobbyClosed() => LobbyClosed?.Invoke();
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    // SCRUM-162: lobby sounds.
+
+    [Fact]
+    public void FirstLoad_PlaysNoSound()
+    {
+        RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", true)));
+
+        Assert.Empty(_sounds.Played);
+    }
+
+    [Fact]
+    public void AnotherPlayerJoins_PlaysTheJoinSoundForMe()
+    {
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", false)));
+
+        _hub.RaiseLobbyUpdated(Lobby(Me, new LobbyPlayerDto(Me, "alice", false), new LobbyPlayerDto(2, "bob", false)));
+
+        cut.WaitForAssertion(() => Assert.Equal([Sfx.LobbyJoin], _sounds.Played));
+    }
+
+    [Fact]
+    public void PressingReady_PlaysTheReadySound_AndTheSameHubUpdateDoesNotPlayItAgain()
+    {
+        var before = Lobby(2, new LobbyPlayerDto(2, "bob", false), new LobbyPlayerDto(Me, "alice", false));
+        var after = Lobby(2, new LobbyPlayerDto(2, "bob", false), new LobbyPlayerDto(Me, "alice", true));
+        _lobbies.SetReadyAsync(LobbyId, true, Arg.Any<CancellationToken>()).Returns(after);
+        var cut = RenderPage(before);
+
+        cut.Find("[data-testid=ready-button]").Click();
+        cut.WaitForAssertion(() => Assert.Equal([Sfx.Ready], _sounds.Played));
+
+        _hub.RaiseLobbyUpdated(after);
+        cut.WaitForAssertion(() => Assert.Equal([Sfx.Ready], _sounds.Played));
+    }
+
+    [Fact]
+    public void GameStarted_PlaysTheStartSound_BeforeGoingToTheGame()
+    {
+        var gameId = Guid.NewGuid();
+        var cut = RenderPage(Lobby(2, new LobbyPlayerDto(2, "bob", true), new LobbyPlayerDto(Me, "alice", true)));
+
+        _hub.RaiseGameStarted(gameId);
+
+        cut.WaitForAssertion(() => Assert.EndsWith($"spil/{gameId}", _navigation.Uri));
+        Assert.Equal([Sfx.GameStart], _sounds.Played);
     }
 }

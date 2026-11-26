@@ -4,6 +4,7 @@ using Frontend.Web.Components;
 using Frontend.Web.Games;
 using Frontend.Web.Lobbies;
 using Frontend.Web.Music;
+using Frontend.Web.Sound;
 
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -34,6 +35,7 @@ builder.Services.AddScoped<ISongUploader, SongUploader>();
 builder.Services.AddTransient<ILobbyHub, LobbyHub>();
 builder.Services.AddTransient<IGameHubClient, GameHubClient>();
 builder.Services.AddScoped<IGameAudio, GameAudio>();
+builder.Services.AddScoped<ISoundEffects, SoundEffects>(); // sound effects, shared by all pages (SCRUM-161)
 builder.Services.AddSingleton(TimeProvider.System); // the game page's timers; tests use a fake
 
 await builder.Build().RunAsync();

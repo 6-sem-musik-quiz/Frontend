@@ -7,7 +7,7 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<div class="gr @(IsLocked ? "gr-locked" : "") @(_dragging ? "gr-dragging" : "")" @ref="_root" data-testid="hand-of-cards">
+<div class="gr @(IsLocked ? "gr-locked" : "") @(_dragging ? "gr-dragging" : "")" @ref="_root" data-testid="hand-of-cards" data-sfx="none">
     <div class="sl-banner">· · · @Banner · · ·</div>
 
     <div class="gr-mystery-area">

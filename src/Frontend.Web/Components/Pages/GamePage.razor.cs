@@ -1,6 +1,7 @@
 using Frontend.Domain.DTOs.Games;
 using Frontend.Web.Components.Game;
 using Frontend.Web.Games;
+using Frontend.Web.Sound;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -25,6 +26,7 @@ public partial class GamePage : IAsyncDisposable
     [Inject] private IGameAudio Audio { get; set; } = null!;
     [Inject] private TimeProvider Time { get; set; } = null!;
     [Inject] private IJSRuntime JS { get; set; } = null!;
+    [Inject] private ISoundEffects Sounds { get; set; } = null!;
 
     // What the card table (SCRUM-152) knows about a player. Everything here is public.
     private sealed class Player(string name, int score)
@@ -59,6 +61,7 @@ public partial class GamePage : IAsyncDisposable
     private int? _secondsLeft;
     private bool _timeUp;
     private bool _autoLock;
+    private bool _answeredThisRound; // set when I send my answer (by "Bekræft" or the auto-lock)
     private bool _needsPlay;
     private long _playbackStarted;
     private RoundReveal? _reveal;
@@ -244,6 +247,7 @@ public partial class GamePage : IAsyncDisposable
         _reveal = null;
         _timeUp = false;
         _autoLock = false;
+        _answeredThisRound = false;
         _needsPlay = false;
         _secondsLeft = null;
         foreach (var p in _players.Values)
@@ -296,6 +300,7 @@ public partial class GamePage : IAsyncDisposable
         }
         else
         {
+            await Sounds.PlayAsync(Sfx.RoundStart); // the cards are fanned out as the song begins
             // E.g. 29.4 s left: show 30 and tick to 29 after 0.4 s, so 0 lands on the server's end of time.
             _secondsLeft = (int)Math.Ceiling(remaining.TotalSeconds);
             _countdown = Time.CreateTimer(_ => InvokeAsync(Tick), null,
@@ -340,8 +345,15 @@ public partial class GamePage : IAsyncDisposable
         if (_secondsLeft is not > 0)
             return;
         _secondsLeft--;
+        // Sounds (SCRUM-161): tick the last 5 seconds and "bong" at zero, but only while I have not
+        // answered. A placed card is auto-locked 300 ms before zero (SCRUM-171) and plays the chip
+        // sound instead, so the player hears "your answer was taken", not "you were too late".
+        if (_secondsLeft is > 0 and <= 5 && !Answered)
+            _ = Sounds.PlayAsync(Sfx.Tick);
         if (_secondsLeft == 0)
         {
+            if (!Answered)
+                _ = Sounds.PlayAsync(Sfx.TimeUp);
             // The song keeps playing through the reveal (SCRUM-159); the next round or the game end stops it.
             _timeUp = true;
             StopCountdown();
@@ -365,8 +377,16 @@ public partial class GamePage : IAsyncDisposable
         _autoLockTimer = null;
     }
 
+    // I have answered this round: sent from this page, or the server has my stamp (e.g. after a reload).
+    private bool Answered =>
+        _answeredThisRound || (_me is { } me && _players.TryGetValue(me, out var self) && self.Stamp is not null);
+
     private async Task ConfirmAsync(int slotIndex)
     {
+        // Marked and heard before the network round trip: the auto-lock sends 300 ms before zero, and
+        // the "time up" sound at zero must already know the answer is on its way.
+        _answeredThisRound = true;
+        _ = Sounds.PlayAsync(Sfx.LockIn); // a chip on the table: the answer is locked
         try
         {
             // My own stamp arrives with PlayerAnswered like everyone else's.
@@ -374,6 +394,7 @@ public partial class GamePage : IAsyncDisposable
         }
         catch (GameHubException e)
         {
+            _answeredThisRound = false;
             _error = e.Message;
         }
     }
@@ -400,6 +421,7 @@ public partial class GamePage : IAsyncDisposable
 
         var mine = ended.Results.FirstOrDefault(r => r.UserId == _me);
         _reveal = new RoundReveal(ended.Song, Answered: mine?.SlotIndex is not null, Correct: mine?.Correct == true);
+        await Sounds.PlayAsync(_reveal.Correct ? Sfx.Correct : Sfx.Wrong);
         // The hand keeps showing the reveal; the new timeline replaces it when the next round starts.
         _nextTimeline = mine?.Timeline;
         _played.RemoveAll(p => p.Round == ended.Round);
@@ -423,6 +445,8 @@ public partial class GamePage : IAsyncDisposable
         StopCountdown();
         _ended = ended;
         await Audio.StopAsync();
+        var me = ended.Standings.FirstOrDefault(s => s.UserId == _me);
+        await Sounds.PlayAsync(me?.Placement == 1 ? Sfx.Winner : Sfx.GameOver);
         foreach (var round in _sources.Keys.ToList())
             await ReleaseAsync(round);
         StateHasChanged();
