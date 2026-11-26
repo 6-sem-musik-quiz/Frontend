@@ -68,6 +68,9 @@ public class LobbyApiClient(HttpClient httpClient) : ApiClientBase(httpClient), 
 
     public Task<StartGameResponse> StartGameAsync(Guid id, CancellationToken ct = default) =>
         PostAsync<StartGameResponse>($"{Route}/{id}/start", ct);
+
+    public Task<LobbyDto> PlayAgainAsync(Guid id, CancellationToken ct = default) =>
+        PostAsync<LobbyDto>($"{Route}/{id}/play-again", ct);
 }
 
 public class MusicApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IMusicApiClient

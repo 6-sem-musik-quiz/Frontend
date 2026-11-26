@@ -29,6 +29,9 @@ public interface ILobbyApiClient
     Task LeaveLobbyAsync(Guid id, CancellationToken ct = default);
     Task<LobbyDto> SetReadyAsync(Guid id, bool ready, CancellationToken ct = default);
     Task<StartGameResponse> StartGameAsync(Guid id, CancellationToken ct = default);
+    // SCRUM-172, "Spil igen": back into the lobby the game came from. LobbyService answers 409 until it
+    // has heard that the game is over.
+    Task<LobbyDto> PlayAgainAsync(Guid id, CancellationToken ct = default);
 }
 
 // MusicService. Writes are admin only (403 for players). Upload goes through ISongUploader in
