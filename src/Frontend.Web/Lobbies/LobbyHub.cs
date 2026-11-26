@@ -2,6 +2,7 @@ using Frontend.Domain.DTOs.Lobbies;
 using Frontend.Services.Auth;
 using Frontend.Services.Options;
 
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Options;
 
@@ -20,7 +21,7 @@ public interface ILobbyHub : IAsyncDisposable
 }
 
 // Hub: <LobbyService base>/hubs/lobby, i.e. /api/lobbyservice/hubs/lobby through the edge.
-// The JWT goes as a Bearer header on negotiate and as ?access_token= on the WebSocket (SignalR does that).
+// No negotiate (SCRUM-128): the WebSocket is opened directly and the JWT goes as ?access_token= on it (SignalR does that).
 // After a reconnect the server has forgotten the group, so it is joined again.
 public sealed class LobbyHub(IOptions<ServiceUrlOptions> serviceUrls, IAccessTokenProvider tokens) : ILobbyHub
 {
@@ -35,8 +36,14 @@ public sealed class LobbyHub(IOptions<ServiceUrlOptions> serviceUrls, IAccessTok
     {
         _lobbyId = lobbyId;
         _connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(serviceUrls.Value.LobbyService, "hubs/lobby"),
-                options => options.AccessTokenProvider = () => Task.FromResult(tokens.GetAccessToken()))
+            .WithUrl(new Uri(serviceUrls.Value.LobbyService, "hubs/lobby"), options =>
+            {
+                options.AccessTokenProvider = () => Task.FromResult(tokens.GetAccessToken());
+                // LobbyService runs several pods (SCRUM-128). Negotiate and the WebSocket after it are two
+                // requests that can land on different pods, so skip negotiate and open the WebSocket directly.
+                options.SkipNegotiation = true;
+                options.Transports = HttpTransportType.WebSockets;
+            })
             .WithAutomaticReconnect()
             .Build();
 
