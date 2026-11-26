@@ -110,7 +110,7 @@ public class LobbyPageTests : BunitContext
 
         cut.Find("[data-testid=start-button]").Click();
 
-        cut.WaitForAssertion(() => Assert.Equal($"http://localhost/spil/{gameId}", _navigation.Uri));
+        cut.WaitForAssertion(() => Assert.Equal($"http://localhost/spil/{gameId}?lobby={LobbyId}", _navigation.Uri));
     }
 
     [Fact]
@@ -121,7 +121,7 @@ public class LobbyPageTests : BunitContext
 
         _hub.RaiseGameStarted(gameId);
 
-        Assert.Equal($"http://localhost/spil/{gameId}", _navigation.Uri);
+        Assert.Equal($"http://localhost/spil/{gameId}?lobby={LobbyId}", _navigation.Uri);
     }
 
     [Fact]
@@ -306,7 +306,7 @@ public class LobbyPageTests : BunitContext
 
         _hub.RaiseGameStarted(gameId);
 
-        cut.WaitForAssertion(() => Assert.EndsWith($"spil/{gameId}", _navigation.Uri));
+        cut.WaitForAssertion(() => Assert.EndsWith($"spil/{gameId}?lobby={LobbyId}", _navigation.Uri));
         Assert.Equal([Sfx.GameStart], _sounds.Played);
     }
 }

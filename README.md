@@ -37,6 +37,8 @@ each behind an interface so bUnit tests can use a fake:
 | `ILobbyHub` (`Lobbies/LobbyHub.cs`) | `/api/lobbyservice/hubs/lobby` | Lobby updates (SCRUM-100) |
 | `IGameHubClient` (`Games/GameHubClient.cs`) | `/api/gameservice/hubs/game` | The game: `JoinGame`, `Ready`, `SubmitAnswer`; events `Prefetch`, `RoundStarted`, `PlayerAnswered`, `RoundEnded`, `GameEnded`, plus `ConnectionLost`/`Rejoined` (SCRUM-147) |
 
+**"Spil igen" (SCRUM-172).** The lobby page opens the game as `spil/{gameId}?lobby={lobbyId}`. On the end screen, "Spil igen" calls LobbyService `POST /api/lobbies/{lobbyId}/play-again` and goes back to `lobby/{lobbyId}` (same code, players and settings; nobody is ready). LobbyService answers `409` until GameService's `GameFinished` has reached it, so the page tries again every 0.5 s for up to 10 s. "Forlad" goes to the front page; the player is then simply not in the reopened lobby. Without `?lobby=` the end screen only links to the front page.
+
 Game DTOs (`Domain/DTOs/Games`) mirror GameService's hub messages. Hub errors become `GameHubException`
 with a Danish message (`Games/GameMessages.cs`). Songs are downloaded and played by `IGameAudio`
 (`wwwroot/js/gameAudio.js`): it fetches from the CDN into a blob URL, so the CDN must allow CORS for

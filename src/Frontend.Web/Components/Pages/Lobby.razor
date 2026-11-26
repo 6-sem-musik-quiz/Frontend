@@ -257,7 +257,7 @@ else if (_error is null)
     private Task OnGameStarted(Guid gameId) => InvokeAsync(async () =>
     {
         await Sounds.PlayAsync(Sfx.GameStart);
-        Navigation.NavigateTo($"spil/{gameId}");
+        Navigation.NavigateTo(GamePage.Link(gameId, Id));
     });
 
     // The last player left. If that was us, LeaveAsync already navigates.
@@ -290,7 +290,7 @@ else if (_error is null)
         if (started is not null)
         {
             await Sounds.PlayAsync(Sfx.GameStart);
-            Navigation.NavigateTo($"spil/{started.GameId}");
+            Navigation.NavigateTo(GamePage.Link(started.GameId, Id));
         }
     }
 

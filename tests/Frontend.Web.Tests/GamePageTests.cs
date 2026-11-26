@@ -1,13 +1,23 @@
 using System.Security.Claims;
 
+using System.Net;
+
 using Bunit;
 
+using Frontend.Domain.DTOs;
 using Frontend.Domain.DTOs.Games;
+using Frontend.Domain.DTOs.Lobbies;
+using Frontend.Services.Errors;
+using Frontend.Services.Interfaces;
 using Frontend.Web.Components.Pages;
 using Frontend.Web.Games;
 using Frontend.Web.Sound;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Frontend.Web.Tests;
@@ -22,6 +32,8 @@ public class GamePageTests : BunitContext
     private readonly FakeGameAudio _audio = new();
     private readonly FakeTimeProvider _time = new();
     private readonly FakeSoundEffects _sounds = new();
+    private readonly ILobbyApiClient _lobbies = Substitute.For<ILobbyApiClient>();
+    private static readonly Guid LobbyId = Guid.Parse("8d3f1a52-0c4e-4f7b-9a61-2b5e7c9d0e11");
 
     public GamePageTests()
     {
@@ -30,6 +42,7 @@ public class GamePageTests : BunitContext
         Services.AddSingleton<IGameAudio>(_audio);
         Services.AddSingleton<TimeProvider>(_time);
         Services.AddSingleton<ISoundEffects>(_sounds);
+        Services.AddSingleton(_lobbies);
         AddAuthorization().SetAuthorized("alice").SetClaims(new Claim("sub", Me.ToString()));
         _hub.State = State();
     }
@@ -651,5 +664,84 @@ public class GamePageTests : BunitContext
             [new StandingDto(Me, "alice", 5, 5, 10, myPlacement, [])])));
 
         Assert.Equal([expected], _sounds.Played);
+    }
+
+    // SCRUM-172: "Spil igen" and "Forlad" on the end screen.
+    private IRenderedComponent<GamePage> RenderEndScreen(bool withLobby = true)
+    {
+        if (withLobby)
+            Services.GetRequiredService<NavigationManager>().NavigateTo($"spil/{GameId}?lobby={LobbyId}");
+        var cut = RenderPage();
+        cut.InvokeAsync(() => _hub.RaiseGameEnded(new GameEndedDto(GameId,
+            [new StandingDto(Me, "alice", 3, 3, 3, 1, []), new StandingDto(Bob, "bob", 1, 1, 3, 2, [])])));
+        return cut;
+    }
+
+    private static LobbyDto ReopenedLobby() => new(LobbyId, "ABC234", Me, true,
+        new LobbySettingsDto(3, "80'er hits", 30, 10, 4), [new LobbyPlayerDto(Me, "alice", false)], "Waiting");
+
+    private static ApiException Conflict(string detail) =>
+        new(HttpStatusCode.Conflict, detail, new ProblemDetailsDto { Status = 409, Detail = detail });
+
+    [Fact]
+    public void TheEndScreen_OffersPlayAgainAndLeave()
+    {
+        var cut = RenderEndScreen();
+
+        Assert.Equal("Spil igen", Text(cut, "play-again"));
+        Assert.Equal("Forlad", Text(cut, "leave"));
+    }
+
+    [Fact]
+    public void WithoutALobby_TheEndScreenOnlyLeadsToTheFrontPage()
+    {
+        var cut = RenderEndScreen(withLobby: false);
+
+        Assert.Empty(cut.FindAll("[data-testid=play-again]"));
+        Assert.Contains("Til forsiden", cut.Find(".game-end").TextContent);
+    }
+
+    [Fact]
+    public void PlayAgain_GoesBackToTheSameLobby()
+    {
+        _lobbies.PlayAgainAsync(LobbyId, Arg.Any<CancellationToken>()).Returns(ReopenedLobby());
+        var cut = RenderEndScreen();
+
+        cut.Find("[data-testid=play-again]").Click();
+
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        cut.WaitForAssertion(() => Assert.Equal($"http://localhost/lobby/{LobbyId}", navigation.Uri));
+    }
+
+    // GameEnded reaches the players before LobbyService has handled GameFinished: 409, try again.
+    [Fact]
+    public async Task PlayAgain_TriesAgain_WhileTheLobbyHasNotReopenedYet()
+    {
+        _lobbies.PlayAgainAsync(LobbyId, Arg.Any<CancellationToken>())
+            .Returns(_ => throw Conflict("The game has not finished yet."), _ => Task.FromResult(ReopenedLobby()));
+        var cut = RenderEndScreen();
+        var navigation = Services.GetRequiredService<NavigationManager>();
+
+        cut.Find("[data-testid=play-again]").Click();
+        Assert.Equal("Vender tilbage…", Text(cut, "play-again"));
+        Assert.DoesNotContain("lobby/", navigation.Uri);
+
+        await cut.InvokeAsync(() => _time.Advance(GamePage.PlayAgainRetryDelay));
+
+        cut.WaitForAssertion(() => Assert.Equal($"http://localhost/lobby/{LobbyId}", navigation.Uri));
+        await _lobbies.Received(2).PlayAgainAsync(LobbyId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public void PlayAgain_ShowsWhyItFailed_WhenTheLobbyIsFull()
+    {
+        _lobbies.PlayAgainAsync(LobbyId, Arg.Any<CancellationToken>()).ThrowsAsync(Conflict("The lobby is full."));
+        var cut = RenderEndScreen();
+
+        cut.Find("[data-testid=play-again]").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Lobbyen er fuld.", cut.Find(".game-end").TextContent));
+        Assert.Equal("Spil igen", Text(cut, "play-again"));
+        _lobbies.Received(1).PlayAgainAsync(LobbyId, Arg.Any<CancellationToken>());
     }
 }

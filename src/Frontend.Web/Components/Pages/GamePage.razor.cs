@@ -1,6 +1,11 @@
+using System.Net;
+
 using Frontend.Domain.DTOs.Games;
+using Frontend.Services.Errors;
+using Frontend.Services.Interfaces;
 using Frontend.Web.Components.Game;
 using Frontend.Web.Games;
+using Frontend.Web.Lobbies;
 using Frontend.Web.Sound;
 
 using Microsoft.AspNetCore.Components;
@@ -20,6 +25,18 @@ public partial class GamePage : IAsyncDisposable
 
     [Parameter] public Guid GameId { get; set; }
 
+    // SCRUM-172: the lobby the game was started from (?lobby=), so "Spil igen" can lead back to it.
+    // Without it (an old link) the end screen only offers the front page.
+    [SupplyParameterFromQuery(Name = "lobby")] public Guid? LobbyId { get; set; }
+
+    public static string Link(Guid gameId, Guid lobbyId) => $"spil/{gameId}?lobby={lobbyId}";
+
+    // LobbyService reopens the lobby when GameService's GameFinished reaches it, usually well under a
+    // second after GameEnded. Until then play-again answers 409, so it is tried again for a while.
+    public static readonly TimeSpan PlayAgainRetryDelay = TimeSpan.FromMilliseconds(500);
+    public const int PlayAgainAttempts = 20;
+    private const string NotFinishedYet = "The game has not finished yet.";
+
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     [Inject] private IGameHubClient Hub { get; set; } = null!;
@@ -27,6 +44,8 @@ public partial class GamePage : IAsyncDisposable
     [Inject] private TimeProvider Time { get; set; } = null!;
     [Inject] private IJSRuntime JS { get; set; } = null!;
     [Inject] private ISoundEffects Sounds { get; set; } = null!;
+    [Inject] private ILobbyApiClient Lobbies { get; set; } = null!;
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
 
     // What the card table (SCRUM-152) knows about a player. Everything here is public.
     private sealed class Player(string name, int score)
@@ -70,6 +89,8 @@ public partial class GamePage : IAsyncDisposable
     // Every ended round's song and how it went for me (discard pile, all songs after the game).
     private readonly List<PlayedSong> _played = [];
     private bool _showAllSongs;
+    private bool _playAgainBusy;
+    private string? _playAgainError;
     private double _volume = 0.8;
     private double _effectsVolume = 0.6; // sound effects, separate from the song (SCRUM-161)
 
@@ -102,6 +123,44 @@ public partial class GamePage : IAsyncDisposable
             .Select(id => (Id: id, P: _players[id]))
             .Select(x => new RivalView(x.Id, x.P.Name, x.P.Cards, x.P.History, x.P.Stamp, x.P.Reveal))
             .ToList();
+
+    // SCRUM-172: "Spil igen". Back to the lobby page, where the player is not ready yet.
+    private async Task PlayAgainAsync()
+    {
+        if (LobbyId is not { } lobbyId || _playAgainBusy) return;
+        _playAgainBusy = true;
+        _playAgainError = null;
+        try
+        {
+            for (var attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    await Lobbies.PlayAgainAsync(lobbyId);
+                    Navigation.NavigateTo($"lobby/{lobbyId}");
+                    return;
+                }
+                catch (ApiException e) when (e.StatusCode == HttpStatusCode.Conflict
+                                             && e.Problem?.Detail == NotFinishedYet && attempt < PlayAgainAttempts)
+                {
+                    await Task.Delay(PlayAgainRetryDelay, Time);
+                }
+            }
+        }
+        catch (ApiException e) when (e.Problem?.Detail == NotFinishedYet)
+        {
+            _playAgainError = "Lobbyen er ikke klar endnu. Prøv igen om lidt.";
+        }
+        catch (ApiException e)
+        {
+            _playAgainError = LobbyMessages.For(e) ?? "Du kunne ikke komme tilbage til lobbyen.";
+        }
+        catch (HttpRequestException)
+        {
+            _playAgainError = "Kunne ikke kontakte lobbyen. Prøv igen om lidt.";
+        }
+        _playAgainBusy = false;
+    }
 
     protected override async Task OnInitializedAsync()
     {

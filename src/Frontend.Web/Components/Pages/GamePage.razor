@@ -32,8 +32,19 @@ else if (_ended is not null)
                 </li>
             }
         </ol>
+        <ErrorMessage Message="@_playAgainError" />
         <div class="d-flex gap-2 flex-wrap justify-content-center">
-            <a href="" class="btn btn-primary">Til forsiden</a>
+            @if (LobbyId is not null)
+            {
+                @* SCRUM-172: back to the same lobby (same code, players and settings), or leave it. *@
+                <button type="button" class="btn btn-primary" @onclick="PlayAgainAsync" disabled="@_playAgainBusy"
+                        data-testid="play-again">@(_playAgainBusy ? "Vender tilbage…" : "Spil igen")</button>
+                <a href="" class="btn" data-testid="leave">Forlad</a>
+            }
+            else
+            {
+                <a href="" class="btn btn-primary">Til forsiden</a>
+            }
             <button type="button" class="btn" @onclick="() => _showAllSongs = true" data-testid="all-songs">Se alle sange</button>
         </div>
         <SongListDialog Open="_showAllSongs" Title="Alle spillets sange" Songs="_played"
