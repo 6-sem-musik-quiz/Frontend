@@ -10,7 +10,11 @@ namespace Frontend.Services.Interfaces;
 
 public interface IUserApiClient
 {
-    Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default);
+    Task<AuthLoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default);
+    // Bytter refresh-tokenet til et nyt par tokens. 401, hvis det er ugyldigt, udløbet eller brugt.
+    Task<RefreshResponse> RefreshAsync(string refreshToken, CancellationToken ct = default);
+    // Spærrer refresh-tokenet i UserService.
+    Task LogoutAsync(string refreshToken, CancellationToken ct = default);
     Task<UserDto> CreateUserAsync(CreateUserRequest request, CancellationToken ct = default);
     Task<UserDto> GetCurrentUserAsync(CancellationToken ct = default);
     Task<IReadOnlyList<UserDto>> GetUsersAsync(CancellationToken ct = default);

@@ -15,12 +15,14 @@ public interface IAuthService
 public sealed class AuthService(
     IUserApiClient userApi,
     JwtAuthenticationStateProvider authState,
-    NavigationManager navigation) : IAuthService
+    UserSession session,
+    NavigationManager navigation,
+    ILogger<AuthService> logger) : IAuthService
 {
     public async Task LoginAsync(LoginRequest request, CancellationToken ct = default)
     {
         var response = await userApi.LoginAsync(request, ct);
-        await authState.SignInAsync(response.Token);
+        await authState.SignInAsync(response.AccessToken, response.RefreshToken);
     }
 
     public async Task RegisterAsync(CreateUserRequest request, CancellationToken ct = default)
@@ -31,6 +33,20 @@ public sealed class AuthService(
 
     public async Task LogoutAsync(string? returnUrl = null)
     {
+        // Spær refresh-tokenet i UserService. Lykkes det ikke (fx netværk), logges brugeren alligevel ud
+        // her; tokenet udløber så af sig selv efter 7 dage.
+        if (session.RefreshToken is { } refreshToken)
+        {
+            try
+            {
+                await userApi.LogoutAsync(refreshToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogInformation(ex, "Kunne ikke spærre refresh-tokenet ved logout.");
+            }
+        }
+
         await authState.SignOutAsync();
         navigation.NavigateTo(LoginUrl.For(returnUrl));
     }

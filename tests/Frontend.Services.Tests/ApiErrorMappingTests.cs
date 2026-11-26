@@ -70,22 +70,24 @@ public class ApiErrorMappingTests
     public async Task Success_ReturnsDeserializedBody()
     {
         var stub = new StubHttpMessageHandler(HttpStatusCode.OK,
-            new LoginResponse("token-123", DateTime.UtcNow.AddHours(12), new UserDto(1, "bob", Roles.Player)));
+            new AuthLoginResponse("token-123", DateTime.UtcNow.AddMinutes(15), "refresh-1", DateTime.UtcNow.AddDays(7),
+                new UserDto(1, "bob", Roles.Player)));
         var client = new UserApiClient(Http(stub));
 
         var result = await client.LoginAsync(new LoginRequest { UserName = "bob", Password = "pw" });
 
-        Assert.Equal("token-123", result.Token);
+        Assert.Equal("token-123", result.AccessToken);
+        Assert.Equal("refresh-1", result.RefreshToken);
         Assert.Equal(HttpMethod.Post, stub.LastRequest!.Method);
-        Assert.Equal(new Uri(BaseAddress, "users/login"), stub.LastRequest.RequestUri);
+        Assert.Equal(new Uri(BaseAddress, "auth/login"), stub.LastRequest.RequestUri);
     }
 
-    // The exact JSON UserService returns from POST /api/users/login (camelCase, int id, role as text).
+    // The exact JSON UserService returns from POST /api/auth/login (camelCase, int id, role as text).
     [Fact]
     public async Task Login_ReadsUserServiceResponse()
     {
         const string json = """
-            {"token":"aaa.bbb.ccc","expiresAt":"2026-11-24T22:00:00Z","user":{"id":7,"userName":"alice","role":"Player"}}
+            {"accessToken":"aaa.bbb.ccc","accessTokenExpiresAt":"2026-11-24T22:00:00Z","refreshToken":"r-1","refreshTokenExpiresAt":"2026-12-01T21:45:00Z","user":{"id":7,"userName":"alice","role":"Player"}}
             """;
         var stub = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
@@ -95,8 +97,56 @@ public class ApiErrorMappingTests
 
         var result = await client.LoginAsync(new LoginRequest { UserName = "alice", Password = "password1" });
 
-        Assert.Equal("aaa.bbb.ccc", result.Token);
-        Assert.Equal(DateTime.Parse("2026-11-24T22:00:00Z").ToUniversalTime(), result.ExpiresAt.ToUniversalTime());
+        Assert.Equal("aaa.bbb.ccc", result.AccessToken);
+        Assert.Equal(DateTime.Parse("2026-11-24T22:00:00Z").ToUniversalTime(), result.AccessTokenExpiresAt.ToUniversalTime());
+        Assert.Equal("r-1", result.RefreshToken);
         Assert.Equal(new UserDto(7, "alice", Roles.Player), result.User);
+    }
+
+    [Fact]
+    public async Task Refresh_PostsRefreshToken_AndReadsNewPair()
+    {
+        const string json = """
+            {"accessToken":"new.access.token","accessTokenExpiresAt":"2026-11-24T22:15:00Z","refreshToken":"r-2","refreshTokenExpiresAt":"2026-12-01T22:00:00Z"}
+            """;
+        string? sentBody = null;
+        var stub = new StubHttpMessageHandler(request =>
+        {
+            sentBody = request.Content!.ReadAsStringAsync().Result;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
+            };
+        });
+        var client = new UserApiClient(Http(stub));
+
+        var result = await client.RefreshAsync("r-1");
+
+        Assert.Equal(new Uri(BaseAddress, "auth/refresh"), stub.LastRequest!.RequestUri);
+        Assert.Equal("""{"refreshToken":"r-1"}""", sentBody);
+        Assert.Equal("new.access.token", result.AccessToken);
+        Assert.Equal("r-2", result.RefreshToken);
+    }
+
+    [Fact]
+    public async Task Refresh_Rejected_ThrowsUnauthorized()
+    {
+        var stub = StubHttpMessageHandler.ProblemDetails(HttpStatusCode.Unauthorized,
+            """{"title":"Unauthorized","status":401,"detail":"Invalid or expired refresh token."}""");
+        var client = new UserApiClient(Http(stub));
+
+        await Assert.ThrowsAsync<UnauthorizedApiException>(() => client.RefreshAsync("old"));
+    }
+
+    [Fact]
+    public async Task Logout_PostsRefreshToken()
+    {
+        var stub = new StubHttpMessageHandler(HttpStatusCode.NoContent);
+        var client = new UserApiClient(Http(stub));
+
+        await client.LogoutAsync("r-1");
+
+        Assert.Equal(HttpMethod.Post, stub.LastRequest!.Method);
+        Assert.Equal(new Uri(BaseAddress, "auth/logout"), stub.LastRequest.RequestUri);
     }
 }

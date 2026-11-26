@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Frontend.Domain.DTOs.Users;
 
-// Spejler UserService (POST /api/users/login og POST /api/users). Der ligger endnu ingen godkendt
+// Spejler UserService (POST /api/auth/login, /refresh, /logout og POST /api/users),
 // kontrakt i Platform/docs/contracts, så UserService's DTO'er er kilden.
 public class LoginRequest
 {
@@ -14,8 +14,24 @@ public class LoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
-// Svar fra login. Token er en JWT med claims "sub", "unique_name", "role" og "exp".
-public record LoginResponse(string Token, DateTime ExpiresAt, UserDto User);
+// Svar fra login. AccessToken er en JWT med claims "sub", "unique_name", "role" og "exp" og lever kort
+// (15 min). RefreshToken bruges til at få et nyt par uden at logge ind igen.
+public record AuthLoginResponse(
+    string AccessToken,
+    DateTime AccessTokenExpiresAt,
+    string RefreshToken,
+    DateTime RefreshTokenExpiresAt,
+    UserDto User);
+
+// Svar fra refresh: et nyt adgangstoken og et nyt refresh-token. Det gamle refresh-token virker ikke mere.
+public record RefreshResponse(
+    string AccessToken,
+    DateTime AccessTokenExpiresAt,
+    string RefreshToken,
+    DateTime RefreshTokenExpiresAt);
+
+// Body til /api/auth/refresh og /api/auth/logout.
+public record RefreshTokenRequest(string RefreshToken);
 
 public class CreateUserRequest
 {

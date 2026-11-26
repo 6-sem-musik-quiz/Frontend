@@ -15,9 +15,16 @@ namespace Frontend.Services.ApiClients;
 public class UserApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IUserApiClient
 {
     private const string Route = "users";
+    private const string AuthRoute = "auth";
 
-    public Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default) =>
-        PostAsync<LoginRequest, LoginResponse>($"{Route}/login", request, ct);
+    public Task<AuthLoginResponse> LoginAsync(LoginRequest request, CancellationToken ct = default) =>
+        PostAsync<LoginRequest, AuthLoginResponse>($"{AuthRoute}/login", request, ct);
+
+    public Task<RefreshResponse> RefreshAsync(string refreshToken, CancellationToken ct = default) =>
+        PostAsync<RefreshTokenRequest, RefreshResponse>($"{AuthRoute}/refresh", new RefreshTokenRequest(refreshToken), ct);
+
+    public Task LogoutAsync(string refreshToken, CancellationToken ct = default) =>
+        PostAsync($"{AuthRoute}/logout", new RefreshTokenRequest(refreshToken), ct);
 
     public Task<UserDto> CreateUserAsync(CreateUserRequest request, CancellationToken ct = default) =>
         PostAsync<CreateUserRequest, UserDto>(Route, request, ct);

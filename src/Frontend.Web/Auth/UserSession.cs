@@ -6,12 +6,16 @@ public sealed class UserSession
 {
     public ParsedToken? Current { get; private set; }
 
+    // Refresh-tokenet til den aktuelle session, eller null.
+    public string? RefreshToken { get; private set; }
+
     // True, når vi har forsøgt at hente fra sessionStorage.
     public bool IsLoaded { get; private set; }
 
-    public void Set(ParsedToken? token)
+    public void Set(ParsedToken? token, string? refreshToken = null)
     {
         Current = token;
+        RefreshToken = token is null ? null : refreshToken;
         IsLoaded = true;
     }
 

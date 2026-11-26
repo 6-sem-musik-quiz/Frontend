@@ -1,9 +1,15 @@
 using System.Text;
 using System.Text.Json;
 
+using Frontend.Domain.DTOs.Users;
+using Frontend.Services.Errors;
+using Frontend.Services.Interfaces;
 using Frontend.Web.Auth;
 
 using Microsoft.Extensions.Logging.Abstractions;
+
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Frontend.Web.Tests;
 
@@ -13,8 +19,14 @@ public class JwtAuthenticationStateProviderTests
     private readonly InMemoryTokenStorage _storage = new();
     private readonly UserSession _session = new();
 
-    private JwtAuthenticationStateProvider CreateSut() =>
-        new(_session, _storage, _time, NullLogger<JwtAuthenticationStateProvider>.Instance);
+    private readonly IUserApiClient _userApi = Substitute.For<IUserApiClient>();
+
+    private JwtAuthenticationStateProvider CreateSut(bool withApi = false) =>
+        new(_session, _storage, _time, NullLogger<JwtAuthenticationStateProvider>.Instance, withApi ? _userApi : null);
+
+    private RefreshResponse NewPair(string refreshToken, TimeSpan lifetime) => new(
+        TestTokens.Create("alice", "Player", _time.GetUtcNow() + lifetime), (_time.GetUtcNow() + lifetime).UtcDateTime,
+        refreshToken, _time.GetUtcNow().AddDays(7).UtcDateTime);
 
     [Fact]
     public async Task ReadsUniqueNameAndRole_FromStoredToken()
@@ -73,6 +85,90 @@ public class JwtAuthenticationStateProviderTests
         await signedOut.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.Null(_session.Current);
         Assert.Null(_storage.Stored);
+    }
+
+    [Fact]
+    public async Task SignIn_StoresRefreshToken()
+    {
+        await CreateSut(withApi: true).SignInAsync(TestTokens.Create("alice", "Player", _time.GetUtcNow().AddMinutes(15)), "r-1");
+
+        Assert.Equal("r-1", _storage.Stored?.RefreshToken);
+        Assert.Equal("r-1", _session.RefreshToken);
+    }
+
+    [Fact]
+    public async Task OneMinuteBeforeExpiry_GetsNewTokens_WithRefreshToken()
+    {
+        var sut = CreateSut(withApi: true);
+        await sut.SignInAsync(TestTokens.Create("alice", "Player", _time.GetUtcNow().AddMinutes(15)), "r-1");
+        _userApi.RefreshAsync("r-1", Arg.Any<CancellationToken>()).Returns(_ => NewPair("r-2", TimeSpan.FromMinutes(15)));
+
+        _time.Advance(TimeSpan.FromMinutes(14));
+
+        await WaitUntilAsync(() => _storage.Stored?.RefreshToken == "r-2");
+        Assert.Equal("r-2", _session.RefreshToken);
+        Assert.False(_session.Current!.IsExpired(_time.GetUtcNow().AddMinutes(10)));
+        Assert.True((await sut.GetAuthenticationStateAsync()).User.Identity?.IsAuthenticated);
+    }
+
+    [Fact]
+    public async Task RefreshRejected_SignsOutWhenAccessTokenExpires()
+    {
+        var sut = CreateSut(withApi: true);
+        await sut.SignInAsync(TestTokens.Create("alice", "Player", _time.GetUtcNow().AddMinutes(15)), "r-1");
+        _userApi.RefreshAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new UnauthorizedApiException("Invalid or expired refresh token."));
+        var signedOut = new TaskCompletionSource();
+        sut.AuthenticationStateChanged += async s =>
+        {
+            if ((await s).User.Identity?.IsAuthenticated != true) signedOut.TrySetResult();
+        };
+
+        _time.Advance(TimeSpan.FromMinutes(14));
+        await WaitUntilAsync(() => _userApi.ReceivedCalls().Any());
+        Assert.NotNull(_session.Current); // still valid for one more minute
+
+        _time.Advance(TimeSpan.FromMinutes(2));
+
+        await signedOut.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Null(_session.Current);
+        Assert.Null(_storage.Stored);
+    }
+
+    [Fact]
+    public async Task ExpiredTokenInStorage_IsRenewed_WithStoredRefreshToken()
+    {
+        var expired = TestTokens.Create("alice", "Player", _time.GetUtcNow().AddMinutes(-5));
+        _storage.Stored = new StoredSession(expired, "alice", "Player", "r-1");
+        _userApi.RefreshAsync("r-1", Arg.Any<CancellationToken>()).Returns(NewPair("r-2", TimeSpan.FromMinutes(15)));
+
+        var state = await CreateSut(withApi: true).GetAuthenticationStateAsync();
+
+        Assert.True(state.User.Identity?.IsAuthenticated);
+        Assert.Equal("r-2", _storage.Stored?.RefreshToken);
+    }
+
+    [Fact]
+    public async Task ExpiredTokenInStorage_RefreshRejected_LogsOut()
+    {
+        var expired = TestTokens.Create("alice", "Player", _time.GetUtcNow().AddMinutes(-5));
+        _storage.Stored = new StoredSession(expired, "alice", "Player", "r-1");
+        _userApi.RefreshAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new UnauthorizedApiException("Invalid or expired refresh token."));
+
+        var state = await CreateSut(withApi: true).GetAuthenticationStateAsync();
+
+        Assert.False(state.User.Identity?.IsAuthenticated);
+        Assert.Null(_storage.Stored);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        for (var i = 0; i < 200 && !condition(); i++)
+        {
+            await Task.Delay(10);
+        }
+        Assert.True(condition());
     }
 
     private sealed class InMemoryTokenStorage : ITokenStorage
