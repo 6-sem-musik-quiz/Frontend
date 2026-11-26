@@ -1,0 +1,124 @@
+@* SCRUM-154: after each round (design "Slopster Rivals v3", "Hvor lagde alle kortet?" and "Hvornår låste de?").
+   The guess map puts every answer as a year range (RoundEnded.results[].range) on one axis, green if right
+   and rust if wrong, with the real year as a mustard line; the lanes show when each player locked in, by
+   time. Shown until the next round starts, with a countdown for the pause between rounds. *@
+@using System.Globalization
+@implements IDisposable
+@inject TimeProvider Time
+
+<section class="rr" aria-label="Rundens svar" data-testid="round-recap">
+    <div class="rr-head">
+        <span class="px">@Ended.Song.Year</span>
+        <span class="rr-song"><b>@Ended.Song.Title</b> · @string.Join(", ", Ended.Song.Artists)</span>
+        <span class="rr-next text-body-secondary small" data-testid="next-round">@NextText</span>
+    </div>
+    <div class="rr-grid">
+        <div class="card rr-box">
+            <h3 class="rr-title">Hvor lagde alle kortet?</h3>
+            <div class="rr-map">
+                <div class="rr-true" style="left: @Pct(Ended.Song.Year)" data-testid="true-year"><b>@Ended.Song.Year</b></div>
+                @foreach (var r in Ended.Results)
+                {
+                    var mine = r.UserId == Me;
+                    <div class="rr-row" data-testid="guess" data-user="@r.UserId">
+                        @if (r.Range is { Count: 2 } range)
+                        {
+                            var (left, width) = Span(range[0], range[1]);
+                            <div class="rr-range @(r.Correct ? "y" : "n") @(mine ? "me" : "")"
+                                 style="left: @left; width: @width"
+                                 data-from="@range[0]" data-to="@range[1]"
+                                 title="@Label(range)">@(mine ? "Dig" : r.UserName) @Label(range)</div>
+                        }
+                        else
+                        {
+                            <span class="rr-none @(mine ? "me" : "")">@(mine ? "Dig" : r.UserName): intet svar</span>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="rr-axis" aria-hidden="true">
+                @foreach (var tick in _axis.Ticks)
+                {
+                    <span style="left: @Pct(tick)">@tick</span>
+                }
+            </div>
+        </div>
+        <div class="card rr-box">
+            <h3 class="rr-title">Hvornår låste de?</h3>
+            <div class="rr-lanes">
+                @foreach (var r in Lanes)
+                {
+                    var mine = r.UserId == Me;
+                    <div class="rr-lane @(mine ? "me" : "")" data-testid="lane" data-user="@r.UserId">
+                        <span class="px rr-name">@(mine ? "Dig" : r.UserName)</span>
+                        <div class="rr-bar">
+                            @if (r.AnsweredAfterMs is { } ms)
+                            {
+                                <i class="@(r.Correct ? "y" : "n")" style="left: @Percent(ms / (AnswerTimeSeconds * 1000.0))"></i>
+                            }
+                        </div>
+                        <span class="px rr-time" data-testid="lane-time">@(r.AnsweredAfterMs is { } t ? Seconds(t) : "–")</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    // GameService waits this long after RoundEnded before it prepares the next round (PauseBetweenRoundsSeconds).
+    public static readonly TimeSpan PauseBetweenRounds = TimeSpan.FromSeconds(8);
+
+    [Parameter, EditorRequired] public RoundEndedDto Ended { get; set; } = null!;
+    [Parameter] public int? Me { get; set; }
+    [Parameter] public int AnswerTimeSeconds { get; set; } = 30;
+
+    private GuessAxis _axis = null!;
+    private int _nextIn;
+    private ITimer? _timer;
+
+    // Answered players by time (fastest first), then the ones without an answer.
+    private IEnumerable<RoundResultDto> Lanes =>
+        Ended.Results.OrderBy(r => r.AnsweredAfterMs is null).ThenBy(r => r.AnsweredAfterMs ?? 0);
+
+    private string NextText => _nextIn > 0 ? $"Næste runde om {_nextIn} s" : "Venter på de andre …";
+
+    protected override void OnParametersSet()
+    {
+        _axis = GuessAxis.For(Ended);
+        _timer?.Dispose();
+        _nextIn = (int)PauseBetweenRounds.TotalSeconds;
+        _timer = Time.CreateTimer(_ => InvokeAsync(() =>
+        {
+            if (_nextIn > 0) _nextIn--;
+            StateHasChanged();
+        }), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private string Pct(int year) => Percent(_axis.Position(year));
+
+    // An open end ("before the first card" / "after the last") runs to the edge of the axis.
+    private (string Left, string Width) Span(int? from, int? to)
+    {
+        var a = from is { } f ? _axis.Position(f) : 0;
+        var b = to is { } t ? _axis.Position(t) : 1;
+        return (Percent(a), Percent(Math.Max(b - a, 0.02))); // a same-year range still shows
+    }
+
+    private static string Label(IReadOnlyList<int?> range) =>
+        (range[0], range[1]) switch
+        {
+            (null, { } to) => $"før {to}",
+            ({ } from, null) => $"efter {from}",
+            ({ } from, { } to) => $"{from}–{to}",
+            _ => "hvor som helst"
+        };
+
+    private static string Percent(double fraction) =>
+        (Math.Clamp(fraction, 0, 1) * 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
+
+    private static string Seconds(int ms) =>
+        (ms / 1000.0).ToString("0.0", CultureInfo.GetCultureInfo("da-DK")) + " s";
+
+    public void Dispose() => _timer?.Dispose();
+}

@@ -799,6 +799,27 @@ public class GamePageTests : BunitContext
         Assert.Contains("4 point (+1 bonus)", cut.Find("[data-user='1']").TextContent);
     }
 
+    // SCRUM-154: the guess map and lanes come with RoundEnded and go when the next round starts.
+    [Fact]
+    public async Task RoundEnded_ShowsTheRecap_UntilTheNextRoundStarts()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+        Assert.Empty(cut.FindAll("[data-testid=round-recap]"));
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+        [
+            new RoundResultDto(Me, "alice", 1, true, 1, [Card(1976), Card(1982)], 5000, [1976, null]),
+            new RoundResultDto(Bob, "bob", null, false, 0, [Card(1976)])
+        ])));
+
+        Assert.Single(cut.FindAll("[data-testid=round-recap]"));
+        Assert.Equal(2, cut.FindAll("[data-testid=guess]").Count);
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 0)));
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid=round-recap]")));
+    }
+
     // SCRUM-172: "Spil igen" and "Forlad" on the end screen.
     private IRenderedComponent<GamePage> RenderEndScreen(bool withLobby = true)
     {

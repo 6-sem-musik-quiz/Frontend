@@ -83,6 +83,11 @@ else
                 <Left><DeckPile RoundsLeft="@Math.Max(0, _state.TotalRounds - _round)" /></Left>
                 <Right><DiscardPile Songs="_played" /></Right>
             </HandOfCards>
+            @if (_reveal is not null && _roundEnded is not null)
+            {
+                @* SCRUM-154: where everyone put the card and when they locked in, until the next round. *@
+                <RoundRecap Ended="_roundEnded" Me="_me" AnswerTimeSeconds="_state.Settings.AnswerTimeSeconds" />
+            }
         </ChildContent>
     </GameLayout>
 }
