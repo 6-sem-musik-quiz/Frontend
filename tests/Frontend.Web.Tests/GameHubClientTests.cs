@@ -69,7 +69,12 @@ public class GameHubClientTests : IAsyncLifetime
             if (slotIndex == 99) throw new HubException("You have already answered.");
             calls.Received.Enqueue($"SubmitAnswer {gameId} {round} {slotIndex}");
         }
+
+        // SCRUM-168: GameService returns a DateTimeOffset, serialized as an ISO 8601 string.
+        public DateTimeOffset ServerTime() => ServerNow;
     }
+
+    public static readonly DateTimeOffset ServerNow = new(2026, 11, 25, 12, 0, 0, 123, TimeSpan.Zero);
 
     private readonly Calls _calls = new();
     private WebApplication _app = null!;
@@ -173,8 +178,11 @@ public class GameHubClientTests : IAsyncLifetime
             new { round = 1, audioUrl = "https://media.munkcloud.dk/songs/1.mp3" },
             new { round = 2, audioUrl = "https://media.munkcloud.dk/songs/2.mp3" }
         });
-        await Everyone.SendAsync("RoundStarted",
-            new { round = 1, totalRounds = 10, startsInMs = 3000, startOffsetSeconds = 42, answerTimeSeconds = 30 });
+        await Everyone.SendAsync("RoundStarted", new
+        {
+            round = 1, totalRounds = 10, startsInMs = 3000, startOffsetSeconds = 42, answerTimeSeconds = 30,
+            playbackStartsAt = ServerNow.AddSeconds(3) // SCRUM-168
+        });
         await Everyone.SendAsync("PlayerAnswered", new { userId = 8, answeredAfterMs = 4200 });
         var timeline = new[]
         {
@@ -202,7 +210,7 @@ public class GameHubClientTests : IAsyncLifetime
         });
 
         Assert.Equal([1, 2], (await prefetch.Task.WaitAsync(Timeout)).Select(p => p.Round));
-        Assert.Equal(new RoundStartedDto(1, 10, 3000, 42, 30), await started.Task.WaitAsync(Timeout));
+        Assert.Equal(new RoundStartedDto(1, 10, 3000, 42, 30, ServerNow.AddSeconds(3)), await started.Task.WaitAsync(Timeout));
         Assert.Equal(new PlayerAnsweredDto(8, 4200), await answered.Task.WaitAsync(Timeout));
 
         var round = await ended.Task.WaitAsync(Timeout);
@@ -229,6 +237,31 @@ public class GameHubClientTests : IAsyncLifetime
         await client.SubmitAnswerAsync(GameId, 3, 2);
 
         Assert.Equal([$"JoinGame {GameId}", $"Ready {GameId} 3", $"SubmitAnswer {GameId} 3 2"], _calls.Received);
+    }
+
+    // SCRUM-168
+    [Fact]
+    public async Task ServerTime_ReturnsTheServersClock()
+    {
+        var client = Client();
+        await client.JoinGameAsync(GameId);
+
+        Assert.Equal(ServerNow, await client.ServerTimeAsync());
+    }
+
+    // From an older GameService, RoundStarted has no playbackStartsAt: the page then uses startsInMs.
+    [Fact]
+    public async Task OldRoundStartedJson_WithoutPlaybackStartsAt_StillWorks()
+    {
+        var client = Client();
+        var started = Capture<RoundStartedDto>(out var onStarted);
+        client.RoundStarted += onStarted;
+        await client.JoinGameAsync(GameId);
+
+        await Everyone.SendAsync("RoundStarted",
+            new { round = 1, totalRounds = 10, startsInMs = 3000, startOffsetSeconds = 42, answerTimeSeconds = 30 });
+
+        Assert.Equal(new RoundStartedDto(1, 10, 3000, 42, 30), await started.Task.WaitAsync(Timeout));
     }
 
     [Fact]

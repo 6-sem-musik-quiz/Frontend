@@ -1,6 +1,7 @@
 @* SCRUM-148: "hånden er tidslinjen" (UI-design v1, board 3). Presentational only: no hub, no audio.
    The player drags "?" into a gap between two years (Pointer Events in wwwroot/js/hand.js, mouse and touch),
-   clicks a gap, or uses the arrow keys and Enter. "Bekræft" locks the answer and raises OnConfirm(slotIndex). *@
+   clicks a gap, or uses the arrow keys and Enter. "Bekræft" locks the answer and raises OnConfirm(slotIndex);
+   so does AutoConfirm when the time runs out with a card placed (SCRUM-171). *@
 @using Frontend.Domain.DTOs.Games
 @using System.Globalization
 @implements IAsyncDisposable
@@ -50,27 +51,31 @@
             <button type="button" @key="@("slot-" + slot)" class="gr-slot @(_dragging && _hot == slot ? "hot" : "")"
                     disabled="@IsLocked" aria-label="@SlotLabel(slot)" title="@SlotLabel(slot)"
                     @onclick="() => PlaceByClick(slot)" data-testid="slot"></button>
+            @* Each card sits in a .gh: its place in the fan, which never moves and is the hover target.
+               Only the .gc inside zooms, so the card can never move out from under the pointer. *@
             @if (ShowPlaced && _slot == slot)
             {
-                <div @key="@("placed")" class="gc gc-placed @RevealClass" style="@Fan(index++, count)" @ref="_placedRef"
+                <div @key="@("placed")" class="gh" style="@Fan(index++, count)" @ref="_placedRef"
                      data-drag="@(IsLocked ? null : "")" tabindex="@(IsLocked ? -1 : 0)" role="button"
                      aria-label="@PlacedLabel" @onkeydown="OnKeyDown" data-testid="placed">
-                    @if (Reveal is { Correct: true } reveal)
-                    {
-                        @Face(reveal.Song)
-                    }
-                    else
-                    {
-                        <div class="gc-year">?</div>
-                    }
+                    <div class="gc gc-placed @RevealClass">
+                        @if (Reveal is { Correct: true } reveal)
+                        {
+                            @Face(reveal.Song)
+                        }
+                        else
+                        {
+                            <div class="gc-year">?</div>
+                        }
+                    </div>
                 </div>
             }
             @if (slot < Cards.Count)
             {
                 var card = Cards[slot];
-                <div @key="@("card-" + slot)" class="gc" style="@Fan(index++, count)" data-card="" tabindex="0"
+                <div @key="@("card-" + slot)" class="gh" style="@Fan(index++, count)" data-card="" tabindex="0"
                      aria-label="@($"{card.Year}: {card.Title} – {string.Join(", ", card.Artists)}")" data-testid="card">
-                    @Face(card)
+                    <div class="gc">@Face(card)</div>
                 </div>
             }
         }
@@ -98,6 +103,10 @@
 
     // True when the answer time is up: nothing can be placed or confirmed any more.
     [Parameter] public bool Locked { get; set; }
+
+    // SCRUM-171: when this turns true (just before the time runs out), a card placed but not confirmed
+    // is confirmed as if "Bekræft" was pressed. Nothing placed, or already confirmed: nothing is sent.
+    [Parameter] public bool AutoConfirm { get; set; }
 
     // What the hand says while Locked (and nothing is confirmed), e.g. before the first round.
     [Parameter] public string LockedText { get; set; } = "Tiden er gået.";
@@ -130,22 +139,32 @@
     private bool ShowPlaced => !_dragging && _slot is not null && Reveal is not { Answered: false };
     private bool ShowMystery => !ShowPlaced;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        if (Round == _round)
-            return;
-        _round = Round;
-        _slot = null;
-        _dragging = false;
-        _hot = -1;
-        _confirmed = false;
-        _message = null;
+        if (Round != _round)
+        {
+            _round = Round;
+            _slot = null;
+            _dragging = false;
+            _hot = -1;
+            _confirmed = false;
+            _message = null;
+        }
+
+        // The placement that lies in the hand is the answer; a drag in progress counts where the card last lay.
+        if (AutoConfirm && !_confirmed && Reveal is null && _slot is { } slot)
+        {
+            _confirmed = true;
+            _dragging = false;
+            _hot = -1;
+            await OnConfirm.InvokeAsync(slot);
+        }
     }
 
+    // Only while dragging; no standing instruction under the "?" (the screen-reader label still explains it).
     private string Hint =>
-        IsLocked ? ""
-        : _dragging ? (_hot >= 0 ? "Slip for at lægge kortet her" : "Træk ned mod hånden")
-        : "Hold musen over et kort for at se det. Træk ? ned mellem to år, eller klik på et hul.";
+        IsLocked || !_dragging ? ""
+        : _hot >= 0 ? "Slip for at lægge kortet her" : "Træk ned mod hånden";
 
     private string? Message => Reveal switch
     {

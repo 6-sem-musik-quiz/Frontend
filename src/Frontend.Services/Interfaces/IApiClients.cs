@@ -49,8 +49,10 @@ public interface IMusicApiClient
     Task<ArtistDto> CreateArtistAsync(string name, CancellationToken ct = default);
 }
 
+// StatisticService. Both endpoints need a login.
 public interface IStatisticApiClient
 {
-    Task<PlayerStatisticDto> GetPlayerStatisticAsync(Guid userId, CancellationToken ct = default);
-    Task<IReadOnlyList<LeaderboardEntryDto>> GetLeaderboardAsync(CancellationToken ct = default);
+    // week: "current" or an ISO week such as "2026-W48".
+    Task<WeeklyLeaderboardDto> GetWeeklyLeaderboardAsync(string week = "current", CancellationToken ct = default);
+    Task<MyStatsDto> GetMyStatsAsync(CancellationToken ct = default);
 }

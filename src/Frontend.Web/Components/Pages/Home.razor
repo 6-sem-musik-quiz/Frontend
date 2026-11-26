@@ -21,10 +21,7 @@
 
 <div class="home-grid">
     <section class="home-panel card @(_tab == "leaderboard" ? "active" : "")" aria-label="Leaderboard">
-        <div class="card-body">
-            <h2 class="h5">Leaderboard</h2>
-            <p class="text-body-secondary mb-0">Kommer snart.</p>
-        </div>
+        <div class="card-body"><StatsPanel /></div>
     </section>
     <section class="home-panel card @(_tab == "create" ? "active" : "")" aria-label="Opret lobby">
         <div class="card-body"><CreateLobbyForm /></div>

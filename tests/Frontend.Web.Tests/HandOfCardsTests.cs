@@ -149,6 +149,7 @@ public class HandOfCardsTests : BunitContext
     public async Task Dragging_OpensTheHotGap_AndDroppingPlacesTheCardThere()
     {
         var cut = RenderHand();
+        Assert.Equal("", cut.Find("[data-testid=hint]").TextContent); // no standing instruction
 
         await cut.InvokeAsync(() => cut.Instance.DragStarted());
         Assert.Equal("Træk ned mod hånden", cut.Find("[data-testid=hint]").TextContent);
@@ -160,6 +161,7 @@ public class HandOfCardsTests : BunitContext
 
         Assert.Equal(2, PlacedSlot(cut));
         Assert.DoesNotContain(cut.FindAll("[data-testid=slot]"), s => s.ClassList.Contains("hot"));
+        Assert.Equal("", cut.Find("[data-testid=hint]").TextContent);
     }
 
     [Fact]
@@ -185,7 +187,7 @@ public class HandOfCardsTests : BunitContext
         cut.Render(p => p.Add(x => x.Reveal, new RoundReveal(Song, Answered: true, Correct: true)));
 
         var placed = cut.Find("[data-testid=placed]");
-        Assert.Contains("gc-new", placed.ClassList);
+        Assert.Contains("gc-new", placed.QuerySelector(".gc")!.ClassList);
         Assert.Equal("1982", placed.QuerySelector(".gc-year")!.TextContent);
         Assert.Contains("Billie Jean", placed.TextContent);
         Assert.Equal("Rigtigt! Kortet bliver i din hånd.", Message(cut));
@@ -200,7 +202,7 @@ public class HandOfCardsTests : BunitContext
 
         cut.Render(p => p.Add(x => x.Reveal, new RoundReveal(Song, Answered: true, Correct: false)));
 
-        Assert.Contains("gc-out", cut.Find("[data-testid=placed]").ClassList);
+        Assert.Contains("gc-out", cut.Find("[data-testid=placed] > .gc").ClassList);
         Assert.DoesNotContain("1982", cut.Find("[data-testid=placed]").TextContent); // the song is not shown in the hand
         Assert.Equal("Forkert – kortet ryger ud.", Message(cut));
     }
@@ -259,6 +261,77 @@ public class HandOfCardsTests : BunitContext
         var cut = Render<HandOfCards>(p => p.Add(x => x.Cards, Array.Empty<CardDto>()));
 
         Assert.Equal("Læg kortet her", Assert.Single(cut.FindAll("[data-testid=slot]")).GetAttribute("aria-label"));
+    }
+
+    // ---- SCRUM-171: AutoConfirm when the time runs out ----
+
+    private static void SetAutoConfirm(IRenderedComponent<HandOfCards> cut, bool locked = false) =>
+        cut.Render(p => p.Add(x => x.AutoConfirm, true).Add(x => x.Locked, locked));
+
+    [Fact]
+    public void AutoConfirm_LocksAPlacedCard_AndSendsItsSlot_Once()
+    {
+        var cut = RenderHand();
+        cut.FindAll("[data-testid=slot]")[2].Click();
+
+        SetAutoConfirm(cut);
+        SetAutoConfirm(cut, locked: true); // the time is then up: no second answer
+
+        Assert.Equal([2], _confirmed);
+        Assert.Equal(2, PlacedSlot(cut));
+        Assert.Equal("Svar afgivet – låst", Message(cut));
+        Assert.True(cut.Find("[data-testid=confirm]").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void AutoConfirm_WithNothingPlaced_SendsNothing()
+    {
+        var cut = RenderHand();
+
+        SetAutoConfirm(cut, locked: true);
+
+        Assert.Empty(_confirmed);
+        Assert.Equal("Tiden er gået.", Message(cut));
+    }
+
+    [Fact]
+    public void AutoConfirm_AfterBekraeft_DoesNotSendAgain()
+    {
+        var cut = RenderHand();
+        cut.FindAll("[data-testid=slot]")[1].Click();
+        cut.Find("[data-testid=confirm]").Click();
+
+        SetAutoConfirm(cut);
+
+        Assert.Equal([1], _confirmed);
+        Assert.Equal("Svar afgivet – låst", Message(cut));
+    }
+
+    [Fact]
+    public void AutoConfirm_DuringADrag_LocksWhereTheCardLastLay()
+    {
+        var cut = RenderHand();
+        cut.FindAll("[data-testid=slot]")[3].Click();
+        cut.InvokeAsync(() => cut.Instance.DragStarted());
+
+        SetAutoConfirm(cut);
+
+        Assert.Equal([3], _confirmed);
+        Assert.Equal(3, PlacedSlot(cut));
+    }
+
+    [Fact]
+    public void AutoConfirm_IsResetByANewRound()
+    {
+        var cut = RenderHand(round: 4);
+        cut.FindAll("[data-testid=slot]")[0].Click();
+        SetAutoConfirm(cut);
+
+        cut.Render(p => p.Add(x => x.Round, 5).Add(x => x.AutoConfirm, false).Add(x => x.Locked, false));
+        cut.FindAll("[data-testid=slot]")[1].Click();
+        SetAutoConfirm(cut);
+
+        Assert.Equal([0, 1], _confirmed);
     }
 }
 

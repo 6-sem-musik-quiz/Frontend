@@ -189,6 +189,56 @@ public class LobbyPageTests : BunitContext
         Assert.Null(_hub.ConnectedTo);
     }
 
+    // SCRUM-160: a lobby that expired (10 idle minutes) while we were on the page.
+    private static Frontend.Services.Errors.ApiException Gone() =>
+        new(System.Net.HttpStatusCode.NotFound, "The lobby does not exist.");
+
+    [Fact]
+    public void Ready_InAnExpiredLobby_GoesHomeWithMessage()
+    {
+        _lobbies.SetReadyAsync(LobbyId, true, Arg.Any<CancellationToken>()).Returns<LobbyDto>(_ => throw Gone());
+        var cut = RenderPage(Lobby(2, new LobbyPlayerDto(2, "bob", false), new LobbyPlayerDto(Me, "alice", false)));
+
+        cut.Find("[data-testid=ready-button]").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("http://localhost/?lukket=1", _navigation.Uri));
+        Assert.DoesNotContain("findes ikke", cut.Markup); // no error over a lobby that no longer exists
+    }
+
+    [Fact]
+    public void Start_InAnExpiredLobby_GoesHomeWithMessage()
+    {
+        _lobbies.StartGameAsync(LobbyId, Arg.Any<CancellationToken>()).Returns<StartGameResponse>(_ => throw Gone());
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", true), new LobbyPlayerDto(2, "bob", true)));
+
+        cut.Find("[data-testid=start-button]").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("http://localhost/?lukket=1", _navigation.Uri));
+    }
+
+    [Fact]
+    public void Leave_AnExpiredLobby_GoesHomeWithMessage()
+    {
+        _lobbies.LeaveLobbyAsync(LobbyId, Arg.Any<CancellationToken>()).Returns(_ => Task.FromException(Gone()));
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", false)));
+
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Forlad lobby").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("http://localhost/?lukket=1", _navigation.Uri));
+    }
+
+    [Fact]
+    public async Task Polling_FindsTheLobbyGone_GoesHomeWithMessage()
+    {
+        _hub.FailToConnect = true; // polling every 5 s
+        var cut = RenderPage(Lobby(Me, new LobbyPlayerDto(Me, "alice", false)));
+        _lobbies.GetLobbyAsync(LobbyId, Arg.Any<CancellationToken>()).Returns<LobbyDto>(_ => throw Gone());
+
+        await Task.Delay(Frontend.Web.Components.Pages.Lobby.PollInterval + TimeSpan.FromSeconds(1));
+
+        cut.WaitForAssertion(() => Assert.Equal("http://localhost/?lukket=1", _navigation.Uri));
+    }
+
     private sealed class FakeLobbyHub : ILobbyHub
     {
         public Guid? ConnectedTo { get; private set; }

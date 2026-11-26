@@ -32,6 +32,7 @@ public class AuthorizationRoutingTests : BunitContext
             new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build()); // /admin reads Grafana:DashboardUrl
         Services.AddSingleton(Substitute.For<Frontend.Services.Interfaces.IMusicApiClient>()); // /admin and / list playlists
         Services.AddSingleton(Substitute.For<Frontend.Services.Interfaces.ILobbyApiClient>()); // / lists lobbies
+        Services.AddSingleton(Substitute.For<Frontend.Services.Interfaces.IStatisticApiClient>()); // / shows the leaderboard
 
         _auth = AddAuthorization();
 
