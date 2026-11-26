@@ -28,7 +28,6 @@ const SOUNDS = {
     // Front page, buttons and navigation (SCRUM-163)
     click: { gain: 0.6, gap: 60 },
     hover: { gain: 0.15, gap: 80 },
-    navigate: { gain: 0.6, gap: 400 },
     // Cards in the hand (SCRUM-164)
     // Dragging the card: short standard UI sounds (clicks, not card sounds), so they do not distract.
     cardPickup: { gain: 1.8, gap: 150 },
@@ -68,7 +67,9 @@ function load(name) {
     if (!buffers.has(name)) {
         const c = context();
         buffers.set(name, !c ? Promise.resolve(null) :
-            fetch(`./sounds/${name}.mp3`)
+            // no-cache: the browser asks the server each time (cheap, 304), so a sound replaced in a
+            // deploy is not played from an old cached copy.
+            fetch(`./sounds/${name}.mp3`, { cache: "no-cache" })
                 .then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status))
                 .then(data => c.decodeAudioData(data))
                 .catch(() => null));

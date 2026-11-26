@@ -1,7 +1,5 @@
 ﻿@inherits LayoutComponentBase
-@implements IDisposable
 @inject ISoundEffects Sounds
-@inject NavigationManager Navigation
 
 <div class="page">
     <TopBar />
@@ -20,22 +18,10 @@
 </div>
 
 @code {
-    // SCRUM-163: hover and click sounds everywhere, and a card slide when the page changes.
-    // The game page is left out: the round start has its own sound.
+    // SCRUM-163: hover and click sounds on every button and link.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
-            return;
-        Navigation.LocationChanged += OnLocationChanged;
-        await Sounds.InstallUiAsync();
+        if (firstRender)
+            await Sounds.InstallUiAsync();
     }
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        var path = Navigation.ToBaseRelativePath(e.Location);
-        if (!path.StartsWith("spil/", StringComparison.Ordinal))
-            _ = Sounds.PlayAsync(Sfx.Navigate);
-    }
-
-    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
 }
