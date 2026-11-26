@@ -1,10 +1,13 @@
-# Override: send /api/* to the edgeservice on this machine (http://localhost:5000)
-# instead of the real one. Start the edge from the EdgeService repo first.
+# Override file: sends /api/* to the edgeservice on your own machine
+# (http://localhost:5000) instead of the real one. Start the edge from the
+# EdgeService repo first.
 #
 #   docker compose -f docker-compose.yml -f docker-compose.local-edge.yml up --build
 services:
   web:
     volumes:
+      # Replaces api.conf from docker-compose.yml with one that proxies to host.docker.internal:5000.
       - ./nginx/api-local-edge.conf:/etc/nginx/api.conf:ro
+    # Lets the container reach your own machine as "host.docker.internal".
     extra_hosts:
       - "host.docker.internal:host-gateway"
