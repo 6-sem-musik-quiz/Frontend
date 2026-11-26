@@ -87,6 +87,7 @@ public partial class GamePage : IAsyncDisposable
     private bool _needsPlay;
     private long _playbackStarted;
     private RoundReveal? _reveal;
+    private RoundEndedDto? _roundEnded; // SCRUM-154: the last round's answers, for the guess map and lanes
     private GameEndedDto? _ended;
 
     // Every ended round's song and how it went for me (discard pile, all songs after the game).
@@ -555,6 +556,7 @@ public partial class GamePage : IAsyncDisposable
 
         var mine = ended.Results.FirstOrDefault(r => r.UserId == _me);
         _reveal = new RoundReveal(ended.Song, Answered: mine?.SlotIndex is not null, Correct: mine?.Correct == true);
+        _roundEnded = ended;
         await Sounds.PlayAsync(_reveal.Correct ? Sfx.Correct : Sfx.Wrong);
         // The hand keeps showing the reveal; the new timeline replaces it when the next round starts.
         _nextTimeline = mine?.Timeline;

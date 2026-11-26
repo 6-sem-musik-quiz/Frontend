@@ -869,6 +869,65 @@ h1:focus {
     .rc-number { animation: none; }
 }
 
+/* SCRUM-154: after each round, the guess map and the answer-time lanes under the hand. */
+.rr { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.rr-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; color: var(--sl-cream); }
+.rr-head .px { font-size: 22px; }
+.rr-song { min-width: 0; }
+.rr-next { margin-left: auto; color: var(--sl-cream) !important; }
+.rr-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; }
+.rr-box { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rr-title { font-family: var(--sl-pixel); font-size: 15px; margin: 0; }
+.rr-map { position: relative; padding: 24px 4px 0; }
+.rr-row { position: relative; height: 22px; margin-bottom: 6px; }
+.rr-range {
+    position: absolute;
+    top: 0;
+    height: 20px;
+    border: 2px solid var(--sl-ink);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    padding: 0 5px;
+    font-family: var(--sl-pixel);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.rr-range.y { background: var(--sl-green); }
+.rr-range.n { background: var(--sl-rust); color: var(--sl-cream); }
+.rr-range.me { box-shadow: 0 0 0 2px var(--sl-mustard); }
+.rr-none { font-family: var(--sl-pixel); font-size: 11px; color: var(--sl-muted); line-height: 20px; }
+.rr-none.me { color: var(--sl-ink); text-decoration: underline var(--sl-mustard) 2px; }
+.rr-true { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1px; background: var(--sl-mustard); box-shadow: 0 0 0 1.5px var(--sl-ink); z-index: 1; }
+.rr-true b {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--sl-pixel);
+    font-size: 11px;
+    white-space: nowrap;
+    background: var(--sl-mustard);
+    border: 2px solid var(--sl-ink);
+    padding: 0 4px;
+    border-radius: 3px;
+}
+.rr-axis { position: relative; height: 20px; border-top: 2px solid var(--sl-ink); margin: 0 4px; }
+.rr-axis span { position: absolute; top: 3px; font-family: var(--sl-pixel); font-size: 10px; color: var(--sl-muted); transform: translateX(-50%); }
+.rr-lanes { display: flex; flex-direction: column; gap: 10px; }
+.rr-lane { display: grid; grid-template-columns: 70px minmax(0, 1fr) 48px; align-items: center; gap: 8px; font-size: 12px; }
+.rr-lane.me .rr-name { text-decoration: underline var(--sl-mustard) 2px; }
+.rr-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rr-bar { position: relative; height: 10px; background: rgba(46, 52, 64, .12); border-radius: 2px; }
+.rr-bar i { position: absolute; top: -4px; width: 14px; height: 14px; border: 2px solid var(--sl-ink); transform: translateX(-50%) rotate(45deg); }
+.rr-bar i.y { background: var(--sl-green); }
+.rr-bar i.n { background: var(--sl-rust); }
+.rr-time { font-variant-numeric: tabular-nums; text-align: right; }
+@media (max-width: 759.98px) {
+    .rr-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Under 900 px: the sidebar becomes a strip above, the hand scrolls sideways. */
 @media (max-width: 899.98px) {
     .gl {

@@ -31,6 +31,10 @@ else
                 <Left><DeckPile RoundsLeft="@(TotalRounds - _round)" /></Left>
                 <Right><DiscardPile Songs="_played" /></Right>
             </HandOfCards>
+            @if (_recap is not null)
+            {
+                <RoundRecap Ended="_recap" Me="0" AnswerTimeSeconds="AnswerTime" />
+            }
         </ChildContent>
     </GameLayout>
 
@@ -149,8 +153,21 @@ else
     private bool IsRight(List<CardDto> cards, int slot) =>
         (slot == 0 || cards[slot - 1].Year <= Song.Year) && (slot == cards.Count || Song.Year <= cards[slot].Year);
 
+    // SCRUM-154: the round's answers as GameService sends them, for the guess map and the lanes.
+    private RoundEndedDto? _recap;
+
+    private static IReadOnlyList<int?>? RangeOf(List<CardDto> cards, int? slot) => slot is { } s
+        ? [s > 0 ? cards[s - 1].Year : null, s < cards.Count ? cards[s].Year : null]
+        : null;
+
     private void EndRound()
     {
+        _recap = new RoundEndedDto(_round, Song,
+            _rivals.Select(r => new RoundResultDto(r.Id, r.Name, r.Slot, r.Slot is { } rs && IsRight(r.Cards, rs), 0, r.Cards,
+                    r.Stamp?.AfterMs, RangeOf(r.Cards, r.Slot)))
+                .Prepend(new RoundResultDto(0, "Mathias", _mySlot, _mySlot is { } ms && IsRight(_timeline, ms), 0, _timeline,
+                    _mySlot is null ? null : (AnswerTime - _secondsLeft) * 1000 + 400, RangeOf(_timeline, _mySlot)))
+                .ToList());
         _reveal = new RoundReveal(Song, _mySlot is not null, _mySlot is { } s && IsRight(_timeline, s));
         _played.Add(new PlayedSong(_round, Song, _reveal.Correct, _reveal.Answered));
         foreach (var rival in _rivals)
@@ -172,6 +189,7 @@ else
         _preRoll = 3;
         _mySlot = null;
         _reveal = null;
+        _recap = null;
         foreach (var rival in _rivals)
         {
             rival.Stamp = null;
