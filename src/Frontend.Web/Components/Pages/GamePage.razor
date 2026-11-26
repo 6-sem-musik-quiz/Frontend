@@ -3,7 +3,8 @@
    round in sync with the others (a local timer on startsInMs, never the device clock), counts down and
    sends the answer from the hand (SCRUM-148). Round end updates the hand; the game end shows the
    standings (the staged version is SCRUM-155). The deck and discard pile sit beside the hand, and
-   every round's song can be looked up again after the game (SCRUM-153). *@
+   every round's song can be looked up again after the game (SCRUM-153). Before each song a "next round"
+   screen counts 3-2-1 to the song's start, and the hand is locked until then (SCRUM-169). *@
 @implements IAsyncDisposable
 
 <PageTitle>Spil</PageTitle>
@@ -75,8 +76,9 @@ else
             {
                 <button type="button" class="btn btn-primary game-play" @onclick="PlayClickedAsync" data-testid="play">Afspil sangen</button>
             }
+            <RoundCountdown Round="_round" TotalRounds="_state.TotalRounds" StartsIn="_startsIn" Go="_go" Standing="@Standing" />
             <HandOfCards Cards="_cards" Round="_round" Banner="@Banner" Reveal="_reveal"
-                         Locked="@(_timeUp || _roundInfo is null)" LockedText="@LockedText" OnConfirm="ConfirmAsync"
+                         Locked="@HandLocked" LockedText="@LockedText" OnConfirm="ConfirmAsync"
                          AutoConfirm="AutoConfirm">
                 <Left><DeckPile RoundsLeft="@Math.Max(0, _state.TotalRounds - _round)" /></Left>
                 <Right><DiscardPile Songs="_played" /></Right>

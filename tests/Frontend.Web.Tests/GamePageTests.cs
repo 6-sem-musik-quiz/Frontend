@@ -134,6 +134,117 @@ public class GamePageTests : BunitContext
         cut.WaitForAssertion(() => Assert.Equal("29", Text(cut, "time")));
     }
 
+    // ---- SCRUM-169: "next round" screen and 3-2-1 before the song ----
+
+    [Fact]
+    public async Task Countdown_Shows3_2_1_EndsWhenTheSongStarts_ThenNu()
+    {
+        var cut = RenderPage();
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 3000)));
+        Assert.Contains("Runde 1 af 10", Text(cut, "round-countdown"));
+        Assert.Equal("3", Text(cut, "countdown-number"));
+        _time.Advance(TimeSpan.FromSeconds(1));
+        cut.WaitForAssertion(() => Assert.Equal("2", Text(cut, "countdown-number")));
+        _time.Advance(TimeSpan.FromSeconds(1));
+        cut.WaitForAssertion(() => Assert.Equal("1", Text(cut, "countdown-number")));
+        Assert.Empty(_audio.Played);
+
+        _time.Advance(TimeSpan.FromSeconds(1)); // zero: the song starts at the same instant
+        cut.WaitForAssertion(() => Assert.Single(_audio.Played));
+        cut.WaitForAssertion(() => Assert.Equal("Nu!", Text(cut, "countdown-number")));
+        Assert.Equal([Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.GameStart], _sounds.Played);
+
+        _time.Advance(GamePage.GoShownFor);
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid=round-countdown]")));
+    }
+
+    [Fact]
+    public async Task Countdown_LocksTheHand_UntilTheSongStarts()
+    {
+        var cut = RenderPage();
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 3000)));
+        Assert.True(cut.Find("[data-testid=confirm]").HasAttribute("disabled"));
+        Assert.Equal("Sangen starter om lidt.", Text(cut, "message"));
+
+        _time.Advance(TimeSpan.FromSeconds(3));
+        cut.WaitForAssertion(() => Assert.Single(_audio.Played));
+        cut.WaitForAssertion(() => Assert.DoesNotContain(cut.FindAll("[data-testid=message]"),
+            m => m.TextContent.Contains("Sangen starter om lidt.")));
+    }
+
+    [Fact]
+    public async Task Countdown_FollowsTheServersStart_NotTheMessagesArrival()
+    {
+        _hub.ServerClock = () => ServerNow;
+        var cut = RenderPage();
+
+        // The message was 1.4 s on its way: 1.6 s are left, shown as 2.
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 3000) with { PlaybackStartsAt = ServerNow.AddSeconds(1.6) }));
+        Assert.Equal("2", Text(cut, "countdown-number"));
+        _time.Advance(TimeSpan.FromMilliseconds(600)); // on the whole second before the song
+        cut.WaitForAssertion(() => Assert.Equal("1", Text(cut, "countdown-number")));
+        _time.Advance(TimeSpan.FromMilliseconds(999));
+        Assert.Empty(_audio.Played);
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+        cut.WaitForAssertion(() => Assert.Equal("Nu!", Text(cut, "countdown-number")));
+    }
+
+    [Fact]
+    public void RejoiningDuringTheCountdown_ShowsWhatIsLeft()
+    {
+        _hub.State = State(round: 1, current: Round(1, startsInMs: 1200), prefetchRounds: [1, 2]);
+        var cut = RenderPage();
+
+        cut.WaitForAssertion(() => Assert.Equal("2", Text(cut, "countdown-number")));
+        _time.Advance(TimeSpan.FromMilliseconds(200));
+        cut.WaitForAssertion(() => Assert.Equal("1", Text(cut, "countdown-number")));
+    }
+
+    [Fact]
+    public async Task NoCountdown_WhenTheSongHasAlreadyStarted()
+    {
+        var cut = RenderPage();
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+
+        cut.WaitForAssertion(() => Assert.Single(_audio.Played));
+        Assert.Empty(cut.FindAll("[data-testid=round-countdown]"));
+        Assert.DoesNotContain(Sfx.GameStart, _sounds.Played);
+    }
+
+    [Fact]
+    public async Task Countdown_FromRound2_ShowsWhereIStand()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0)));
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+        [
+            new RoundResultDto(Me, "alice", 0, false, 0, [Card(1976)]),
+            new RoundResultDto(Bob, "bob", 1, true, 1, [Card(1976), Card(1982)])
+        ])));
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(2, startsInMs: 3000)));
+
+        Assert.Contains("Runde 2 af 10", Text(cut, "round-countdown"));
+        Assert.Equal("Du har 0 point · nr. 2 af 2", Text(cut, "countdown-standing"));
+    }
+
+    [Fact]
+    public async Task RoundEndedDuringTheCountdown_StopsIt()
+    {
+        var cut = RenderPage();
+        await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 3000)));
+
+        await cut.InvokeAsync(() => _hub.RaiseRoundEnded(new RoundEndedDto(1, Card(1982),
+            [new RoundResultDto(Me, "alice", null, false, 0, [Card(1976)])])));
+        _time.Advance(TimeSpan.FromSeconds(5));
+
+        Assert.Empty(cut.FindAll("[data-testid=round-countdown]"));
+        Assert.Empty(_audio.Played);
+    }
+
     // ---- SCRUM-168: everyone starts at the server's PlaybackStartsAt ----
 
     private static readonly TimeSpan ServerAhead = TimeSpan.FromMinutes(7); // a wrong device clock must not matter

@@ -26,7 +26,8 @@ else
         </Side>
         <ChildContent>
             <RivalTable Rivals="RivalViews" TotalRounds="TotalRounds" />
-            <HandOfCards Cards="_timeline" Round="_round" Locked="@(_secondsLeft == 0)" Reveal="_reveal" OnConfirm="Confirmed">
+            <RoundCountdown Round="_round" TotalRounds="TotalRounds" StartsIn="_preRoll" Go="_go" Standing="Du har 3 point · nr. 2 af 4" />
+            <HandOfCards Cards="_timeline" Round="_round" Locked="@(_secondsLeft == 0 || _preRoll is not null)" Reveal="_reveal" OnConfirm="Confirmed">
                 <Left><DeckPile RoundsLeft="@(TotalRounds - _round)" /></Left>
                 <Right><DiscardPile Songs="_played" /></Right>
             </HandOfCards>
@@ -99,6 +100,8 @@ else
     private int? _mySlot;
     private RoundReveal? _reveal;
     private Timer? _timer;
+    private int? _preRoll; // SCRUM-169: 3, 2, 1 before the round's time starts
+    private bool _go;
 
     private CardDto Song => Songs[(_round - 4) % Songs.Length];
 
@@ -113,6 +116,18 @@ else
 
     private void Tick()
     {
+        if (_go)
+        {
+            _go = false;
+            StateHasChanged();
+        }
+        if (_preRoll is { } left)
+        {
+            _preRoll = left > 1 ? left - 1 : null;
+            _go = _preRoll is null;
+            StateHasChanged();
+            return;
+        }
         if (_reveal is not null || _secondsLeft == 0)
             return;
         _secondsLeft--;
@@ -154,6 +169,7 @@ else
             _timeline.Insert(slot, Song);
         _round++;
         _secondsLeft = AnswerTime;
+        _preRoll = 3;
         _mySlot = null;
         _reveal = null;
         foreach (var rival in _rivals)

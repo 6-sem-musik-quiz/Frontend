@@ -827,6 +827,48 @@ h1:focus {
     .er-cv.wait { animation: none; }
 }
 
+/* SCRUM-169: the "next round" screen and the 3-2-1 countdown before each song. The card is placed in
+   the game column (.gl-main), so it sits centered over the table and hand; the dimming behind it
+   (.rc-backdrop, fixed) covers the whole window. .rc's z-index lifts both above the page. */
+.rc {
+    position: absolute;
+    inset: 0;
+    z-index: 1050;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+}
+.rc-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 35, 43, 0.55);
+}
+.rc-card { position: relative; } /* above the backdrop, which comes first in the markup */
+.rc-card {
+    min-width: min(320px, 100%);
+    padding: 24px 32px;
+    text-align: center;
+}
+.rc-number {
+    font-family: var(--sl-pixel);
+    font-size: 120px;
+    line-height: 1;
+    margin: 12px 0 4px;
+    color: var(--sl-ink);
+    animation: rc-pop .9s ease-out both;
+}
+.rc-go { color: var(--sl-rust); }
+.rc-hint { font-family: var(--sl-pixel); font-size: 20px; }
+.rc-standing { margin-top: 12px; font-size: 15px; }
+@keyframes rc-pop {
+    0% { transform: scale(1.6); opacity: 0; }
+    25% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(.92); opacity: .85; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rc-number { animation: none; }
+}
+
 /* Under 900 px: the sidebar becomes a strip above, the hand scrolls sideways. */
 @media (max-width: 899.98px) {
     .gl {
@@ -910,6 +952,7 @@ h1:focus {
     padding: 10px 28px;
 }
 .gl-main {
+    position: relative; /* the round countdown (.rc) covers this column */
     display: flex;
     flex-direction: column;
 }
