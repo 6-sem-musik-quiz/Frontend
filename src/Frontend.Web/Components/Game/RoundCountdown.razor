@@ -5,6 +5,7 @@
 @if (StartsIn is { } seconds || Go)
 {
     <div class="rc" role="status" aria-live="assertive" data-testid="round-countdown">
+        <div class="rc-backdrop" aria-hidden="true"></div>
         <div class="rc-card card">
             <div class="sl-label">Runde @Round af @TotalRounds</div>
             @if (Go)

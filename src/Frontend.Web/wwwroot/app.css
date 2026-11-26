@@ -827,18 +827,23 @@ h1:focus {
     .er-cv.wait { animation: none; }
 }
 
-/* SCRUM-169: the "next round" screen and the 3-2-1 countdown before each song. It covers the game
-   column (.gl-main), not the window, so it sits centered over the table and hand while the sidebar
-   (round, time, volume) stays visible. */
+/* SCRUM-169: the "next round" screen and the 3-2-1 countdown before each song. The card is placed in
+   the game column (.gl-main), so it sits centered over the table and hand; the dimming behind it
+   (.rc-backdrop, fixed) covers the whole window. .rc's z-index lifts both above the page. */
 .rc {
     position: absolute;
     inset: 0;
-    z-index: 20;
+    z-index: 1050;
     display: grid;
     place-items: center;
     padding: 16px;
+}
+.rc-backdrop {
+    position: fixed;
+    inset: 0;
     background: rgba(30, 35, 43, 0.55);
 }
+.rc-card { position: relative; } /* above the backdrop, which comes first in the markup */
 .rc-card {
     min-width: min(320px, 100%);
     padding: 24px 32px;
