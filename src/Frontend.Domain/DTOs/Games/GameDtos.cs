@@ -65,7 +65,21 @@ public record RoundResultDto(
     IReadOnlyList<int?>? Range = null);
 
 // After the last RoundEnded. Standings are sorted by score; equal scores share a placement (1, 1, 3).
-public record GameEndedDto(Guid GameId, IReadOnlyList<StandingDto> Standings);
+// SCRUM-151 (gameservice.gamehub@1.2): Awards ("fastest", then "streak") and Songs (every round's song).
+// The bonus is in Score and Placement already; a player's bonus is the number of awards they won.
+// Null from an older server: the end screen then shows the standings at once (no staged reveal).
+public record GameEndedDto(
+    Guid GameId,
+    IReadOnlyList<StandingDto> Standings,
+    IReadOnlyList<AwardDto>? Awards = null,
+    IReadOnlyList<PastSongDto>? Songs = null);
+
+// Kind is "fastest" (Lynet) or "streak" (Stimen). Winners got +1 (empty if nobody qualified).
+// Contenders are every player, best first.
+public record AwardDto(string Kind, IReadOnlyList<int> Winners, IReadOnlyList<AwardContenderDto> Contenders);
+
+// Value: "fastest" = average answer time in ms over right answers (null with none); "streak" = longest run.
+public record AwardContenderDto(int UserId, int? Value, bool Qualified);
 
 public record StandingDto(int UserId, string UserName, int Score, int Correct, int Answered, int Placement,
     IReadOnlyList<CardDto> Timeline);

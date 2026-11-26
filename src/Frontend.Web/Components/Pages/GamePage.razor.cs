@@ -505,12 +505,19 @@ public partial class GamePage : IAsyncDisposable
         StopCountdown();
         _ended = ended;
         await Audio.StopAsync();
-        var me = ended.Standings.FirstOrDefault(s => s.UserId == _me);
-        await Sounds.PlayAsync(me?.Placement == 1 ? Sfx.Winner : Sfx.GameOver);
+        // With awards the result is revealed step by step (SCRUM-155): the sound comes at its end.
+        if (ended.Awards is null)
+            await PlayEndSoundAsync();
         foreach (var round in _sources.Keys.ToList())
             await ReleaseAsync(round);
         StateHasChanged();
     });
+
+    private async Task PlayEndSoundAsync()
+    {
+        var me = _ended?.Standings.FirstOrDefault(s => s.UserId == _me);
+        await Sounds.PlayAsync(me?.Placement == 1 ? Sfx.Winner : Sfx.GameOver);
+    }
 
     private async Task ReleaseAsync(int round)
     {

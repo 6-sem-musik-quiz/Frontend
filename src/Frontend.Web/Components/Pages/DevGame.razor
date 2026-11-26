@@ -13,6 +13,11 @@
 {
     <p>Siden findes ikke.</p>
 }
+else if (_end is not null)
+{
+    @* SCRUM-155: the staged end screen with sample data (the design's four players). *@
+    <EndReveal @key="_end" Ended="_end" Me="3" Actions="BackToRound" />
+}
 else
 {
     <GameLayout>
@@ -32,6 +37,7 @@ else
         <button class="btn btn-sm" @onclick="EndRound" disabled="@(_reveal is not null)">Afslut runden</button>
         <button class="btn btn-sm" @onclick="NextRound" disabled="@(_reveal is null)">Næste runde</button>
         <button class="btn btn-sm" @onclick="FillHand" data-testid="fill-hand">Fyld hænderne (20 kort)</button>
+        <button class="btn btn-sm" @onclick="PlayEnd">Afspil afslutningen</button>
         <span class="text-body-secondary small align-self-center">
             Forhåndsvisning med eksempeldata (kun i Development). Rundens sang er @Song.Title (@Song.Year).
         </span>
@@ -171,6 +177,27 @@ else
         foreach (var rival in _rivals)
             rival.Cards = Fill(rival.Cards);
     }
+
+    // SCRUM-155: Benjamin 6, Asger 5, Mathias (me) 5, Frederik 4 after the rounds; Asger takes both awards.
+    private GameEndedDto? _end;
+
+    private RenderFragment BackToRound => @<button type="button" class="btn btn-primary" @onclick="() => _end = null">Tilbage til runden</button>;
+
+    private void PlayEnd() => _end = new GameEndedDto(Guid.NewGuid(),
+        [
+            new StandingDto(2, "Asger", 7, 5, 10, 1, []),
+            new StandingDto(1, "Benjamin", 6, 6, 10, 2, []),
+            new StandingDto(3, "Mathias", 5, 5, 9, 3, []),
+            new StandingDto(4, "Frederik", 4, 4, 8, 4, [])
+        ],
+        [
+            new AwardDto("fastest", [2],
+                [new AwardContenderDto(2, 6100, true), new AwardContenderDto(1, 7400, true),
+                 new AwardContenderDto(3, 9800, true), new AwardContenderDto(4, 5200, false)]),
+            new AwardDto("streak", [2],
+                [new AwardContenderDto(2, 5, true), new AwardContenderDto(1, 4, true),
+                 new AwardContenderDto(3, 3, true), new AwardContenderDto(4, 2, true)])
+        ]);
 
     public void Dispose() => _timer?.Dispose();
 }

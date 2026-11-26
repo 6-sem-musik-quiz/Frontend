@@ -17,8 +17,17 @@ else if (_state is null)
     <ErrorMessage Message="@_error" />
     <a href="" class="btn btn-primary">Til forsiden</a>
 }
+else if (_ended is { Awards: not null })
+{
+    @* SCRUM-155: the staged reveal with the bonus awards; the buttons come when it is over. *@
+    <EndReveal Ended="_ended" Me="_me" OnDone="PlayEndSoundAsync" Actions="EndActions" />
+    <SongListDialog Open="_showAllSongs" Title="Alle spillets sange" Songs="_played"
+                    Intro="Hver rundes sang, og hvordan det gik for dig."
+                    OnClose="() => _showAllSongs = false" />
+}
 else if (_ended is not null)
 {
+    @* A server without awards (before SCRUM-151): the standings at once. *@
     <section class="game-end" aria-labelledby="end-title">
         <h1 id="end-title" class="sl-banner">· · · Slutstilling · · ·</h1>
         <ol class="list-unstyled game-standings" data-testid="standings">
@@ -32,21 +41,7 @@ else if (_ended is not null)
                 </li>
             }
         </ol>
-        <ErrorMessage Message="@_playAgainError" />
-        <div class="d-flex gap-2 flex-wrap justify-content-center">
-            @if (LobbyId is not null)
-            {
-                @* SCRUM-172: back to the same lobby (same code, players and settings), or leave it. *@
-                <button type="button" class="btn btn-primary" @onclick="PlayAgainAsync" disabled="@_playAgainBusy"
-                        data-testid="play-again">@(_playAgainBusy ? "Vender tilbage…" : "Spil igen")</button>
-                <a href="" class="btn" data-testid="leave">Forlad</a>
-            }
-            else
-            {
-                <a href="" class="btn btn-primary">Til forsiden</a>
-            }
-            <button type="button" class="btn" @onclick="() => _showAllSongs = true" data-testid="all-songs">Se alle sange</button>
-        </div>
+        @EndActions
         <SongListDialog Open="_showAllSongs" Title="Alle spillets sange" Songs="_played"
                         Intro="Hver rundes sang, og hvordan det gik for dig."
                         OnClose="() => _showAllSongs = false" />
@@ -88,4 +83,25 @@ else
             </HandOfCards>
         </ChildContent>
     </GameLayout>
+}
+
+@code {
+    // The end screen's buttons, under the standings (at once) or after the staged reveal (SCRUM-155).
+    private RenderFragment EndActions => @<div class="game-end-actions">
+        <ErrorMessage Message="@_playAgainError" />
+        <div class="d-flex gap-2 flex-wrap justify-content-center">
+            @if (LobbyId is not null)
+            {
+                @* SCRUM-172: back to the same lobby (same code, players and settings), or leave it. *@
+                <button type="button" class="btn btn-primary" @onclick="PlayAgainAsync" disabled="@_playAgainBusy"
+                        data-testid="play-again">@(_playAgainBusy ? "Vender tilbage…" : "Spil igen")</button>
+                <a href="" class="btn" data-testid="leave">Forlad</a>
+            }
+            else
+            {
+                <a href="" class="btn btn-primary">Til forsiden</a>
+            }
+            <button type="button" class="btn" @onclick="() => _showAllSongs = true" data-testid="all-songs">Se alle sange</button>
+        </div>
+    </div>;
 }
