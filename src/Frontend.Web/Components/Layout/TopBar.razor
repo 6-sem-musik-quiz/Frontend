@@ -12,6 +12,7 @@
                 </AuthorizeView>
             </nav>
 
+            <OptionsMenu />
             <span class="user-chip me-3" data-testid="current-user">@context.User.Identity?.Name</span>
             <LoadingButton CssClass="btn-sm" OnClick="LogoutAsync" LoadingText="Logger ud…">Log ud</LoadingButton>
         </Authorized>

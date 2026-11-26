@@ -253,7 +253,7 @@ else if (_error is null)
             await Sounds.PlayAsync(sound);
     }
 
-    // The shuffle sound keeps playing while the game page loads (the audio lives outside the page).
+    // A short confirmation tone; it keeps playing while the game page loads (the audio lives outside the page).
     private Task OnGameStarted(Guid gameId) => InvokeAsync(async () =>
     {
         await Sounds.PlayAsync(Sfx.GameStart);

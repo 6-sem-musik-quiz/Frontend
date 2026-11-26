@@ -15,6 +15,7 @@ const DEFAULT_VOLUME = 0.6;
 const MASTER = 0.5;
 
 // Per sound: how loud next to the others, and the shortest time between two plays of it.
+// The game's sounds go above 1: they play on top of the round's song and would drown otherwise.
 const SOUNDS = {
     // Lobby (SCRUM-162)
     lobbyJoin: { gain: 1, gap: 300 },
@@ -25,25 +26,23 @@ const SOUNDS = {
     allReady: { gain: 1, gap: 1000 },
     gameStart: { gain: 0.9, gap: 2000 },
     // Front page, buttons and navigation (SCRUM-163)
-    welcome: { gain: 0.9, gap: 2000 },
     click: { gain: 0.6, gap: 60 },
     hover: { gain: 0.15, gap: 80 },
     navigate: { gain: 0.6, gap: 400 },
     // Cards in the hand (SCRUM-164)
-    cardPickup: { gain: 0.9, gap: 150 },
-    cardShift: { gain: 0.5, gap: 120 },
-    cardPlace: { gain: 1, gap: 150 },
-    cardReturn: { gain: 0.7, gap: 150 },
-    lockIn: { gain: 1, gap: 300 },
+    // Dragging the card: short standard UI sounds (clicks, not card sounds), so they do not distract.
+    cardPickup: { gain: 1.8, gap: 150 },
+    cardMove: { gain: 1.2, gap: 90 },
+    cardPlace: { gain: 1.8, gap: 150 },
+    lockIn: { gain: 1.8, gap: 300 },
     // The round
-    roundStart: { gain: 0.9, gap: 1000 },
-    tick: { gain: 0.45, gap: 500 },
-    timeUp: { gain: 0.8, gap: 1000 },
+    tick: { gain: 1.0, gap: 500 },
+    timeUp: { gain: 1.5, gap: 1000 },
     // Results (SCRUM-165)
-    correct: { gain: 1, gap: 500 },
-    wrong: { gain: 0.8, gap: 500 },
-    winner: { gain: 1, gap: 2000 },
-    gameOver: { gain: 0.9, gap: 2000 },
+    correct: { gain: 1.8, gap: 500 },
+    wrong: { gain: 1.6, gap: 500 },
+    winner: { gain: 1.8, gap: 2000 },
+    gameOver: { gain: 1.6, gap: 2000 },
 };
 
 // At most MAX_BURST sounds start within BURST_MS, so many events at once are not a wall of sound.
@@ -102,8 +101,16 @@ export function getSettings() {
     return { volume, muted: read(MUTED_KEY) === "true" };
 }
 
+export function getVolume() {
+    return getSettings().volume;
+}
+
 export function setVolume(volume) {
     write(VOLUME_KEY, String(Math.min(1, Math.max(0, volume))));
+}
+
+export function getMuted() {
+    return getSettings().muted;
 }
 
 export function setMuted(muted) {

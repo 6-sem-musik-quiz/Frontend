@@ -100,6 +100,10 @@ public sealed class FakeSoundEffects : ISoundEffects
         return Task.CompletedTask;
     }
 
+    public Task<double> GetVolumeAsync() => Task.FromResult(Volume ?? 0.6);
+
+    public Task<bool> GetMutedAsync() => Task.FromResult(Muted ?? false);
+
     public bool UiInstalled { get; private set; }
 
     public Task InstallUiAsync()

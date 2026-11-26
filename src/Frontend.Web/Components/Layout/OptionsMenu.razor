@@ -1,0 +1,133 @@
+@* SCRUM-166: indstillinger i topbaren (på alle sider). Musik er rundens sang (gemt under GamePage.VolumeKey
+   og sat direkte på afspilleren, hvis et spil kører), lydeffekter er ISoundEffects (gemt af sfx.js). *@
+@using Frontend.Web.Components.Pages
+@inject ISoundEffects Sounds
+@inject IGameAudio Audio
+@inject IJSRuntime JS
+
+<button type="button" class="btn btn-sm options-button" @onclick="OpenAsync" data-testid="options-button"
+        aria-haspopup="dialog" aria-expanded="@(_open ? "true" : "false")">Indstillinger</button>
+
+@if (_open)
+{
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="options-title"
+         data-testid="options-menu" @onkeydown="OnKeyDown">
+        <div class="modal-dialog modal-dialog-centered options-dialog">
+            <div class="modal-content options-panel">
+                <div class="sl-banner options-banner" id="options-title">· · · Indstillinger · · ·</div>
+
+                <div class="options-row">
+                    <div class="options-head">
+                        <label for="options-music" class="sl-label">Musik</label>
+                        <span class="options-value" data-testid="options-music-value">@Percent(_music) %</span>
+                    </div>
+                    <input id="options-music" type="range" class="form-range" min="0" max="100" step="5"
+                           value="@Percent(_music)" @oninput="OnMusicAsync" data-testid="options-music" />
+                </div>
+
+                <div class="options-row">
+                    <div class="options-head">
+                        <label for="options-effects" class="sl-label">Lydeffekter</label>
+                        <span class="options-value" data-testid="options-effects-value">@(_muted ? "Slået fra" : $"{Percent(_effects)} %")</span>
+                    </div>
+                    <input id="options-effects" type="range" class="form-range" min="0" max="100" step="5"
+                           value="@Percent(_effects)" disabled="@_muted"
+                           @oninput="OnEffectsInput" @onchange="OnEffectsAsync" data-testid="options-effects" />
+                </div>
+
+                <div class="form-check options-check">
+                    <input id="options-mute" type="checkbox" class="form-check-input" checked="@_muted"
+                           @onchange="OnMuteAsync" data-testid="options-mute" />
+                    <label for="options-mute" class="form-check-label">Slå lydeffekter fra</label>
+                </div>
+
+                <div class="options-footer">
+                    <button type="button" class="btn btn-primary" @onclick="Close" data-testid="options-close">Luk</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop show" @onclick="Close"></div>
+}
+
+@code {
+    private const double DefaultMusic = 0.8; // the game page's default
+
+    private bool _open;
+    private double _music = DefaultMusic;
+    private double _effects = 0.6;
+    private bool _muted;
+
+    private static int Percent(double value) => (int)Math.Round(value * 100);
+
+    private static double? Parse(object? value) =>
+        double.TryParse(value?.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var percent)
+            ? Math.Clamp(percent / 100, 0, 1)
+            : null;
+
+    private async Task OpenAsync()
+    {
+        try
+        {
+            var saved = await JS.InvokeAsync<string?>("localStorage.getItem", GamePage.VolumeKey);
+            _music = double.TryParse(saved, System.Globalization.CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v, 0, 1) : DefaultMusic;
+        }
+        catch (JSException)
+        {
+            // Storage blocked: show the default.
+        }
+        _effects = await Sounds.GetVolumeAsync();
+        _muted = await Sounds.GetMutedAsync();
+        _open = true;
+    }
+
+    private void Close() => _open = false;
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+            Close();
+    }
+
+    // The song changes while you drag, if a game is playing.
+    private async Task OnMusicAsync(ChangeEventArgs e)
+    {
+        if (Parse(e.Value) is not { } music)
+            return;
+        _music = music;
+        await Audio.SetVolumeAsync(_music);
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", GamePage.VolumeKey,
+                _music.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+        catch (JSException)
+        {
+            // Storage blocked: the volume still applies for this visit.
+        }
+    }
+
+    // The number follows the slider while dragging; the level is stored and a tick played on release.
+    private void OnEffectsInput(ChangeEventArgs e)
+    {
+        if (Parse(e.Value) is { } effects)
+            _effects = effects;
+    }
+
+    private async Task OnEffectsAsync(ChangeEventArgs e)
+    {
+        if (Parse(e.Value) is not { } effects)
+            return;
+        _effects = effects;
+        await Sounds.SetVolumeAsync(_effects);
+        await Sounds.PlayAsync(Sfx.Tick);
+    }
+
+    private async Task OnMuteAsync(ChangeEventArgs e)
+    {
+        _muted = e.Value is true;
+        await Sounds.SetMutedAsync(_muted);
+        if (!_muted)
+            await Sounds.PlayAsync(Sfx.Tick);
+    }
+}

@@ -299,7 +299,7 @@ public class LobbyPageTests : BunitContext
     }
 
     [Fact]
-    public void GameStarted_PlaysTheStartSound_BeforeGoingToTheGame()
+    public void GameStarted_PlaysTheStartTone_AndGoesToTheGame()
     {
         var gameId = Guid.NewGuid();
         var cut = RenderPage(Lobby(2, new LobbyPlayerDto(2, "bob", true), new LobbyPlayerDto(Me, "alice", true)));
