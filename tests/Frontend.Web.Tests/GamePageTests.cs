@@ -552,6 +552,18 @@ public class GamePageTests : BunitContext
                                                     && (string?)i.Arguments[1] == "0.4");
     }
 
+    [Fact]
+    public void EffectsVolume_IsSeparateFromTheMusic_AndPlaysATickToHearIt()
+    {
+        var cut = RenderPage();
+
+        cut.Find("[data-testid=effects-volume]").Change("90");
+
+        Assert.Equal(0.9, _sounds.Volume!.Value, precision: 3);
+        Assert.Equal(Sfx.Tick, _sounds.Played[^1]);
+        Assert.DoesNotContain(0.9, _audio.Volumes); // the song keeps its own volume
+    }
+
     // SCRUM-164/165: sounds in the round.
 
     [Fact]

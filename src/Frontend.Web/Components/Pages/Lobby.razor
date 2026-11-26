@@ -253,7 +253,12 @@ else if (_error is null)
             await Sounds.PlayAsync(sound);
     }
 
-    private Task OnGameStarted(Guid gameId) => InvokeAsync(() => Navigation.NavigateTo($"spil/{gameId}"));
+    // A short confirmation tone; it keeps playing while the game page loads (the audio lives outside the page).
+    private Task OnGameStarted(Guid gameId) => InvokeAsync(async () =>
+    {
+        await Sounds.PlayAsync(Sfx.GameStart);
+        Navigation.NavigateTo($"spil/{gameId}");
+    });
 
     // The last player left. If that was us, LeaveAsync already navigates.
     private Task OnLobbyClosed() => InvokeAsync(() =>
@@ -283,7 +288,10 @@ else if (_error is null)
         StartGameResponse? started = null;
         _error = await RunInLobbyAsync(async () => started = await Lobbies.StartGameAsync(Id));
         if (started is not null)
+        {
+            await Sounds.PlayAsync(Sfx.GameStart);
             Navigation.NavigateTo($"spil/{started.GameId}");
+        }
     }
 
     private async Task CopyCodeAsync(string code)

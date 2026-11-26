@@ -299,7 +299,7 @@ public class LobbyPageTests : BunitContext
     }
 
     [Fact]
-    public void GameStarted_GoesToTheGame_WithoutASound()
+    public void GameStarted_PlaysTheStartTone_AndGoesToTheGame()
     {
         var gameId = Guid.NewGuid();
         var cut = RenderPage(Lobby(2, new LobbyPlayerDto(2, "bob", true), new LobbyPlayerDto(Me, "alice", true)));
@@ -307,6 +307,6 @@ public class LobbyPageTests : BunitContext
         _hub.RaiseGameStarted(gameId);
 
         cut.WaitForAssertion(() => Assert.EndsWith($"spil/{gameId}", _navigation.Uri));
-        Assert.Empty(_sounds.Played); // no shuffle: the round start has its own sound
+        Assert.Equal([Sfx.GameStart], _sounds.Played);
     }
 }

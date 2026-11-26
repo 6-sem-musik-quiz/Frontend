@@ -71,6 +71,7 @@ public partial class GamePage : IAsyncDisposable
     private readonly List<PlayedSong> _played = [];
     private bool _showAllSongs;
     private double _volume = 0.8;
+    private double _effectsVolume = 0.6; // sound effects, separate from the song (SCRUM-161)
 
     private CancellationTokenSource? _roundCts;
     private ITimer? _countdown;
@@ -142,6 +143,7 @@ public partial class GamePage : IAsyncDisposable
             if (double.TryParse(saved, System.Globalization.CultureInfo.InvariantCulture, out var volume))
                 _volume = Math.Clamp(volume, 0, 1);
             await Audio.SetVolumeAsync(_volume);
+            _effectsVolume = await Sounds.GetVolumeAsync();
             StateHasChanged();
         }
         catch (JSException)
@@ -480,6 +482,16 @@ public partial class GamePage : IAsyncDisposable
     });
 
     // ---- Volume ----
+
+    // The effects slider: stored by the sound player itself, with a tick so the level can be heard.
+    private async Task OnEffectsVolumeAsync(ChangeEventArgs e)
+    {
+        if (!double.TryParse(e.Value?.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var percent))
+            return;
+        _effectsVolume = Math.Clamp(percent / 100, 0, 1);
+        await Sounds.SetVolumeAsync(_effectsVolume);
+        await Sounds.PlayAsync(Sfx.Tick);
+    }
 
     private async Task OnVolumeAsync(ChangeEventArgs e)
     {

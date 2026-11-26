@@ -1,0 +1,57 @@
+/* Options panel (SCRUM-166): a cream card with the dotted banner, like the rest of the UI v1 style. */
+.options-button {
+    font-family: var(--sl-pixel);
+}
+
+.options-dialog {
+    max-width: 420px;
+}
+
+.options-panel {
+    padding: 28px 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.options-banner {
+    align-self: center;
+    font-size: 18px;
+}
+
+.options-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.options-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.options-value {
+    font-family: var(--sl-pixel);
+    font-size: 18px;
+    color: var(--sl-ink);
+    min-width: 5ch;
+    text-align: right;
+}
+
+.options-row .form-range {
+    accent-color: var(--sl-mustard);
+}
+
+.options-row .form-range:disabled {
+    opacity: .4;
+}
+
+.options-check {
+    font-size: 15px;
+}
+
+.options-footer {
+    display: flex;
+    justify-content: flex-end;
+}

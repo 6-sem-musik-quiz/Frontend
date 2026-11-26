@@ -12,9 +12,9 @@ public enum Sfx
     Unready,
     LobbyFull,
     AllReady,
+    GameStart,
 
     // Front page and navigation (SCRUM-163). Click and hover are played by sfx.js itself (InstallUiAsync).
-    Welcome,
     Navigate,
 
     // Cards (SCRUM-164). Pick up, slide and drop are played by hand.js; lock-in by the game page.
@@ -40,10 +40,16 @@ public interface ISoundEffects : IAsyncDisposable
     // a sound that cannot play must not break the page.
     Task PlayAsync(Sfx sound);
 
-    // 0 (silent) to 1 (full).
+    // 0 (silent) to 1 (full). Separate from the round's song (IGameAudio), so effects can stay audible
+    // with the music turned down. Stored in the browser.
     Task SetVolumeAsync(double volume);
 
+    // The stored effects volume (0.6 when nothing is stored, or when it cannot be read).
+    Task<double> GetVolumeAsync();
+
     Task SetMutedAsync(bool muted);
+
+    Task<bool> GetMutedAsync();
 
     // Hover and click sounds on every button and link (one listener for the whole page). Called once
     // by MainLayout; later calls do nothing.
@@ -67,6 +73,20 @@ public sealed class SoundEffects(IJSRuntime js) : ISoundEffects
     public Task PlayAsync(Sfx sound) => Safe(async m => await m.InvokeAsync<bool>("play", JsName(sound)));
 
     public Task SetVolumeAsync(double volume) => Safe(m => m.InvokeVoidAsync("setVolume", Math.Clamp(volume, 0, 1)).AsTask());
+
+    public async Task<double> GetVolumeAsync()
+    {
+        double volume = 0.6;
+        await Safe(async m => volume = await m.InvokeAsync<double>("getVolume"));
+        return volume;
+    }
+
+    public async Task<bool> GetMutedAsync()
+    {
+        var muted = false;
+        await Safe(async m => muted = await m.InvokeAsync<bool>("getMuted"));
+        return muted;
+    }
 
     public Task SetMutedAsync(bool muted) => Safe(m => m.InvokeVoidAsync("setMuted", muted).AsTask());
 
