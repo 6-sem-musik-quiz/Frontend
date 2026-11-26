@@ -21,7 +21,6 @@ public enum Sfx
     LockIn,
 
     // The round
-    RoundStart,
     Tick,
     TimeUp,
 

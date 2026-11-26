@@ -29,12 +29,8 @@ const SOUNDS = {
     hover: { gain: 0.15, gap: 80 },
     navigate: { gain: 0.6, gap: 400 },
     // Cards in the hand (SCRUM-164)
-    cardPickup: { gain: 0.9, gap: 150 },
-    cardPlace: { gain: 1, gap: 150 },
-    cardReturn: { gain: 0.7, gap: 150 },
     lockIn: { gain: 1, gap: 300 },
     // The round
-    roundStart: { gain: 0.9, gap: 1000 },
     tick: { gain: 0.45, gap: 500 },
     timeUp: { gain: 0.8, gap: 1000 },
     // Results (SCRUM-165)

@@ -300,7 +300,6 @@ public partial class GamePage : IAsyncDisposable
         }
         else
         {
-            await Sounds.PlayAsync(Sfx.RoundStart); // the cards are fanned out as the song begins
             // E.g. 29.4 s left: show 30 and tick to 29 after 0.4 s, so 0 lands on the server's end of time.
             _secondsLeft = (int)Math.Ceiling(remaining.TotalSeconds);
             _countdown = Time.CreateTimer(_ => InvokeAsync(Tick), null,

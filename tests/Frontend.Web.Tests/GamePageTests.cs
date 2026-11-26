@@ -555,17 +555,17 @@ public class GamePageTests : BunitContext
     // SCRUM-164/165: sounds in the round.
 
     [Fact]
-    public async Task Round_PlaysTheStartSound_TicksTheLastFiveSeconds_AndTimeUp()
+    public async Task Round_TicksTheLastFiveSeconds_AndTimeUp()
     {
         var cut = RenderPage();
         await cut.InvokeAsync(() => _hub.RaiseRoundStarted(Round(1, startsInMs: 0, answer: 15)));
-        cut.WaitForAssertion(() => Assert.Equal([Sfx.RoundStart], _sounds.Played));
+        Assert.Empty(_sounds.Played); // a new round makes no sound of its own
 
         for (var i = 0; i < 15; i++)
             _time.Advance(TimeSpan.FromSeconds(1));
 
         cut.WaitForAssertion(() => Assert.Equal(
-            [Sfx.RoundStart, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.TimeUp], _sounds.Played));
+            [Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.TimeUp], _sounds.Played));
     }
 
     [Fact]
@@ -610,7 +610,7 @@ public class GamePageTests : BunitContext
         _time.Advance(GamePage.AutoLockLead); // zero
 
         cut.WaitForAssertion(() => Assert.Equal(
-            [Sfx.RoundStart, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.LockIn], _sounds.Played));
+            [Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.LockIn], _sounds.Played));
     }
 
     [Fact]
@@ -625,7 +625,7 @@ public class GamePageTests : BunitContext
         for (var i = 0; i < 15; i++)
             _time.Advance(TimeSpan.FromSeconds(1));
 
-        cut.WaitForAssertion(() => Assert.Equal([Sfx.RoundStart, Sfx.LockIn], _sounds.Played));
+        cut.WaitForAssertion(() => Assert.Equal([Sfx.LockIn], _sounds.Played));
     }
 
     [Theory]
