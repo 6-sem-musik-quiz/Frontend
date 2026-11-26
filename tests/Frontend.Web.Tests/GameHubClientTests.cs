@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Connections.Client;
 using System.Collections.Concurrent;
 
 using Frontend.Domain.DTOs.Games;
@@ -119,6 +120,8 @@ public class GameHubClientTests : IAsyncLifetime
         var client = new GameHubClient(urls, tokens, options =>
         {
             options.HttpMessageHandlerFactory = _ => _server.CreateHandler();
+            // TestServer has no WebSockets: long polling, which needs negotiate.
+            options.SkipNegotiation = false;
             options.Transports = HttpTransportType.LongPolling;
         });
         _clients.Add(client);
@@ -135,6 +138,25 @@ public class GameHubClientTests : IAsyncLifetime
     }
 
     // ADR-0004 / gameservice.gamehub@1.3: the edge routes the connection to the game's pod by ?gameId=.
+    // ADR-0004: GameService runs several pods, so the real client must not negotiate (see GameHubClient).
+    [Fact]
+    public void RealClient_UsesWebSocketsWithoutNegotiate()
+    {
+        HttpConnectionOptions? used = null;
+        var client = new GameHubClient(Options.Create(new ServiceUrlOptions
+        {
+            UserService = new Uri("http://localhost/"), MusicService = new Uri("http://localhost/"),
+            StatisticService = new Uri("http://localhost/"), LobbyService = new Uri("http://localhost/"),
+            GameService = new Uri("http://localhost/api/gameservice/")
+        }), Substitute.For<IAccessTokenProvider>(), options => used = options);
+
+        _ = client.JoinGameAsync(GameId); // builds the connection (and fails to connect; not awaited)
+
+        Assert.NotNull(used);
+        Assert.True(used.SkipNegotiation);
+        Assert.Equal(HttpTransportType.WebSockets, used.Transports);
+    }
+
     [Fact]
     public async Task HubUrl_CarriesTheGameId()
     {
