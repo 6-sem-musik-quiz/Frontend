@@ -47,9 +47,8 @@ public class EndRevealTests : BunitContext
         while (script.NextWait is not null)
         {
             var shownBefore = script.Current?.Contenders.Where(c => c.Shown).Select(c => c.Name).ToHashSet() ?? [];
-            var placedBefore = script.Rows.Where(r => r.PlacementShown).ToHashSet();
+            var placedBefore = script.Rows.Where(r => r.Shown).ToHashSet();
             var (banner, award, stamped) = (script.Banner, script.Current?.Title, script.Current?.Stamped);
-            var bonus = script.Rows.Sum(r => r.BonusShown);
             script.Step();
 
             if (script.Banner != banner && script.Banner is not null) trace.Add($"banner {script.Banner}");
@@ -57,22 +56,19 @@ public class EndRevealTests : BunitContext
             foreach (var c in script.Current?.Contenders.Where(c => c.Shown && !shownBefore.Contains(c.Name)) ?? [])
                 trace.Add($"value {c.Name} {c.Value}");
             if (script.Current?.Stamped == true && stamped != true) trace.Add("stamp");
-            if (script.Rows.Sum(r => r.BonusShown) != bonus)
-                trace.AddRange(script.Rows.Where(r => r.Gained).Select(r => $"+1 {r.Standing.UserName}"));
-            foreach (var r in script.Rows.Where(r => r.PlacementShown && !placedBefore.Contains(r)))
+            foreach (var r in script.Rows.Where(r => r.Shown && !placedBefore.Contains(r)))
                 trace.Add($"place {r.Standing.UserName} {r.Standing.Placement}");
         }
         return trace;
     }
 
     [Fact]
-    public void Starts_WithBonus_TheScoresBeforeTheBonus_AndHiddenPlacements()
+    public void Starts_WithBonus_AndEverySlotFaceDown()
     {
         var script = new EndRevealScript(Ended());
 
         Assert.Equal("Bonus!", script.Banner);
-        Assert.Equal([(Asger, 6), (Bob, 6), (Carl, 5), (Dan, 4)], script.Ordered.Select(r => (r.Standing.UserId, r.ScoreShown)));
-        Assert.All(script.Rows, r => Assert.False(r.PlacementShown));
+        Assert.All(script.Rows, r => Assert.False(r.Shown));
     }
 
     [Fact]
@@ -84,10 +80,10 @@ public class EndRevealTests : BunitContext
         [
             "award Lynet",
             "value dan ingen rigtige", "value bob 7,4 s", "value asger 6,1 s", "value carl 4,1 s", // worst first
-            "stamp", "+1 carl",
+            "stamp",
             "award Stimen",
             "value dan 1 i træk", "value carl 3 i træk", "value bob 4 i træk", "value asger 5 i træk",
-            "stamp", "+1 asger",
+            "stamp",
             "banner Slutstilling",
             "place dan 4", "place carl 2", "place bob 2", // from last place up
             "banner Og vinderen er …",
@@ -96,18 +92,11 @@ public class EndRevealTests : BunitContext
     }
 
     [Fact]
-    public void Bonus_GoesToTheWinners_AndTheRowsReorder()
+    public void Bonus_IsCountedForTheWinners()
     {
         var script = new EndRevealScript(Ended());
-        while (script.Current?.Title != "Stimen") script.Step();
 
-        // After Lynet: carl is level with bob (6), after him in the server's order.
-        Assert.Equal([(Asger, 6), (Bob, 6), (Carl, 6), (Dan, 4)], script.Ordered.Select(r => (r.Standing.UserId, r.ScoreShown)));
-        Assert.Equal(1, script.Rows.Single(r => r.Standing.UserId == Carl).BonusShown);
-
-        script.SkipToEnd();
-        Assert.Equal([(Asger, 7, 1), (Bob, 6, 0), (Carl, 6, 1), (Dan, 4, 0)],
-            script.Ordered.Select(r => (r.Standing.UserId, r.ScoreShown, r.BonusShown)));
+        Assert.Equal([(Asger, 1), (Bob, 0), (Carl, 1), (Dan, 0)], script.Ordered.Select(r => (r.Standing.UserId, r.Bonus)));
     }
 
     [Fact]
@@ -121,8 +110,8 @@ public class EndRevealTests : BunitContext
 
         Assert.True(script.Done);
         Assert.Null(script.NextWait);
-        Assert.All(script.Rows, r => Assert.True(r.PlacementShown));
-        Assert.Equal([7, 6, 6, 4], script.Ordered.Select(r => r.ScoreShown)); // the server's scores, bonus counted once
+        Assert.All(script.Rows, r => Assert.True(r.Shown));
+        Assert.Equal([7, 6, 6, 4], script.Ordered.Select(r => r.Standing.Score));
         Assert.Equal([1, 2, 2, 4], script.Ordered.Select(r => r.Standing.Placement)); // shared 2nd place
     }
 
@@ -138,7 +127,7 @@ public class EndRevealTests : BunitContext
 
         Assert.DoesNotContain("stamp", trace);
         Assert.Contains("value bob for få rigtige", trace);
-        Assert.All(script.Rows, r => Assert.Equal(0, r.BonusShown));
+        Assert.All(script.Rows, r => Assert.Equal(0, r.Bonus));
     }
 
     [Fact]
@@ -171,7 +160,6 @@ public class EndRevealTests : BunitContext
         Assert.Equal("Bonus!", Text(cut, "er-banner"));
         Assert.Empty(cut.FindAll("[data-testid=done-action]"));
         Assert.Equal(["?", "?", "?", "?"], cut.FindAll("[data-testid=placement]").Select(p => p.TextContent));
-        Assert.Contains("me", cut.Find("[data-user='2']").ClassList); // my own row is highlighted
 
         _time.Advance(EndRevealScript.BonusIntro);
         cut.WaitForAssertion(() => Assert.Equal("Lynet", Text(cut, "er-award")));
@@ -184,6 +172,7 @@ public class EndRevealTests : BunitContext
         Assert.Equal("asger!", Text(cut, "er-banner"));
         Assert.Equal(["1", "2", "2", "4"], cut.FindAll("[data-testid=placement]").Select(p => p.TextContent));
         Assert.Contains("(+1 bonus)", cut.Find("[data-user='3'] [data-testid=score]").TextContent);
+        Assert.Contains("me", cut.Find("[data-user='2']").ClassList); // my own row is highlighted
         Assert.Equal(1, done);
     }
 

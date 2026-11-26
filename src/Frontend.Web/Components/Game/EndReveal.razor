@@ -1,7 +1,6 @@
 @* SCRUM-155: the end screen as a staged reveal (design "Slopster Rivals v3", Slutresultat). The stage on
-   the left shows "Bonus!", each award (Lynet, Stimen) and the finale; the standings on the right start as
-   after the last round with hidden placements, take each +1 and slide to their new order (rows are placed
-   by a transform, so a new order animates), then the placements flip in from last place up.
+   the left shows "Bonus!", each award (Lynet, Stimen) and the finale; the standings on the right are
+   face-down slots until the finale turns them over one at a time, from last place up to the winner.
    "Spring til resultatet" is always there. Runs on each client from GameEnded; nobody waits for the server.
    The beats are in EndRevealScript. *@
 @implements IDisposable
@@ -40,22 +39,31 @@
             }
         </div>
 
-        <ol class="er-standings list-unstyled" style="--rows: @_script.Rows.Count" aria-label="Stilling" data-testid="standings">
-            @{ var ordered = _script.Ordered; }
-            @foreach (var row in _script.Rows)
+        <ol class="er-standings list-unstyled" aria-label="Stilling" data-testid="standings">
+            @foreach (var row in _script.Ordered)
             {
-                var s = row.Standing;
-                var mine = s.UserId == Me;
-                <li @key="s.UserId" class="card er-row @(mine ? "me" : "") @(row.Gained ? "gain" : "") @(row.Champion ? "champ" : "")"
-                    style="--i: @ordered.ToList().IndexOf(row)" data-testid="standing" data-user="@s.UserId">
-                    <span class="px er-place @(row.PlacementShown ? "shown" : "") @(row.PlacementShown && s.Placement == 1 ? "first" : "")"
-                          data-testid="placement">@(row.PlacementShown ? s.Placement.ToString() : "?")</span>
-                    <span class="er-name">
-                        <span class="px">@s.UserName@(mine ? " (dig)" : "")</span>
-                        <span class="text-body-secondary small">@s.Correct rigtige af @s.Answered besvarede</span>
-                    </span>
-                    <span class="px er-score" data-testid="score">@row.ScoreShown point@(row.BonusShown > 0 ? $" (+{row.BonusShown} bonus)" : "")</span>
-                </li>
+                var st = row.Standing;
+                var mine = st.UserId == Me;
+                if (row.Shown)
+                {
+                    <li @key="st.UserId" class="card er-row shown @(mine ? "me" : "") @(row.Champion ? "champ" : "")"
+                        data-testid="standing" data-user="@st.UserId">
+                        <span class="px er-place @(st.Placement == 1 ? "first" : "")" data-testid="placement">@st.Placement</span>
+                        <span class="er-name">
+                            <span class="px">@st.UserName@(mine ? " (dig)" : "")</span>
+                            <span class="text-body-secondary small">@st.Correct rigtige af @st.Answered besvarede</span>
+                        </span>
+                        <span class="px er-score" data-testid="score">@st.Score point@(row.Bonus > 0 ? $" (+{row.Bonus} bonus)" : "")</span>
+                    </li>
+                }
+                else
+                {
+                    @* Face down: nothing about who is here until the slot is turned over. *@
+                    <li @key="st.UserId" class="er-row er-hidden" data-testid="standing" aria-label="Skjult placering">
+                        <span class="px er-place" data-testid="placement">?</span>
+                        <span class="er-name"><span class="px">· · ·</span></span>
+                    </li>
+                }
             }
         </ol>
     </div>
