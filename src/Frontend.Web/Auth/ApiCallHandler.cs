@@ -1,5 +1,6 @@
 using System.Net;
 
+using Frontend.Domain.Localization;
 using Frontend.Services.Errors;
 
 using Microsoft.AspNetCore.Components;
@@ -35,8 +36,8 @@ public sealed class ApiCallHandler
         this.toasts = toasts;
     }
 
-    public const string GeneralError = "Der opstod en uventet fejl. Prøv igen om lidt.";
-    public const string UnreachableError = "Kunne ikke kontakte servicen. Prøv igen om lidt.";
+    public static string GeneralError => Lang.T("Der opstod en uventet fejl. Prøv igen om lidt.", "An unexpected error occurred. Try again in a moment.");
+    public static string UnreachableError => Lang.T("Kunne ikke kontakte servicen. Prøv igen om lidt.", "Could not reach the service. Try again in a moment.");
 
     // Returnerer en fejlbesked til visning, eller null hvis kaldet lykkedes.
     // unauthorizedMessage bruges fx på login-siden, hvor 401 betyder forkert adgangskode: så vises

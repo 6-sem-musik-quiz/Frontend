@@ -8,18 +8,18 @@
              @onclick:stopPropagation="true" @onkeydown="OnKeyDownAsync" data-testid="songs-dialog">
             <div class="songs-head">
                 <div>
-                    <h2 id="songs-title" class="px">@Title</h2>
+                    <h2 id="songs-title" class="px">@(Title ?? T("Sange", "Songs"))</h2>
                     @if (Intro is not null)
                     {
                         <p>@Intro</p>
                     }
                 </div>
-                <button type="button" class="btn btn-sm" @ref="_close" @onclick="CloseAsync" data-testid="songs-close">Luk</button>
+                <button type="button" class="btn btn-sm" @ref="_close" @onclick="CloseAsync" data-testid="songs-close">@T("Luk", "Close")</button>
             </div>
 
             @if (Songs.Count == 0)
             {
-                <p class="songs-empty" data-testid="songs-empty">@EmptyText</p>
+                <p class="songs-empty" data-testid="songs-empty">@(EmptyText ?? T("Ingen sange endnu.", "No songs yet."))</p>
             }
             else
             {
@@ -31,7 +31,7 @@
                             <span class="songs-year">@played.Song.Year</span>
                             <span>
                                 <span class="songs-title">@played.Song.Title</span>
-                                <span class="songs-meta">@string.Join(", ", played.Song.Artists) · runde @played.Round</span>
+                                <span class="songs-meta">@string.Join(", ", played.Song.Artists) · @T("runde", "round") @played.Round</span>
                             </span>
                             <span class="songs-tag @css">@tag</span>
                         </li>
@@ -44,9 +44,9 @@
 
 @code {
     [Parameter] public bool Open { get; set; }
-    [Parameter] public string Title { get; set; } = "Sange";
+    [Parameter] public string? Title { get; set; }     // default "Sange"
     [Parameter] public string? Intro { get; set; }
-    [Parameter] public string EmptyText { get; set; } = "Ingen sange endnu.";
+    [Parameter] public string? EmptyText { get; set; } // default "Ingen sange endnu."
     [Parameter] public IReadOnlyList<PlayedSong> Songs { get; set; } = [];
     [Parameter] public EventCallback OnClose { get; set; }
 
@@ -54,9 +54,9 @@
     private bool _wasOpen;
 
     public static (string Text, string Css) Outcome(PlayedSong played) =>
-        played.Correct ? ("i din hånd", "kept")
-        : played.Answered ? ("forkert", "wrong")
-        : ("intet svar", "missed");
+        played.Correct ? (T("i din hånd", "in your hand"), "kept")
+        : played.Answered ? (T("forkert", "wrong"), "wrong")
+        : (T("intet svar", "no answer"), "missed");
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

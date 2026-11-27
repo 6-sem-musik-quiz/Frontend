@@ -60,7 +60,7 @@ public sealed class JwtAuthenticationStateProvider(
         var parsed = JwtTokenParser.TryParse(token);
         if (parsed is null || parsed.IsExpired(timeProvider.GetUtcNow()))
         {
-            throw new InvalidOperationException("Login-tjenesten returnerede et ugyldigt eller udløbet token.");
+            throw new InvalidOperationException(Frontend.Domain.Localization.Lang.T("Login-tjenesten returnerede et ugyldigt eller udløbet token.", "The login service returned an invalid or expired token."));
         }
 
         await storage.SetAsync(new StoredSession(parsed.Token, parsed.UserName, parsed.Role, refreshToken));

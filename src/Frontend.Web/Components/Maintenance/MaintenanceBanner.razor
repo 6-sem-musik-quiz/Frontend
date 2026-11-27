@@ -5,8 +5,8 @@
 @if (Maintenance.Off.Count > 0)
 {
     <div class="alert alert-warning maintenance-banner mb-0 rounded-0 text-center" role="status" data-testid="maintenance-banner">
-        🛠️ Under vedligeholdelse: <strong>@string.Join(", ", Maintenance.Off.Select(s => Feature(s.Service)))</strong>.
-        Resten af spillet virker som normalt.
+        🛠️ @T("Under vedligeholdelse:", "Under maintenance:") <strong>@string.Join(", ", Maintenance.Off.Select(s => Feature(s.Service)))</strong>.
+        @T("Resten af spillet virker som normalt.", "The rest of the game works as normal.")
     </div>
 }
 

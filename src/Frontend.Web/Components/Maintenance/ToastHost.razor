@@ -7,7 +7,7 @@
     {
         <div @key="toast.Id" class="app-toast" role="status" data-testid="toast">
             <span>@toast.Text</span>
-            <button type="button" class="btn-close btn-close-white ms-2" aria-label="Luk" @onclick="() => Toasts.Dismiss(toast.Id)"></button>
+            <button type="button" class="btn-close btn-close-white ms-2" aria-label="@T("Luk", "Close")" @onclick="() => Toasts.Dismiss(toast.Id)"></button>
         </div>
     }
 </div>

@@ -7,16 +7,16 @@
     <div class="rc" role="status" aria-live="assertive" data-testid="round-countdown">
         <div class="rc-backdrop" aria-hidden="true"></div>
         <div class="rc-card card">
-            <div class="sl-label">Runde @Round af @TotalRounds</div>
+            <div class="sl-label">@T($"Runde {Round} af {TotalRounds}", $"Round {Round} of {TotalRounds}")</div>
             @if (Go)
             {
-                <div class="rc-number rc-go" data-testid="countdown-number">Nu!</div>
+                <div class="rc-number rc-go" data-testid="countdown-number">@T("Nu!", "Now!")</div>
             }
             else
             {
                 @* The key makes Blazor replace the element, so the pop animation plays for every number. *@
                 <div class="rc-number" @key="StartsIn" data-testid="countdown-number">@StartsIn</div>
-                <div class="rc-hint">Gør dig klar</div>
+                <div class="rc-hint">@T("Gør dig klar", "Get ready")</div>
             }
             @if (Standing is { } standing)
             {

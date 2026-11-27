@@ -1,18 +1,18 @@
 @page "/"
 @* SCRUM-110: forsiden. Tre kolonner på computer (Leaderboard | Opret lobby | Lobbyer), faner under 900 px. *@
 
-<PageTitle>Musikquiz</PageTitle>
+<PageTitle>@T("Musikquiz", "Music quiz")</PageTitle>
 
-<h1 class="visually-hidden">Musikquiz</h1>
+<h1 class="visually-hidden">@T("Musikquiz", "Music quiz")</h1>
 
 @if (LobbyClosed)
 {
-    <div class="alert alert-info" role="status" data-testid="lobby-closed">Lobbyen blev lukket.</div>
+    <div class="alert alert-info" role="status" data-testid="lobby-closed">@T("Lobbyen blev lukket.", "The lobby was closed.")</div>
 }
 
 <CurrentLobbyBanner />
 
-<nav class="home-tabs nav nav-pills nav-fill mb-3" aria-label="Forside">
+<nav class="home-tabs nav nav-pills nav-fill mb-3" aria-label="@T("Forside", "Home")">
     @foreach (var tab in Tabs)
     {
         <button type="button" class="nav-link @(_tab == tab.Key ? "active" : "")" @onclick="() => _tab = tab.Key">@tab.Title</button>
@@ -26,23 +26,23 @@
             <RequiresService Service="statisticservice" Replace="true" Heading="Leaderboard"><StatsPanel /></RequiresService>
         </div>
     </section>
-    <section class="home-panel card @(_tab == "create" ? "active" : "")" aria-label="Opret lobby">
+    <section class="home-panel card @(_tab == "create" ? "active" : "")" aria-label="@T("Opret lobby", "Create lobby")">
         <div class="card-body">
             @* SCRUM-178/180: a lobby needs LobbyService and a playlist from MusicService *@
-            <RequiresService Service="lobbyservice,musicservice" Replace="true" Heading="Opret lobby"><CreateLobbyForm /></RequiresService>
+            <RequiresService Service="lobbyservice,musicservice" Replace="true" Heading="@T("Opret lobby", "Create lobby")"><CreateLobbyForm /></RequiresService>
         </div>
     </section>
-    <section class="home-panel card @(_tab == "lobbies" ? "active" : "")" aria-label="Lobbyer">
+    <section class="home-panel card @(_tab == "lobbies" ? "active" : "")" aria-label="@T("Lobbyer", "Lobbies")">
         <div class="card-body">
             @* SCRUM-178 *@
-            <RequiresService Service="lobbyservice" Replace="true" Heading="Lobbyer"><LobbyList /></RequiresService>
+            <RequiresService Service="lobbyservice" Replace="true" Heading="@T("Lobbyer", "Lobbies")"><LobbyList /></RequiresService>
         </div>
     </section>
 </div>
 
 @code {
-    private static readonly (string Key, string Title)[] Tabs =
-        [("leaderboard", "Leaderboard"), ("create", "Opret lobby"), ("lobbies", "Lobbyer")];
+    private static (string Key, string Title)[] Tabs =>
+        [("leaderboard", "Leaderboard"), ("create", T("Opret lobby", "Create lobby")), ("lobbies", T("Lobbyer", "Lobbies"))];
 
     // Set by the lobby page when the lobby was closed (/?lukket=1).
     [SupplyParameterFromQuery(Name = "lukket")] public int? Closed { get; set; }

@@ -7,7 +7,7 @@
 @inject IJSRuntime JS
 
 <button type="button" class="btn btn-sm options-button" @onclick="OpenAsync" data-testid="options-button"
-        aria-haspopup="dialog" aria-expanded="@(_open ? "true" : "false")">Indstillinger</button>
+        aria-haspopup="dialog" aria-expanded="@(_open ? "true" : "false")">@T("Indstillinger", "Settings")</button>
 
 @if (_open)
 {
@@ -15,11 +15,11 @@
          data-testid="options-menu" @onkeydown="OnKeyDown">
         <div class="modal-dialog modal-dialog-centered options-dialog">
             <div class="modal-content options-panel">
-                <div class="sl-banner options-banner" id="options-title">· · · Indstillinger · · ·</div>
+                <div class="sl-banner options-banner" id="options-title">· · · @T("Indstillinger", "Settings") · · ·</div>
 
                 <div class="options-row">
                     <div class="options-head">
-                        <label for="options-music" class="sl-label">Musik</label>
+                        <label for="options-music" class="sl-label">@T("Musik", "Music")</label>
                         <span class="options-value" data-testid="options-music-value">@Percent(_music) %</span>
                     </div>
                     <input id="options-music" type="range" class="form-range" min="0" max="100" step="5"
@@ -28,8 +28,8 @@
 
                 <div class="options-row">
                     <div class="options-head">
-                        <label for="options-effects" class="sl-label">Lydeffekter</label>
-                        <span class="options-value" data-testid="options-effects-value">@(_muted ? "Slået fra" : $"{Percent(_effects)} %")</span>
+                        <label for="options-effects" class="sl-label">@T("Lydeffekter", "Sound effects")</label>
+                        <span class="options-value" data-testid="options-effects-value">@(_muted ? T("Slået fra", "Off") : $"{Percent(_effects)} %")</span>
                     </div>
                     <input id="options-effects" type="range" class="form-range" min="0" max="100" step="5"
                            value="@Percent(_effects)" disabled="@_muted"
@@ -39,11 +39,11 @@
                 <div class="form-check options-check">
                     <input id="options-mute" type="checkbox" class="form-check-input" checked="@_muted"
                            @onchange="OnMuteAsync" data-testid="options-mute" />
-                    <label for="options-mute" class="form-check-label">Slå lydeffekter fra</label>
+                    <label for="options-mute" class="form-check-label">@T("Slå lydeffekter fra", "Mute sound effects")</label>
                 </div>
 
                 <div class="options-footer">
-                    <button type="button" class="btn btn-primary" @onclick="Close" data-testid="options-close">Luk</button>
+                    <button type="button" class="btn btn-primary" @onclick="Close" data-testid="options-close">@T("Luk", "Close")</button>
                 </div>
             </div>
         </div>

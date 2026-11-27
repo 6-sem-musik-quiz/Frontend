@@ -9,13 +9,13 @@
                 else
                 {
                     <div class="alert alert-warning mt-3" role="alert">
-                        <h1 class="h4">Ingen adgang</h1>
-                        <p class="mb-0">Du har ikke rettigheder til at se denne side.</p>
+                        <h1 class="h4">@T("Ingen adgang", "No access")</h1>
+                        <p class="mb-0">@T("Du har ikke rettigheder til at se denne side.", "You do not have permission to see this page.")</p>
                     </div>
                 }
             </NotAuthorized>
             <Authorizing>
-                <p class="mt-3"><em>Tjekker login…</em></p>
+                <p class="mt-3"><em>@T("Tjekker login…", "Checking login…")</em></p>
             </Authorizing>
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />

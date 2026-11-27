@@ -1,0 +1,14 @@
+@* Danish / English switch in the top bar (on every page, also before login). The active flag is lit;
+   the choice is remembered in localStorage (LanguageStore). *@
+@inject LanguageStore Store
+
+<div class="lang-toggle" role="group" aria-label="@T("Sprog", "Language")" data-testid="language-toggle">
+    <button type="button" class="lang-flag @(IsEnglish ? "" : "active")" aria-pressed="@(IsEnglish ? "false" : "true")"
+            title="Dansk" aria-label="Dansk" @onclick="() => Store.SetAsync(Language.Danish)" data-testid="lang-da">
+        <img src="img/flag-da.svg" alt="" width="30" height="22" />
+    </button>
+    <button type="button" class="lang-flag @(IsEnglish ? "active" : "")" aria-pressed="@(IsEnglish ? "true" : "false")"
+            title="English" aria-label="English" @onclick="() => Store.SetAsync(Language.English)" data-testid="lang-en">
+        <img src="img/flag-gb.svg" alt="" width="30" height="22" />
+    </button>
+</div>

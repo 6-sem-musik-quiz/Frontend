@@ -9,14 +9,14 @@
 @if (_lobby is { } lobby)
 {
     <div class="card current-lobby" role="status" data-testid="current-lobby">
-        <span class="current-lobby-plate">Din lobby</span>
+        <span class="current-lobby-plate">@T("Din lobby", "Your lobby")</span>
         <span class="current-lobby-text">
-            Du er stadig i <span class="current-lobby-name">@lobby.Settings.CategoryName</span>
-            <span class="current-lobby-count">@lobby.Players.Count/@lobby.Settings.MaxPlayers spillere</span>
+            @T("Du er stadig i", "You are still in") <span class="current-lobby-name">@lobby.Settings.CategoryName</span>
+            <span class="current-lobby-count">@lobby.Players.Count/@lobby.Settings.MaxPlayers @T("spillere", "players")</span>
         </span>
         <div class="current-lobby-actions">
-            <a class="btn btn-primary" href="lobby/@lobby.Id">Gå til lobby</a>
-            <LoadingButton CssClass="btn-outline-danger" OnClick="LeaveAsync" LoadingText="Forlader…">Forlad lobby</LoadingButton>
+            <a class="btn btn-primary" href="lobby/@lobby.Id">@T("Gå til lobby", "Go to lobby")</a>
+            <LoadingButton CssClass="btn-outline-danger" OnClick="LeaveAsync" LoadingText="@T("Forlader…", "Leaving…")">@T("Forlad lobby", "Leave lobby")</LoadingButton>
         </div>
     </div>
 }

@@ -6,16 +6,16 @@
 @inject MaintenanceState Maintenance
 @inject UserSession Session
 
-<PageTitle>Log ind · Slopster</PageTitle>
+<PageTitle>@T("Log ind", "Log in") · Slopster</PageTitle>
 
 <div class="auth-card">
-    <h1 class="h3 mb-3">Log ind</h1>
+    <h1 class="h3 mb-3">@T("Log ind", "Log in")</h1>
 
     @if (Maintenance.IsOff("userservice"))
     {
         @* SCRUM-177: the admin must still be able to log in, to switch UserService back on. *@
         <div class="alert alert-warning" role="status" data-testid="login-maintenance">
-            🛠️ @Maintenance.TextFor("userservice") Kun administratorer kan logge ind lige nu.
+            🛠️ @Maintenance.TextFor("userservice") @T("Kun administratorer kan logge ind lige nu.", "Only administrators can log in right now.")
         </div>
     }
 
@@ -25,21 +25,21 @@
         <DataAnnotationsValidator />
 
         <div class="mb-3">
-            <label for="username" class="form-label">Brugernavn</label>
+            <label for="username" class="form-label">@T("Brugernavn", "Username")</label>
             <InputText id="username" class="form-control" @bind-Value="_model.UserName" autocomplete="username" />
             <ValidationMessage For="() => _model.UserName" />
         </div>
 
         <div class="mb-3">
-            <label for="password" class="form-label">Adgangskode</label>
+            <label for="password" class="form-label">@T("Adgangskode", "Password")</label>
             <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" autocomplete="current-password" />
             <ValidationMessage For="() => _model.Password" />
         </div>
 
-        <LoadingButton Type="submit" IsLoading="_loading" LoadingText="Logger ind…" CssClass="btn-primary w-100">Log ind</LoadingButton>
+        <LoadingButton Type="submit" IsLoading="_loading" LoadingText="@T("Logger ind…", "Logging in…")" CssClass="btn-primary w-100">@T("Log ind", "Log in")</LoadingButton>
     </EditForm>
 
-    <p class="mt-3 mb-0">Ingen bruger? <a href="opret">Opret bruger</a></p>
+    <p class="mt-3 mb-0">@T("Ingen bruger?", "No account?") <a href="opret">@T("Opret bruger", "Create account")</a></p>
 </div>
 
 @code {
@@ -54,14 +54,14 @@
         _loading = true;
         _error = await ApiCall.RunAsync(
             () => AuthService.LoginAsync(_model),
-            unauthorizedMessage: "Forkert brugernavn eller adgangskode.");
+            unauthorizedMessage: T("Forkert brugernavn eller adgangskode.", "Wrong username or password."));
         _loading = false;
 
         // SCRUM-177: while UserService is switched off only an admin may stay logged in.
         if (_error is null && Maintenance.IsOff("userservice") && Session.Current?.Role != "Admin")
         {
             await AuthService.SignOutHereAsync();
-            _error = Maintenance.TextFor("userservice") + " Kun administratorer kan logge ind lige nu.";
+            _error = Maintenance.TextFor("userservice") + " " + T("Kun administratorer kan logge ind lige nu.", "Only administrators can log in right now.");
         }
 
         if (_error is null)

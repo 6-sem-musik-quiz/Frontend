@@ -1,4 +1,4 @@
-using System.Globalization;
+using Frontend.Domain.Localization;
 
 using Frontend.Domain.DTOs.Games;
 using Frontend.Web.Sound;
@@ -82,7 +82,7 @@ public sealed class EndRevealScript
             AddAward(Beat, ToAward(awards[i], i + 1, awards.Count, names), i == 0 ? BonusIntro : AfterAward);
 
         // The finale: from last place up, the 1st places last after a pause.
-        Beat(awards.Count == 0 ? BonusIntro : AfterAward, Sfx.StandingsIntro, () => { Current = null; Banner = "Slutstilling"; });
+        Beat(awards.Count == 0 ? BonusIntro : AfterAward, Sfx.StandingsIntro, () => { Current = null; Banner = Lang.T("Slutstilling", "Final standings"); });
         var bottomUp = Rows.Select((r, i) => (r, i)).OrderByDescending(x => x.r.Standing.Placement).ThenByDescending(x => x.i)
             .Select(x => x.r).ToList();
         var others = bottomUp.Where(r => r.Standing.Placement != 1).ToList();
@@ -93,7 +93,7 @@ public sealed class EndRevealScript
             Beat(wait, Sfx.PlacementReveal, () => row.Shown = true);
             wait = PerPlacement;
         }
-        Beat(wait, Sfx.WinnerSuspense, () => Banner = "Og vinderen er …");
+        Beat(wait, Sfx.WinnerSuspense, () => Banner = Lang.T("Og vinderen er …", "And the winner is …"));
         // The winner's name. Silent here: the game page plays the winner fanfare with OnDone, at this
         // same moment, and also after a skip (which plays none of the beat sounds).
         Beat(BeforeWinner, null, () =>
@@ -103,7 +103,7 @@ public sealed class EndRevealScript
                 row.Shown = true;
                 row.Champion = true;
             }
-            Banner = string.Join(" og ", champions.Select(c => c.Standing.UserName)) + "!";
+            Banner = string.Join(Lang.T(" og ", " and "), champions.Select(c => c.Standing.UserName)) + "!";
             Done = true;
         });
         Beats = beats;
@@ -161,18 +161,19 @@ public sealed class EndRevealScript
         var fastest = dto.Kind == "fastest";
         var contenders = dto.Contenders
             .Select(c => new Contender(c.UserId, names.GetValueOrDefault(c.UserId, "?"),
-                fastest ? FastestValue(c) : $"{c.Value ?? 0} i træk", c.Qualified))
+                fastest ? FastestValue(c) : Lang.T($"{c.Value ?? 0} i træk", $"{c.Value ?? 0} in a row"), c.Qualified))
             .ToList();
         return new Award(
-            fastest ? "Lynet" : dto.Kind == "streak" ? "Stimen" : dto.Kind,
-            $"Bonus {number} af {count}",
-            fastest ? "Hurtigst i snit, kun rigtige svar tæller" : "Flest rigtige i træk",
+            fastest ? Lang.T("Lynet", "Lightning") : dto.Kind == "streak" ? Lang.T("Stimen", "The Streak") : dto.Kind,
+            Lang.T($"Bonus {number} af {count}", $"Bonus {number} of {count}"),
+            fastest ? Lang.T("Hurtigst i snit, kun rigtige svar tæller", "Fastest on average, only right answers count")
+                : Lang.T("Flest rigtige i træk", "Most right answers in a row"),
             contenders,
             dto.Winners);
     }
 
     private static string FastestValue(AwardContenderDto c) =>
-        c.Value is not { } ms ? "ingen rigtige"
-        : !c.Qualified ? "for få rigtige"
-        : (ms / 1000.0).ToString("0.0", CultureInfo.GetCultureInfo("da-DK")) + " s";
+        c.Value is not { } ms ? Lang.T("ingen rigtige", "none right")
+        : !c.Qualified ? Lang.T("for få rigtige", "too few right")
+        : Lang.Number(ms / 1000.0) + " s";
 }

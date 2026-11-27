@@ -1,0 +1,40 @@
+/* Two flags on an ink plate, like the SLOPSTER brand; the chosen one is lit, the other faded. */
+.lang-toggle {
+    display: inline-flex;
+    gap: 4px;
+    padding: 3px;
+    background: var(--sl-ink);
+    border-radius: 6px;
+    box-shadow: 3px 3px 0 var(--sl-ink-deep);
+}
+
+.lang-flag {
+    display: block;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 3px;
+    background: none;
+    line-height: 0;
+    opacity: .45;
+    filter: grayscale(.6);
+    transition: opacity .15s, filter .15s;
+}
+
+.lang-flag img {
+    width: 30px;
+    height: 22px;
+    object-fit: cover;
+    border-radius: 2px;
+}
+
+.lang-flag:hover,
+.lang-flag:focus-visible {
+    opacity: .85;
+    filter: none;
+}
+
+.lang-flag.active {
+    opacity: 1;
+    filter: none;
+    border-color: var(--sl-mustard);
+}
