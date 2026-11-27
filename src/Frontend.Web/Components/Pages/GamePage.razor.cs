@@ -95,7 +95,7 @@ public partial class GamePage : IAsyncDisposable
     private bool _showAllSongs;
     private bool _playAgainBusy;
     private string? _playAgainError;
-    private double _volume = 0.8;
+    private double _volume = 0.5; // the song at first visit (no stored "Musik" setting yet)
     private double _effectsVolume = 0.6; // sound effects, separate from the song (SCRUM-161)
 
     private CancellationTokenSource? _roundCts;
@@ -503,7 +503,8 @@ public partial class GamePage : IAsyncDisposable
     {
         StopPreRoll();
         _go = true;
-        _ = Sounds.PlayAsync(Sfx.GameStart);
+        // No sound for "Nu!": the song starts at the same moment and is the signal (a confirmation
+        // sound on top of it every round was too much).
         _goTimer?.Dispose();
         _goTimer = Time.CreateTimer(_ => InvokeAsync(() =>
         {
@@ -594,6 +595,10 @@ public partial class GamePage : IAsyncDisposable
         var me = _ended?.Standings.FirstOrDefault(s => s.UserId == _me);
         await Sounds.PlayAsync(me?.Placement == 1 ? Sfx.Winner : Sfx.GameOver);
     }
+
+    // The staged reveal ends on the winner's name ("asger!"): that moment gets the winner fanfare for
+    // everybody, not the chips of the game-over sound, which did not fit a winner being announced.
+    private Task PlayWinnerRevealedAsync() => Sounds.PlayAsync(Sfx.Winner);
 
     private async Task ReleaseAsync(int round)
     {

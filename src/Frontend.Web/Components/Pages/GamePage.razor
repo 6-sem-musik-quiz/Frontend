@@ -21,7 +21,7 @@ else if (_state is null)
 else if (_ended is { Awards: not null })
 {
     @* SCRUM-155: the staged reveal with the bonus awards; the buttons come when it is over. *@
-    <EndReveal Ended="_ended" Me="_me" OnDone="PlayEndSoundAsync" Actions="EndActions" />
+    <EndReveal Ended="_ended" Me="_me" OnDone="PlayWinnerRevealedAsync" Actions="EndActions" PlaySound="Sounds.PlayAsync" />
     <SongListDialog Open="_showAllSongs" Title="Alle spillets sange" Songs="_played"
                     Intro="Hver rundes sang, og hvordan det gik for dig."
                     OnClose="() => _showAllSongs = false" />

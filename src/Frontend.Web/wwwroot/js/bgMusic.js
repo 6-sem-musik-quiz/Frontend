@@ -6,7 +6,7 @@
 // first click or key press, because browsers block sound until then.
 
 const MUSIC_KEY = "slopster.volume"; // GamePage.VolumeKey: the "Musik" setting
-const DEFAULT_MUSIC = 0.8;           // the game page's default
+const DEFAULT_MUSIC = 0.5;           // the game page's default
 const LEVEL = 0.12;                  // menu music = 12 % of "Musik": low, in the background
 
 let audio = null;

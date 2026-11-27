@@ -1,6 +1,7 @@
 using System.Globalization;
 
 using Frontend.Domain.DTOs.Games;
+using Frontend.Web.Sound;
 
 namespace Frontend.Web.Components.Game;
 
@@ -49,6 +50,10 @@ public sealed class EndRevealScript
     public IReadOnlyList<Row> Rows { get; }
     public IReadOnlyList<(TimeSpan Wait, Action Apply)> Beats { get; }
 
+    // The sound for each beat (same index as Beats), null for a silent beat. Only played when the beat
+    // runs on its own time; skipping to the end plays none of them, only the winner sound.
+    public IReadOnlyList<Sfx?> Sounds { get; }
+
     // The slots in the final order (by placement, ties in the server's order). Face down until shown.
     public IReadOnlyList<Row> Ordered => Rows
         .Select((r, i) => (r, i))
@@ -65,12 +70,19 @@ public sealed class EndRevealScript
             .ToList();
         var names = ended.Standings.ToDictionary(s => s.UserId, s => s.UserName);
         var beats = new List<(TimeSpan, Action)>();
+        var sounds = new List<Sfx?>();
+        // Adds a beat and the sound that goes with it.
+        void Beat(TimeSpan wait, Sfx? sound, Action apply)
+        {
+            beats.Add((wait, apply));
+            sounds.Add(sound);
+        }
 
         for (var i = 0; i < awards.Count; i++)
-            AddAward(beats, ToAward(awards[i], i + 1, awards.Count, names), i == 0 ? BonusIntro : AfterAward);
+            AddAward(Beat, ToAward(awards[i], i + 1, awards.Count, names), i == 0 ? BonusIntro : AfterAward);
 
         // The finale: from last place up, the 1st places last after a pause.
-        beats.Add((awards.Count == 0 ? BonusIntro : AfterAward, () => { Current = null; Banner = "Slutstilling"; }));
+        Beat(awards.Count == 0 ? BonusIntro : AfterAward, Sfx.StandingsIntro, () => { Current = null; Banner = "Slutstilling"; });
         var bottomUp = Rows.Select((r, i) => (r, i)).OrderByDescending(x => x.r.Standing.Placement).ThenByDescending(x => x.i)
             .Select(x => x.r).ToList();
         var others = bottomUp.Where(r => r.Standing.Placement != 1).ToList();
@@ -78,11 +90,13 @@ public sealed class EndRevealScript
         var wait = FinaleIntro;
         foreach (var row in others)
         {
-            beats.Add((wait, () => row.Shown = true));
+            Beat(wait, Sfx.PlacementReveal, () => row.Shown = true);
             wait = PerPlacement;
         }
-        beats.Add((wait, () => Banner = "Og vinderen er …"));
-        beats.Add((BeforeWinner, () =>
+        Beat(wait, Sfx.WinnerSuspense, () => Banner = "Og vinderen er …");
+        // The winner's name. Silent here: the game page plays the winner fanfare with OnDone, at this
+        // same moment, and also after a skip (which plays none of the beat sounds).
+        Beat(BeforeWinner, null, () =>
         {
             foreach (var row in champions)
             {
@@ -91,9 +105,14 @@ public sealed class EndRevealScript
             }
             Banner = string.Join(" og ", champions.Select(c => c.Standing.UserName)) + "!";
             Done = true;
-        }));
+        });
         Beats = beats;
+        Sounds = sounds;
+        IntroSound = awards.Count > 0 ? Sfx.BonusIntro : null;
     }
+
+    // Played when the reveal starts with "Bonus!" on the stage (only when there are awards to show).
+    public Sfx? IntroSound { get; }
 
     // The beats run in order; Next is the one that has not run yet.
     public int Next { get; private set; }
@@ -114,26 +133,27 @@ public sealed class EndRevealScript
             Step();
     }
 
-    private void AddAward(List<(TimeSpan, Action)> beats, Award award, TimeSpan first)
+    private void AddAward(Action<TimeSpan, Sfx?, Action> beat, Award award, TimeSpan first)
     {
-        beats.Add((first, () =>
+        beat(first, Sfx.AwardReveal, () =>
         {
             Banner = null;
             Current = award;
-        }));
+        });
         // Worst first, so the best value comes last.
         var wait = AwardIntro;
         foreach (var contender in Enumerable.Reverse(award.Contenders))
         {
-            beats.Add((wait, () => contender.Shown = true));
+            beat(wait, Sfx.AwardValue, () => contender.Shown = true);
             wait = PerContender;
         }
-        beats.Add((BeforeStamp, () =>
+        // The +1 stamp; nothing to hear when nobody won the award.
+        beat(BeforeStamp, award.Winners.Count > 0 ? Sfx.AwardStamp : null, () =>
         {
             foreach (var c in award.Contenders.Where(c => award.Winners.Contains(c.UserId)))
                 c.Won = true;
             award.Stamped = award.Winners.Count > 0;
-        }));
+        });
     }
 
     private static Award ToAward(AwardDto dto, int number, int count, IReadOnlyDictionary<int, string> names)
