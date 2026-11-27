@@ -1,0 +1,127 @@
+@* SCRUM-175: switch backend services off and on ("design to be disabled"). On /admin, so Admin only.
+   The flags live at the edge (PUT /api/edge/maintenance/{service}); every player sees a change within
+   a few seconds, and the edge refuses calls to a switched-off service with 503. *@
+@implements IDisposable
+@inject IMaintenanceApiClient Api
+@inject MaintenanceState Maintenance
+@inject ApiCallHandler ApiCall
+
+<section class="card mb-4" data-testid="maintenance-card">
+    <div class="card-body">
+        <h2 class="h5 card-title">Vedligeholdelse</h2>
+        <p class="small text-body-secondary">Slå en service fra, og funktionerne, der bruger den, bliver nedtonet for spillerne. Spil og lobbyer, der er i gang, kører færdigt.</p>
+
+        <ErrorMessage Message="@_error" />
+
+        @if (_services is null)
+        {
+            @if (_error is null)
+            {
+                <p class="text-body-secondary">Henter status…</p>
+            }
+        }
+        else
+        {
+            <table class="table align-middle mb-0">
+                <tbody>
+                    @foreach (var s in _services)
+                    {
+                        <tr @key="s.Service" data-testid="maintenance-row" data-service="@s.Service">
+                            <td class="fw-semibold">@s.Name</td>
+                            <td>
+                                @if (s.Off)
+                                {
+                                    <span class="badge text-bg-warning" data-testid="status">Vedligeholdelse</span>
+                                    <div class="small text-body-secondary" data-testid="off-by">
+                                        Slået fra af @(s.By ?? "?") @(s.Since is { } since ? since.ToLocalTime().ToString("d/M HH:mm") : "")
+                                        @if (!string.IsNullOrWhiteSpace(s.Message))
+                                        {
+                                            <br /><span>“@s.Message”</span>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-success" data-testid="status">Aktiv</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (s.Off)
+                                {
+                                    <LoadingButton CssClass="btn-sm btn-success" OnClick="() => SwitchAsync(s.Service, false, null)"
+                                                   LoadingText="Slår til…" data-testid="switch-on">Slå til</LoadingButton>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-warning" data-testid="switch-off"
+                                            @onclick="() => AskOff(s)">Slå fra</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</section>
+
+<ConfirmDialog Visible="_confirm is not null" Title="@($"Slå {_confirm?.Name} fra?")" ConfirmText="Slå fra" ConfirmCss="btn-warning"
+               OnConfirm="ConfirmOffAsync" OnCancel="() => _confirm = null">
+    @if (_confirm is not null)
+    {
+        <p data-testid="confirm-text">Brugerne kan ikke bruge @Affected(_confirm.Service) imens.</p>
+        <label for="maintenance-message" class="form-label small">Besked til brugerne (valgfri)</label>
+        <input id="maintenance-message" class="form-control" maxlength="300" placeholder="Fx: Tilbage kl. 20"
+               @bind="_message" @bind:event="oninput" data-testid="message" />
+    }
+</ConfirmDialog>
+
+@code {
+    private IReadOnlyList<MaintenanceStatusDto>? _services;
+    private MaintenanceStatusDto? _confirm;
+    private string _message = "";
+    private string? _error;
+
+    private static string Affected(string service) =>
+        MaintenanceState.Features.TryGetValue(service, out var f) ? f.Feature.ToLowerInvariant() : service;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Maintenance.Changed += OnChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() =>
+        _error = await ApiCall.RunAsync(async () => _services = await Api.GetAllAsync());
+
+    // Another admin (or the poll) changed a flag: show it.
+    private void OnChanged() => InvokeAsync(async () =>
+    {
+        await LoadAsync();
+        StateHasChanged();
+    });
+
+    private void AskOff(MaintenanceStatusDto service)
+    {
+        _message = "";
+        _confirm = service;
+    }
+
+    private async Task ConfirmOffAsync()
+    {
+        if (_confirm is { } service)
+        {
+            _confirm = null;
+            await SwitchAsync(service.Service, true, string.IsNullOrWhiteSpace(_message) ? null : _message.Trim());
+        }
+    }
+
+    private async Task SwitchAsync(string service, bool off, string? message)
+    {
+        _error = await ApiCall.RunAsync(() => Api.SwitchAsync(service, off, message));
+        await LoadAsync();
+        await Maintenance.RefreshAsync(); // this admin's own pages follow at once
+    }
+
+    public void Dispose() => Maintenance.Changed -= OnChanged;
+}

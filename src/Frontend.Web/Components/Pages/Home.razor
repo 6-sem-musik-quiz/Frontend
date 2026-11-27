@@ -21,13 +21,22 @@
 
 <div class="home-grid">
     <section class="home-panel card @(_tab == "leaderboard" ? "active" : "")" aria-label="Leaderboard">
-        <div class="card-body"><StatsPanel /></div>
+        <div class="card-body">
+            @* SCRUM-181 *@
+            <RequiresService Service="statisticservice" Replace="true" Heading="Leaderboard"><StatsPanel /></RequiresService>
+        </div>
     </section>
     <section class="home-panel card @(_tab == "create" ? "active" : "")" aria-label="Opret lobby">
-        <div class="card-body"><CreateLobbyForm /></div>
+        <div class="card-body">
+            @* SCRUM-178/180: a lobby needs LobbyService and a playlist from MusicService *@
+            <RequiresService Service="lobbyservice,musicservice" Replace="true" Heading="Opret lobby"><CreateLobbyForm /></RequiresService>
+        </div>
     </section>
     <section class="home-panel card @(_tab == "lobbies" ? "active" : "")" aria-label="Lobbyer">
-        <div class="card-body"><LobbyList /></div>
+        <div class="card-body">
+            @* SCRUM-178 *@
+            <RequiresService Service="lobbyservice" Replace="true" Heading="Lobbyer"><LobbyList /></RequiresService>
+        </div>
     </section>
 </div>
 

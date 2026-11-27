@@ -108,8 +108,11 @@ else if (_lobby is { } lobby)
                     </LoadingButton>
                     @if (IsHost)
                     {
-                        <LoadingButton CssClass="btn-primary" OnClick="StartAsync" LoadingText="Starter…"
-                                       Disabled="@(StartBlockedReason is not null)" data-testid="start-button">Start spil</LoadingButton>
+                        @* SCRUM-179: greyed out with a toast while GameService is switched off; back by itself after. *@
+                        <RequiresService Service="gameservice" Inline="true">
+                            <LoadingButton CssClass="btn-primary" OnClick="StartAsync" LoadingText="Starter…"
+                                           Disabled="@(StartBlockedReason is not null)" data-testid="start-button">Start spil</LoadingButton>
+                        </RequiresService>
                     }
                 </div>
             </div>

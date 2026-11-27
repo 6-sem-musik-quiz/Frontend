@@ -10,8 +10,31 @@ namespace Frontend.Web.Auth;
 // - ProblemDetails fra services vises som læsbar besked
 // - 401 logger ud og sender til /login
 // - andre fejl giver en generel fejlbesked
-public sealed class ApiCallHandler(IAuthService authService, NavigationManager navigation, ILogger<ApiCallHandler> logger)
+public sealed class ApiCallHandler
 {
+    private readonly IAuthService authService;
+    private readonly NavigationManager navigation;
+    private readonly ILogger<ApiCallHandler> logger;
+    private readonly Maintenance.MaintenanceState? maintenance;
+    private readonly Maintenance.ToastService? toasts;
+
+    public ApiCallHandler(IAuthService authService, NavigationManager navigation, ILogger<ApiCallHandler> logger)
+    {
+        this.authService = authService;
+        this.navigation = navigation;
+        this.logger = logger;
+    }
+
+    // SCRUM-176: in the app (DI picks the longest constructor it can fill) a maintenance 503 also shows
+    // the toast and greys the service's features out at once.
+    public ApiCallHandler(IAuthService authService, NavigationManager navigation, ILogger<ApiCallHandler> logger,
+        Maintenance.MaintenanceState maintenance, Maintenance.ToastService toasts)
+        : this(authService, navigation, logger)
+    {
+        this.maintenance = maintenance;
+        this.toasts = toasts;
+    }
+
     public const string GeneralError = "Der opstod en uventet fejl. Prøv igen om lidt.";
     public const string UnreachableError = "Kunne ikke kontakte servicen. Prøv igen om lidt.";
 
@@ -28,6 +51,14 @@ public sealed class ApiCallHandler(IAuthService authService, NavigationManager n
         {
             await action();
             return null;
+        }
+        catch (ServiceInMaintenanceException ex)
+        {
+            // SCRUM-176: the same maintenance toast everywhere, not a generic error.
+            maintenance?.MarkOff(ex.Service, ex.Problem?.Detail);
+            var text = maintenance?.TextFor(ex.Service) ?? Maintenance.MaintenanceState.FallbackText;
+            toasts?.Show(text);
+            return text;
         }
         catch (UnauthorizedApiException) when (unauthorizedMessage is not null)
         {

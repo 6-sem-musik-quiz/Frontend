@@ -17,6 +17,9 @@
 
 <ErrorMessage Message="@_error" />
 
+@* SCRUM-180: no upload or editing while MusicService is switched off. *@
+<RequiresService Service="musicservice" Replace="true">
+
 @if (_playingUrl is not null)
 {
     <div class="d-flex align-items-center gap-2 mb-3" data-testid="player">
@@ -156,6 +159,7 @@
     <p>Fjern <strong>@_removing?.Title</strong> fra playlisten?</p>
     <p class="mb-0 small text-body-secondary">Sangen slettes helt, hvis den ikke er i andre playlister.</p>
 </ConfirmDialog>
+</RequiresService>
 
 @code {
     private const int MinYear = 1900;

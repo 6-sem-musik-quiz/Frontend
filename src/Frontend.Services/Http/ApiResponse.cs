@@ -29,6 +29,12 @@ public static class ApiResponse
             throw new UnauthorizedApiException(message, problem);
         }
 
+        if (response.StatusCode == HttpStatusCode.ServiceUnavailable
+            && problem?.Type == ServiceInMaintenanceException.ProblemType)
+        {
+            throw new ServiceInMaintenanceException(problem.Service ?? "", problem.Detail ?? message, problem);
+        }
+
         throw new ApiException(response.StatusCode, message, problem);
     }
 

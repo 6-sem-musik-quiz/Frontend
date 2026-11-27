@@ -30,6 +30,7 @@ public static class ServiceLayerExtensions
         // the SignalR hub (Frontend.Web/Games/GameHubClient), which uses Services:GameService as its base.
         services.AddApiClient<IMusicApiClient, MusicApiClient>(o => o.MusicService);
         services.AddApiClient<IStatisticApiClient, StatisticApiClient>(o => o.StatisticService);
+        services.AddApiClient<IMaintenanceApiClient, MaintenanceApiClient>(o => o.Edge); // SCRUM-175
 
         return services;
     }

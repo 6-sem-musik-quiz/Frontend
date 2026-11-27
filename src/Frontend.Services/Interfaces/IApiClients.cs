@@ -1,4 +1,5 @@
 using Frontend.Domain.DTOs.Lobbies;
+using Frontend.Domain.DTOs.Maintenance;
 using Frontend.Domain.DTOs.Music;
 using Frontend.Domain.DTOs.Statistics;
 using Frontend.Domain.DTOs.Users;
@@ -62,4 +63,13 @@ public interface IStatisticApiClient
     // week: "current" or an ISO week such as "2026-W48".
     Task<WeeklyLeaderboardDto> GetWeeklyLeaderboardAsync(string week = "current", CancellationToken ct = default);
     Task<MyStatsDto> GetMyStatsAsync(CancellationToken ct = default);
+}
+
+// SCRUM-174/175: EdgeService's maintenance flags ("design to be disabled").
+public interface IMaintenanceApiClient
+{
+    // Every backend service, on or off. Anyone may read it.
+    Task<IReadOnlyList<MaintenanceStatusDto>> GetAllAsync(CancellationToken ct = default);
+    // Switches a service off (with an optional message to users) or back on. Admin only.
+    Task SwitchAsync(string service, bool off, string? message, CancellationToken ct = default);
 }
