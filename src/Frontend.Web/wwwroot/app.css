@@ -234,6 +234,32 @@ a:hover {
     border-bottom: 0;
 }
 
+/* The signed-in player's own row in a leaderboard: a mustard block with the same ink border and
+   hard shadow as the buttons, instead of Bootstrap's light-blue list-group-item-primary. */
+.list-group-item.sl-own-row {
+    background: var(--sl-mustard);
+    color: var(--sl-ink);
+    border: 2px solid var(--sl-ink);
+    border-radius: 4px;
+    box-shadow: 3px 3px 0 var(--sl-ink);
+    padding-left: 0.5rem;
+    padding-right: 0.6rem;
+    margin: 4px 3px 7px 0;
+}
+
+/* Small "dig" label next to the name, in the pixel font. */
+.sl-you-tag {
+    font-family: var(--sl-pixel);
+    font-size: 0.7rem;
+    line-height: 1;
+    padding: 2px 5px 3px;
+    background: var(--sl-ink);
+    color: var(--sl-cream);
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 /* Tables (admin pages) */
 .table {
     --bs-table-bg: transparent;
