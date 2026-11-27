@@ -22,11 +22,15 @@
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <!-- Shown until the WebAssembly runtime has loaded; Blazor then replaces #app. -->
+        <div class="sl-loading" role="status" aria-label="Indlæser Slopster">
+            <div class="sl-loading-title">SLOPSTER</div>
+            <div class="sl-eq" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div class="sl-loading-bar" aria-hidden="true"><div></div></div>
+            <div class="sl-loading-text"></div>
+        </div>
     </div>
 
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
