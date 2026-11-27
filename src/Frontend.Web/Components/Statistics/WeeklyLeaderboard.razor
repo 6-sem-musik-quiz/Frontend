@@ -23,9 +23,13 @@ else
         @foreach (var row in Rows)
         {
             var mine = row.UserId == MeId;
-            <li @key="row.UserId" class="list-group-item d-flex align-items-center @(mine ? "list-group-item-primary fw-semibold" : "")"
+            <li @key="row.UserId" class="list-group-item d-flex align-items-center @(mine ? "sl-own-row fw-semibold" : "")"
                 data-testid="@(mine ? "own-row" : "row")" aria-current="@(mine ? "true" : null)">
                 <span class="ms-2 flex-grow-1 text-truncate">@row.UserName</span>
+                @if (mine)
+                {
+                    <span class="sl-you-tag ms-2">dig</span>
+                }
                 <span class="ms-2 text-nowrap" data-testid="value">@row.Value</span>
             </li>
         }
