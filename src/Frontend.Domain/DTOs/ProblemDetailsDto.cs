@@ -9,6 +9,9 @@ public class ProblemDetailsDto
     public string? Detail { get; set; }
     public string? Instance { get; set; }
 
+    // SCRUM-194: the switched-off service in a maintenance answer (503), e.g. "lobbyservice".
+    public string? Service { get; set; }
+
     // Udfyldes ved ValidationProblemDetails (400).
     public Dictionary<string, string[]>? Errors { get; set; }
 }

@@ -41,6 +41,7 @@ public class GamePageTests : BunitContext
         Services.AddSingleton<IGameHubClient>(_hub);
         Services.AddSingleton<IGameAudio>(_audio);
         Services.AddSingleton<TimeProvider>(_time);
+        Services.AddMaintenanceFakes(); // SCRUM-176: every service on
         Services.AddSingleton<ISoundEffects>(_sounds);
         Services.AddSingleton(_lobbies);
         AddAuthorization().SetAuthorized("alice").SetClaims(new Claim("sub", Me.ToString()));

@@ -1,4 +1,5 @@
 using Frontend.Domain.DTOs.Lobbies;
+using Frontend.Domain.DTOs.Maintenance;
 using Frontend.Domain.DTOs.Music;
 using Frontend.Domain.DTOs.Statistics;
 using Frontend.Domain.DTOs.Users;
@@ -123,4 +124,16 @@ public class StatisticApiClient(HttpClient httpClient) : ApiClientBase(httpClien
 
     public Task<MyStatsDto> GetMyStatsAsync(CancellationToken ct = default) =>
         GetAsync<MyStatsDto>($"{Route}/me", ct);
+}
+
+// SCRUM-175: EdgeService's own endpoints (/api/edge/), not proxied to a service.
+public class MaintenanceApiClient(HttpClient httpClient) : ApiClientBase(httpClient), IMaintenanceApiClient
+{
+    private const string Route = "maintenance";
+
+    public async Task<IReadOnlyList<MaintenanceStatusDto>> GetAllAsync(CancellationToken ct = default) =>
+        await GetAsync<List<MaintenanceStatusDto>>(Route, ct);
+
+    public Task SwitchAsync(string service, bool off, string? message, CancellationToken ct = default) =>
+        PutAsync($"{Route}/{Uri.EscapeDataString(service)}", new SwitchMaintenanceRequest(off, message), ct);
 }

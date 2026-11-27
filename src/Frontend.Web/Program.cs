@@ -26,6 +26,7 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
     ["Services:StatisticService"] = new Uri(apiBase, "api/statisticservice/").ToString(),
     ["Services:LobbyService"] = new Uri(apiBase, "api/lobbyservice/").ToString(),
     ["Services:GameService"] = new Uri(apiBase, "api/gameservice/").ToString(),
+    ["Services:EdgeService"] = new Uri(apiBase, "api/edge/").ToString(), // SCRUM-175: maintenance flags
 });
 
 builder.Services.AddFrontendAuth();
@@ -38,5 +39,8 @@ builder.Services.AddScoped<IGameAudio, GameAudio>();
 builder.Services.AddScoped<ISoundEffects, SoundEffects>(); // sound effects, shared by all pages (SCRUM-161)
 builder.Services.AddScoped<IBackgroundMusic, BackgroundMusic>(); // quiet menu music on the front page and in the lobby (SCRUM-167)
 builder.Services.AddSingleton(TimeProvider.System); // the game page's timers; tests use a fake
+// SCRUM-174/176: which services an admin has switched off, and the toasts that say so.
+builder.Services.AddSingleton<Frontend.Web.Maintenance.MaintenanceState>();
+builder.Services.AddSingleton<Frontend.Web.Maintenance.ToastService>();
 
 await builder.Build().RunAsync();

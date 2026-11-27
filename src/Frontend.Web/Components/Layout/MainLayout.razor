@@ -3,9 +3,11 @@
 @inject ISoundEffects Sounds
 @inject IBackgroundMusic Music
 @inject NavigationManager Navigation
+@inject MaintenanceState Maintenance
 
 <div class="page">
     <TopBar />
+    <MaintenanceBanner />
 
     <main>
         <article class="content container py-3">
@@ -13,6 +15,8 @@
         </article>
     </main>
 </div>
+
+<ToastHost />
 
 <div id="blazor-error-ui" data-nosnippet>
     Der opstod en uventet fejl.
@@ -28,12 +32,24 @@
         if (!firstRender)
             return;
         Navigation.LocationChanged += OnLocationChanged;
+        Maintenance.Changed += OnMaintenanceChanged;
+        Maintenance.Start(); // SCRUM-176: poll the maintenance flags
         await Sounds.InstallUiAsync();
-        await Music.SetPageAsync(Navigation.ToBaseRelativePath(Navigation.Uri));
+        await SetMusicAsync();
     }
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
-        _ = Music.SetPageAsync(Navigation.ToBaseRelativePath(e.Location));
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = SetMusicAsync();
 
-    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+    // SCRUM-180: the menu music stops quietly while MusicService is switched off, and comes back after.
+    private void OnMaintenanceChanged() => _ = InvokeAsync(SetMusicAsync);
+
+    private Task SetMusicAsync() =>
+        // A page without music ("admin") while it is off; "" would be the front page, which has music.
+        Music.SetPageAsync(Maintenance.IsOff("musicservice") ? "admin" : Navigation.ToBaseRelativePath(Navigation.Uri));
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        Maintenance.Changed -= OnMaintenanceChanged;
+    }
 }

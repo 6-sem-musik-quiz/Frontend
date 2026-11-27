@@ -6,8 +6,12 @@
 <PageTitle>Playlister · Admin · Slopster</PageTitle>
 
 <GrafanaCard />
+<MaintenanceCard />
 
 <h1 class="mb-3">Playlister</h1>
+
+@* SCRUM-180: no playlist editing or upload while MusicService is switched off. *@
+<RequiresService Service="musicservice" Replace="true">
 
 <ErrorMessage Message="@_error" />
 
@@ -93,6 +97,7 @@ else
         Sange, der også ligger i en anden playlist, bevares der. Det kan ikke fortrydes.
     </p>
 </ConfirmDialog>
+</RequiresService>
 
 @code {
     private const int MaxNameLength = 60;

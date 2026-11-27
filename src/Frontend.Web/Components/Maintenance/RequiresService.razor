@@ -1,0 +1,52 @@
+@* SCRUM-176: marks a feature as depending on one or more backend services ("lobbyservice,musicservice").
+   While one of them is switched off, the feature is greyed out and a click shows the maintenance toast
+   (or, with Replace, a notice is shown instead of it). It comes back by itself when switched on again. *@
+@implements IDisposable
+@inject MaintenanceState Maintenance
+@inject ToastService Toasts
+
+@if (OffService is { } off && Replace)
+{
+    <div class="maintenance-notice" role="status" data-testid="maintenance-notice" data-service="@off">
+        @if (Heading is not null)
+        {
+            <h2 class="h5">@Heading</h2>
+        }
+        <p class="mb-0">🛠️ @Maintenance.TextFor(off)</p>
+    </div>
+}
+else
+{
+    <div class="requires-service @(Inline ? "d-inline-block" : "") @(OffService is not null ? "is-off" : "")"
+         aria-disabled="@(OffService is not null ? "true" : null)" data-requires="@Service">
+        @ChildContent
+        @if (OffService is { } service)
+        {
+            <button type="button" class="requires-service-cover" data-testid="maintenance-cover"
+                    title="@Maintenance.TextFor(service)" aria-label="@Maintenance.TextFor(service)"
+                    @onclick="() => Toasts.Show(Maintenance.TextFor(service))"></button>
+        }
+    </div>
+}
+
+@code {
+    // One service or several, comma-separated: the feature is off when any of them is.
+    [Parameter, EditorRequired] public string Service { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    // Show a maintenance notice instead of the content (for lists and panels).
+    [Parameter] public bool Replace { get; set; }
+    // With Replace: a heading above the notice, so the panel keeps its title.
+    [Parameter] public string? Heading { get; set; }
+    // For a single button in a line of text or buttons.
+    [Parameter] public bool Inline { get; set; }
+
+    private string? OffService =>
+        Service.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault(Maintenance.IsOff);
+
+    protected override void OnInitialized() => Maintenance.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Maintenance.Changed -= OnChanged;
+}

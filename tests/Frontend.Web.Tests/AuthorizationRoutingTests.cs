@@ -25,6 +25,7 @@ public class AuthorizationRoutingTests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose; // FocusOnNavigate bruger JS
         Services.AddLogging();
+        Services.AddMaintenanceFakes(); // SCRUM-176: every service on
         Services.AddSingleton(Substitute.For<IAuthService>());
         Services.AddScoped<ApiCallHandler>();
         Services.AddSingleton<ISoundEffects>(new FakeSoundEffects()); // MainLayout installs the UI sounds

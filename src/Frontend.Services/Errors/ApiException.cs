@@ -16,3 +16,14 @@ public class ApiException(HttpStatusCode statusCode, string message, ProblemDeta
 // 401 fra en service: token mangler eller er udløbet. UI'et sender brugeren til /login.
 public class UnauthorizedApiException(string message, ProblemDetailsDto? problem = null)
     : ApiException(HttpStatusCode.Unauthorized, message, problem);
+
+// SCRUM-176/194: 503 from a service an admin has switched off ("design to be disabled"). The edge
+// (and GameService, via LobbyService) answers with ProblemDetails of type ProblemType; Service is the
+// switched-off service and Detail the admin's message, if any. The UI shows a maintenance toast.
+public class ServiceInMaintenanceException(string service, string message, ProblemDetailsDto? problem = null)
+    : ApiException(HttpStatusCode.ServiceUnavailable, message, problem)
+{
+    public const string ProblemType = "https://quiz.munkcloud.dk/problems/maintenance";
+
+    public string Service { get; } = service;
+}

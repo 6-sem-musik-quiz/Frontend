@@ -3,11 +3,21 @@
 @inject IAuthService AuthService
 @inject ApiCallHandler ApiCall
 @inject NavigationManager Navigation
+@inject MaintenanceState Maintenance
+@inject UserSession Session
 
 <PageTitle>Log ind · Slopster</PageTitle>
 
 <div class="auth-card">
     <h1 class="h3 mb-3">Log ind</h1>
+
+    @if (Maintenance.IsOff("userservice"))
+    {
+        @* SCRUM-177: the admin must still be able to log in, to switch UserService back on. *@
+        <div class="alert alert-warning" role="status" data-testid="login-maintenance">
+            🛠️ @Maintenance.TextFor("userservice") Kun administratorer kan logge ind lige nu.
+        </div>
+    }
 
     <ErrorMessage Message="@_error" />
 
@@ -46,6 +56,13 @@
             () => AuthService.LoginAsync(_model),
             unauthorizedMessage: "Forkert brugernavn eller adgangskode.");
         _loading = false;
+
+        // SCRUM-177: while UserService is switched off only an admin may stay logged in.
+        if (_error is null && Maintenance.IsOff("userservice") && Session.Current?.Role != "Admin")
+        {
+            await AuthService.SignOutHereAsync();
+            _error = Maintenance.TextFor("userservice") + " Kun administratorer kan logge ind lige nu.";
+        }
 
         if (_error is null)
         {

@@ -31,6 +31,7 @@ public class LobbyPageTests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose; // clipboard
         Services.AddLogging();
+        Services.AddMaintenanceFakes(); // SCRUM-176: every service on
         Services.AddSingleton(Substitute.For<IAuthService>());
         Services.AddSingleton(_lobbies);
         Services.AddSingleton<ILobbyHub>(_hub);

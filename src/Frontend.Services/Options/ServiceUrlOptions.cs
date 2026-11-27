@@ -13,4 +13,10 @@ public class ServiceUrlOptions
     public required Uri StatisticService { get; init; }
     public required Uri LobbyService { get; init; }
     public required Uri GameService { get; init; }
+
+    // SCRUM-175: the edge's own endpoints (/api/edge/). Optional: without it, it is UserService's
+    // address with "edge" instead of "userservice" (they share the /api/ base).
+    public Uri? EdgeService { get; init; }
+
+    public Uri Edge => EdgeService ?? new Uri(UserService, "../edge/");
 }

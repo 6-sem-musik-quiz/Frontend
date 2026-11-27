@@ -1,0 +1,22 @@
+@* SCRUM-176: a banner at the top while one or more services are switched off, listing what is affected. *@
+@implements IDisposable
+@inject MaintenanceState Maintenance
+
+@if (Maintenance.Off.Count > 0)
+{
+    <div class="alert alert-warning maintenance-banner mb-0 rounded-0 text-center" role="status" data-testid="maintenance-banner">
+        🛠️ Under vedligeholdelse: <strong>@string.Join(", ", Maintenance.Off.Select(s => Feature(s.Service)))</strong>.
+        Resten af spillet virker som normalt.
+    </div>
+}
+
+@code {
+    private static string Feature(string service) =>
+        MaintenanceState.Features.TryGetValue(service, out var f) ? f.Feature : service;
+
+    protected override void OnInitialized() => Maintenance.Changed += OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Maintenance.Changed -= OnChanged;
+}

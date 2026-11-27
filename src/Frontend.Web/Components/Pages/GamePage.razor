@@ -100,8 +100,10 @@ else
             @if (LobbyId is not null)
             {
                 @* SCRUM-172: back to the same lobby (same code, players and settings), or leave it. *@
-                <button type="button" class="btn btn-primary" @onclick="PlayAgainAsync" disabled="@_playAgainBusy"
-                        data-testid="play-again">@(_playAgainBusy ? "Vender tilbage…" : "Spil igen")</button>
+                <RequiresService Service="lobbyservice" Inline="true">
+                    <button type="button" class="btn btn-primary" @onclick="PlayAgainAsync" disabled="@_playAgainBusy"
+                            data-testid="play-again">@(_playAgainBusy ? "Vender tilbage…" : "Spil igen")</button>
+                </RequiresService>
                 <a href="" class="btn" data-testid="leave">Forlad</a>
             }
             else

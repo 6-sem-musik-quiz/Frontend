@@ -25,6 +25,7 @@ public class AdminPlaylistsPageTests : BunitContext
     public AdminPlaylistsPageTests()
     {
         Services.AddLogging();
+        Services.AddMaintenanceFakes(); // SCRUM-176: every service on
         Services.AddSingleton(Substitute.For<IAuthService>());
         Services.AddSingleton(_music);
         Services.AddScoped<ApiCallHandler>();

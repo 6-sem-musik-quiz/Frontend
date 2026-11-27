@@ -33,6 +33,7 @@ public class AdminPlaylistPageTests : BunitContext
     {
         JSInterop.Mode = JSRuntimeMode.Loose; // InputFile initialises itself through JS
         Services.AddLogging();
+        Services.AddMaintenanceFakes(); // SCRUM-176: every service on
         Services.AddSingleton(Substitute.For<IAuthService>());
         Services.AddSingleton(_music);
         Services.AddSingleton(_uploader);
