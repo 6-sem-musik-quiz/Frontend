@@ -354,41 +354,82 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
-/* Shown in index.html while the WebAssembly runtime downloads. */
-.loading-progress {
+/* Shown in index.html while the WebAssembly runtime downloads: a pixel equalizer that bounces,
+   and a bar that fills with Blazor's --blazor-load-percentage. Pure CSS, no extra files. */
+.sl-loading {
     position: absolute;
-    display: block;
-    width: 8rem;
-    height: 8rem;
-    inset: 20vh 0 auto 0;
-    margin: 0 auto 0 auto;
-}
-
-    .loading-progress circle {
-        fill: none;
-        stroke: var(--sl-cream);
-        stroke-width: 0.6rem;
-        transform-origin: 50% 50%;
-        transform: rotate(-90deg);
-    }
-
-        .loading-progress circle:last-child {
-            stroke: var(--sl-mustard);
-            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            transition: stroke-dasharray 0.05s ease-in-out;
-        }
-
-.loading-progress-text {
-    position: absolute;
-    text-align: center;
+    inset: 18vh 0 auto 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
     font-family: var(--sl-pixel);
     color: var(--sl-cream);
-    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
 }
 
-    .loading-progress-text:after {
-        content: var(--blazor-load-percentage-text, "Indlæser");
+.sl-loading-title {
+    font-size: 2.5rem;
+    font-weight: 600;
+    letter-spacing: 4px;
+    text-shadow: 4px 4px 0 var(--sl-ink);
+}
+
+.sl-eq {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 80px;
+}
+
+    .sl-eq span {
+        width: 14px;
+        height: 100%;
+        background: var(--sl-cream);
+        box-shadow: 4px 4px 0 var(--sl-ink);
+        transform-origin: bottom;
+        /* steps() makes the bars jump in blocks, like an old pixel display */
+        animation: sl-eq-bounce 0.9s steps(5, end) infinite alternate;
     }
+
+        .sl-eq span:nth-child(1) { animation-duration: 0.80s; }
+        .sl-eq span:nth-child(2) { animation-duration: 1.10s; animation-delay: -0.4s; background: var(--sl-mustard); }
+        .sl-eq span:nth-child(3) { animation-duration: 0.70s; animation-delay: -0.2s; }
+        .sl-eq span:nth-child(4) { animation-duration: 1.00s; animation-delay: -0.7s; background: var(--sl-rust); }
+        .sl-eq span:nth-child(5) { animation-duration: 0.85s; animation-delay: -0.1s; }
+        .sl-eq span:nth-child(6) { animation-duration: 1.20s; animation-delay: -0.5s; background: var(--sl-mustard); }
+        .sl-eq span:nth-child(7) { animation-duration: 0.75s; animation-delay: -0.3s; }
+
+@keyframes sl-eq-bounce {
+    from { transform: scaleY(0.15); }
+    to { transform: scaleY(1); }
+}
+
+.sl-loading-bar {
+    width: 14rem;
+    height: 18px;
+    border: 3px solid var(--sl-ink);
+    background: var(--sl-teal-dark);
+    box-shadow: 4px 4px 0 var(--sl-ink);
+}
+
+    .sl-loading-bar > div {
+        height: 100%;
+        width: var(--blazor-load-percentage, 0%);
+        background: var(--sl-mustard);
+        transition: width 0.15s steps(3, end);
+    }
+
+/* Blazor sets --blazor-load-percentage-text to e.g. "42%". */
+.sl-loading-text:after {
+    content: "Indlæser " var(--blazor-load-percentage-text, "");
+}
+
+/* No bouncing for people who asked for less motion: the bars stand still at different heights. */
+@media (prefers-reduced-motion: reduce) {
+    .sl-eq span { animation: none; }
+    .sl-eq span:nth-child(odd) { transform: scaleY(0.6); }
+    .sl-eq span:nth-child(3n) { transform: scaleY(0.9); }
+}
 
 .join-code {
     letter-spacing: 3px;
