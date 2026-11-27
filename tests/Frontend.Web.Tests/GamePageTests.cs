@@ -153,7 +153,7 @@ public class GamePageTests : BunitContext
         _time.Advance(TimeSpan.FromSeconds(1)); // zero: the song starts at the same instant
         cut.WaitForAssertion(() => Assert.Single(_audio.Played));
         cut.WaitForAssertion(() => Assert.Equal("Nu!", Text(cut, "countdown-number")));
-        Assert.Equal([Sfx.Tick, Sfx.Tick, Sfx.Tick, Sfx.GameStart], _sounds.Played);
+        Assert.Equal([Sfx.Tick, Sfx.Tick, Sfx.Tick], _sounds.Played); // "Nu!" is silent: the song is the signal
 
         _time.Advance(GamePage.GoShownFor);
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-testid=round-countdown]")));
@@ -790,12 +790,12 @@ public class GamePageTests : BunitContext
 
         Assert.Equal("Bonus!", Text(cut, "er-banner"));
         Assert.Empty(cut.FindAll("[data-testid=play-again]"));
-        Assert.Empty(_sounds.Played);
+        Assert.Equal([Sfx.BonusIntro], _sounds.Played); // "Bonus!" is heard, the end sound waits
 
         cut.Find("[data-testid=skip]").Click();
 
         Assert.Equal("Spil igen", Text(cut, "play-again"));
-        Assert.Equal([Sfx.Winner], _sounds.Played);
+        Assert.Equal([Sfx.BonusIntro, Sfx.Winner], _sounds.Played);
         Assert.Contains("4 point (+1 bonus)", cut.Find("[data-user='1']").TextContent);
     }
 

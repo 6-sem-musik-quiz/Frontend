@@ -28,6 +28,15 @@ public enum Sfx
     Wrong,
     Winner,
     GameOver,
+
+    // The staged end screen (SCRUM-155). Existing recordings with their own volume, see sfx.js.
+    BonusIntro,       // "Bonus!" on the stage
+    AwardReveal,      // a bonus award comes on: Lynet (fastest) or Stimen (longest streak)
+    AwardValue,       // a contender's time or streak turns up
+    AwardStamp,       // the +1 bonus point lands on the award's winner ("ka-ching")
+    StandingsIntro,   // "Slutstilling"
+    PlacementReveal,  // a place in the standings turns over
+    WinnerSuspense,   // "Og vinderen er …"; the winner's name then gets Winner, for everybody
 }
 
 // The shared sound-effect player (SCRUM-161). Volume and mute are stored in the browser and read by

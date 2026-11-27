@@ -42,7 +42,20 @@ const SOUNDS = {
     wrong: { gain: 1.6, gap: 500 },
     winner: { gain: 1.8, gap: 2000 },
     gameOver: { gain: 1.6, gap: 2000 },
+    // The staged end screen (SCRUM-155). No new recordings: these reuse the files above ("file"),
+    // each with its own level, so the reveal sounds like the rest of the table (chips, cards, glass).
+    // The bonus awards (Lynet, Stimen) are the loudest part: they are what the reveal is about.
+    bonusIntro: { file: "gameStart", gain: 1.8, gap: 1000 },
+    awardReveal: { file: "gameStart", gain: 1.8, gap: 800 },
+    awardValue: { file: "tick", gain: 1.6, gap: 300 },
+    awardStamp: { file: "correct", gain: 2.2, gap: 800 },     // "ka-ching": +1 bonus point
+    standingsIntro: { file: "lobbyJoin", gain: 1.4, gap: 1000 },
+    placementReveal: { file: "cardPlace", gain: 1.6, gap: 300 },
+    winnerSuspense: { file: "lobbyFull", gain: 1.6, gap: 1000 },
 };
+
+// The mp3 a sound plays: its own name, unless it borrows another sound's file.
+const fileOf = name => SOUNDS[name]?.file ?? name;
 
 // At most MAX_BURST sounds start within BURST_MS, so many events at once are not a wall of sound.
 const BURST_MS = 500;
@@ -63,6 +76,7 @@ function context() {
     return ctx;
 }
 
+// `name` is a file name (see fileOf); several sounds can share one loaded file.
 function load(name) {
     if (!buffers.has(name)) {
         const c = context();
@@ -81,7 +95,7 @@ function load(name) {
 // loads all sounds (about 170 kB), so the first real sound is not late.
 function unlock() {
     if (!context()) return;
-    Object.keys(SOUNDS).forEach(load);
+    new Set(Object.keys(SOUNDS).map(fileOf)).forEach(load);
     window.removeEventListener("pointerdown", unlock, true);
     window.removeEventListener("keydown", unlock, true);
 }
@@ -137,7 +151,7 @@ export function play(name) {
     lastPlayed.set(name, now);
     recent.push(now);
 
-    load(name).then(buffer => {
+    load(fileOf(name)).then(buffer => {
         if (!buffer) return;
         const src = c.createBufferSource();
         const gain = c.createGain();

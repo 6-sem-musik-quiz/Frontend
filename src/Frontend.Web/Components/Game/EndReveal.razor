@@ -88,6 +88,10 @@
     // The reveal is over (played to the end or skipped), e.g. to play the winner sound.
     [Parameter] public EventCallback OnDone { get; set; }
 
+    // Plays a sound effect for a beat ("Bonus!", an award, a value, the +1 stamp, a placement turning
+    // over, "Og vinderen er …"). The game page passes its ISoundEffects; null plays nothing.
+    [Parameter] public Func<Sfx, Task>? PlaySound { get; set; }
+
     private EndRevealScript _script = null!;
     private ITimer? _timer;
 
@@ -95,6 +99,12 @@
     {
         _script = new EndRevealScript(Ended);
         ScheduleNext();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _script.IntroSound is { } intro && PlaySound is not null)
+            await PlaySound(intro);
     }
 
     private void ScheduleNext()
@@ -109,8 +119,11 @@
     {
         if (_script.NextWait is null)
             return;
+        var sound = _script.Sounds[_script.Next];
         _script.Step();
         StateHasChanged();
+        if (sound is { } s && PlaySound is not null)
+            await PlaySound(s);
         if (_script.Done)
             await OnDone.InvokeAsync();
         else

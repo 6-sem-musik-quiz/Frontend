@@ -2,6 +2,7 @@ using Bunit;
 
 using Frontend.Domain.DTOs.Games;
 using Frontend.Web.Components.Game;
+using Frontend.Web.Sound;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
@@ -191,5 +192,72 @@ public class EndRevealTests : BunitContext
         Assert.Equal(1, done);
         _time.Advance(TimeSpan.FromMinutes(1)); // no more beats, no second OnDone
         Assert.Equal(1, done);
+    }
+
+    // ---- Sounds (one per visible step; the winner sound itself comes from OnDone) ----
+
+    [Fact]
+    public void Script_HasASoundForTheBonusAwardsAndTheWinner()
+    {
+        var script = new EndRevealScript(Ended());
+
+        Assert.Equal(Sfx.BonusIntro, script.IntroSound);
+        Assert.Equal(script.Beats.Count, script.Sounds.Count);
+        Assert.Equal(
+        [
+            // Lynet: the award, four values (worst first), the stamp
+            Sfx.AwardReveal, Sfx.AwardValue, Sfx.AwardValue, Sfx.AwardValue, Sfx.AwardValue, Sfx.AwardStamp,
+            // Stimen
+            Sfx.AwardReveal, Sfx.AwardValue, Sfx.AwardValue, Sfx.AwardValue, Sfx.AwardValue, Sfx.AwardStamp,
+            // "Slutstilling", dan 4th, carl and bob 2nd, "Og vinderen er …", asger's name
+            // (silent: OnDone plays the winner fanfare at that moment, for everybody)
+            Sfx.StandingsIntro, Sfx.PlacementReveal, Sfx.PlacementReveal, Sfx.PlacementReveal,
+            Sfx.WinnerSuspense, null
+        ], script.Sounds);
+    }
+
+    [Fact]
+    public void Script_AnAwardWithoutWinners_StampsNothing_AndNoAwardsMeansNoBonusSound()
+    {
+        var noWinner = new EndRevealScript(Ended([new AwardDto("fastest", [], [new AwardContenderDto(Dan, null, false)])]));
+        Assert.Equal([Sfx.AwardReveal, Sfx.AwardValue, null], noWinner.Sounds.Take(3));
+
+        Assert.Null(new EndRevealScript(Ended([])).IntroSound);
+    }
+
+    [Fact]
+    public void Component_PlaysTheStepSounds_InOrder()
+    {
+        var played = new List<Sfx>();
+        var cut = Render<EndReveal>(p => p
+            .Add(x => x.Ended, Ended())
+            .Add(x => x.Me, Bob)
+            .Add(x => x.PlaySound, s => { played.Add(s); return Task.CompletedTask; })
+            .Add(x => x.Actions, "<button data-testid=\"done-action\">Til forsiden</button>"));
+        cut.WaitForAssertion(() => Assert.Equal([Sfx.BonusIntro], played));
+
+        _time.Advance(EndRevealScript.BonusIntro);
+        cut.WaitForAssertion(() => Assert.Equal([Sfx.BonusIntro, Sfx.AwardReveal], played));
+
+        for (var i = 0; i < 40 && cut.FindAll("[data-testid=done-action]").Count == 0; i++)
+            _time.Advance(TimeSpan.FromSeconds(3));
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("[data-testid=done-action]")));
+        Assert.Equal(new EndRevealScript(Ended()).Sounds.OfType<Sfx>().Prepend(Sfx.BonusIntro), played);
+    }
+
+    [Fact]
+    public void Component_SkipPlaysNoStepSounds()
+    {
+        var played = new List<Sfx>();
+        var cut = Render<EndReveal>(p => p
+            .Add(x => x.Ended, Ended())
+            .Add(x => x.PlaySound, s => { played.Add(s); return Task.CompletedTask; }));
+        cut.WaitForAssertion(() => Assert.Equal([Sfx.BonusIntro], played));
+
+        cut.Find("[data-testid=skip]").Click();
+        _time.Advance(TimeSpan.FromMinutes(1));
+
+        Assert.Equal([Sfx.BonusIntro], played); // the winner sound is the game page's (OnDone)
     }
 }

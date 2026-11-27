@@ -25,3 +25,20 @@ den indbyrdes lydstyrke pr. lyd.
 | wrong | Interface Sounds / back_002 | Forkert eller intet svar |
 | winner | Interface Sounds / confirmation_004 | Spillet slut, 1. plads |
 | gameOver | Casino Audio / chips-stack-6 | Spillet slut, ikke 1. plads |
+
+## Slutskærmen (SCRUM-155)
+
+Ingen nye filer: lydene genbruger filerne ovenfor med deres egen lydstyrke (`file` i `sfx.js`).
+De spilles kun, når afsløringen kører i sit eget tempo; "Spring til resultatet" springer dem over.
+Bonuspriserne (Lynet: hurtigst, Stimen: flest rigtige i træk) er de tydeligste.
+
+| Lyd | Fil | Bruges til |
+|---|---|---|
+| bonusIntro | gameStart | "Bonus!" på scenen |
+| awardReveal | gameStart | En bonuspris (Lynet, Stimen) kommer frem |
+| awardValue | tick | En deltagers tid eller stime vises |
+| awardStamp | correct | +1 bonuspoint lander på prisens vinder ("ka-ching") |
+| standingsIntro | lobbyJoin | "Slutstilling" |
+| placementReveal | cardPlace | En placering vendes (kort lægges) |
+| winnerSuspense | lobbyFull | "Og vinderen er …" |
+| (vinderens navn) | winner | Fanfaren, for alle, når vinderen afsløres |
