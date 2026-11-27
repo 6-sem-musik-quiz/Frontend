@@ -2,15 +2,15 @@
    Tapping it opens the list. Safe mid-round: these songs were revealed to everyone already. *@
 
 <button type="button" class="pile pile-discard @(Discarded.Count == 0 ? "pile-empty" : "")" @ref="_button"
-        aria-haspopup="dialog" aria-label="@($"Kasserede sange: {Discarded.Count}. Vis listen.")"
+        aria-haspopup="dialog" aria-label="@T($"Kasserede sange: {Discarded.Count}. Vis listen.", $"Discarded songs: {Discarded.Count}. Show the list.")"
         @onclick="() => _open = true" data-testid="discard">
     <div class="pile-stack" aria-hidden="true"><i></i><i></i><i></i><span data-testid="discard-count">@Discarded.Count</span></div>
-    <div class="pile-label" aria-hidden="true">Kasserede<small>tryk for at se</small></div>
+    <div class="pile-label" aria-hidden="true">@T("Kasserede", "Discarded")<small>@T("tryk for at se", "tap to see")</small></div>
 </button>
 
-<SongListDialog Open="_open" Title="Kasserede sange" Songs="Discarded"
-                Intro="Sangene du ikke fik med i hånden."
-                EmptyText="Ingen kasserede sange endnu."
+<SongListDialog Open="_open" Title="@T("Kasserede sange", "Discarded songs")" Songs="Discarded"
+                Intro="@T("Sangene du ikke fik med i hånden.", "The songs you didn't get into your hand.")"
+                EmptyText="@T("Ingen kasserede sange endnu.", "No discarded songs yet.")"
                 OnClose="CloseAsync" />
 
 @code {

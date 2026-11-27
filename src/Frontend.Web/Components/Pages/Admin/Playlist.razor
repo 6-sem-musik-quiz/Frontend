@@ -7,7 +7,7 @@
 
 <PageTitle>@(_playlist?.Name ?? "Playlist") · Admin · Slopster</PageTitle>
 
-<p class="mb-2"><a href="admin">← Alle playlister</a></p>
+<p class="mb-2"><a href="admin">← @T("Alle playlister", "All playlists")</a></p>
 
 @if (_playlist is not null)
 {
@@ -32,13 +32,13 @@
 {
     <section class="card mb-4">
         <div class="card-body">
-            <h2 class="h5 card-title">Upload sang</h2>
+            <h2 class="h5 card-title">@T("Upload sang", "Upload song")</h2>
             <ErrorMessage Message="@_uploadError" />
 
             <form @onsubmit="UploadAsync" data-testid="upload-form">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label for="upload-file" class="form-label">Mp3-fil</label>
+                        <label for="upload-file" class="form-label">@T("Mp3-fil", "MP3 file")</label>
                         <InputFile id="upload-file" class="form-control" accept=".mp3,audio/mpeg" OnChange="OnFileSelected"
                                    @ref="_fileInput" disabled="@_uploading" />
                         @if (_file is not null)
@@ -47,15 +47,15 @@
                         }
                     </div>
                     <div class="col-md-6">
-                        <label for="upload-title" class="form-label">Titel</label>
+                        <label for="upload-title" class="form-label">@T("Titel", "Title")</label>
                         <input id="upload-title" class="form-control" maxlength="200" @bind="_upload.Title" @bind:event="oninput" disabled="@_uploading" />
                     </div>
                     <div class="col-md-8">
-                        <label for="upload-artist" class="form-label">Kunstner(e)</label>
+                        <label for="upload-artist" class="form-label">@T("Kunstner(e)", "Artist(s)")</label>
                         <ArtistPicker InputId="upload-artist" @bind-Selected="_upload.Artists" />
                     </div>
                     <div class="col-md-4">
-                        <label for="upload-year" class="form-label">År</label>
+                        <label for="upload-year" class="form-label">@T("År", "Year")</label>
                         <input id="upload-year" type="number" class="form-control" min="@MinYear" max="@ThisYear"
                                @bind="_upload.Year" disabled="@_uploading" />
                     </div>
@@ -69,22 +69,22 @@
                     </div>
                 }
 
-                <LoadingButton Type="submit" CssClass="btn-primary mt-3" IsLoading="_uploading" LoadingText="Uploader…">Upload sang</LoadingButton>
+                <LoadingButton Type="submit" CssClass="btn-primary mt-3" IsLoading="_uploading" LoadingText="@T("Uploader…", "Uploading…")">@T("Upload sang", "Upload song")</LoadingButton>
             </form>
         </div>
     </section>
 
     <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
-        <h2 class="h5 mb-0 me-auto">Sange</h2>
-        <label for="song-search" class="visually-hidden">Søg</label>
-        <input id="song-search" class="form-control" style="max-width: 20rem" type="search" placeholder="Søg på titel eller kunstner…"
+        <h2 class="h5 mb-0 me-auto">@T("Sange", "Songs")</h2>
+        <label for="song-search" class="visually-hidden">@T("Søg", "Search")</label>
+        <input id="song-search" class="form-control" style="max-width: 20rem" type="search" placeholder="@T("Søg på titel eller kunstner…", "Search by title or artist…")"
                @bind="_search" @bind:event="oninput" />
     </div>
 
     @if (Visible.Count == 0)
     {
         <p class="text-body-secondary" data-testid="no-songs">
-            @(_songs.Count == 0 ? "Playlisten har ingen sange endnu." : "Ingen sange matcher søgningen.")
+            @(_songs.Count == 0 ? T("Playlisten har ingen sange endnu.", "The playlist has no songs yet.") : T("Ingen sange matcher søgningen.", "No songs match the search."))
         </p>
     }
     else
@@ -92,11 +92,11 @@
         <table class="table align-middle" data-testid="songs">
             <thead>
                 <tr>
-                    <th><button type="button" class="btn btn-link p-0 fw-bold text-decoration-none" data-testid="sort-title" @onclick="() => SortBy(SongSort.Title)">Titel @Arrow(SongSort.Title)</button></th>
-                    <th>Kunstner(e)</th>
-                    <th><button type="button" class="btn btn-link p-0 fw-bold text-decoration-none" data-testid="sort-year" @onclick="() => SortBy(SongSort.Year)">År @Arrow(SongSort.Year)</button></th>
-                    <th>Længde</th>
-                    <th class="text-end">Handlinger</th>
+                    <th><button type="button" class="btn btn-link p-0 fw-bold text-decoration-none" data-testid="sort-title" @onclick="() => SortBy(SongSort.Title)">@T("Titel", "Title") @Arrow(SongSort.Title)</button></th>
+                    <th>@T("Kunstner(e)", "Artist(s)")</th>
+                    <th><button type="button" class="btn btn-link p-0 fw-bold text-decoration-none" data-testid="sort-year" @onclick="() => SortBy(SongSort.Year)">@T("År", "Year") @Arrow(SongSort.Year)</button></th>
+                    <th>@T("Længde", "Length")</th>
+                    <th class="text-end">@T("Handlinger", "Actions")</th>
                 </tr>
             </thead>
             <tbody>
@@ -108,10 +108,10 @@
                         <td>@song.Year</td>
                         <td>@FormatDuration(song.DurationSeconds)</td>
                         <td class="text-end text-nowrap">
-                            <button type="button" class="btn btn-outline-primary btn-sm" aria-label="Afspil @song.Title"
+                            <button type="button" class="btn btn-outline-primary btn-sm" aria-label="@($"{T("Afspil", "Play")} {song.Title}")"
                                     @onclick="() => _playingUrl = song.AudioUrl">▶</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => StartEditAsync(song)">Ret</button>
-                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => _removing = song">Fjern</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => StartEditAsync(song)">@T("Ret", "Edit")</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => _removing = song">@T("Fjern", "Remove")</button>
                         </td>
                     </tr>
                 }
@@ -126,28 +126,28 @@
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <form class="modal-content" @onsubmit="SaveEditAsync">
                 <div class="modal-header">
-                    <h2 class="modal-title h5">Ret sang</h2>
-                    <button type="button" class="btn-close" aria-label="Luk" @onclick="() => _editing = null"></button>
+                    <h2 class="modal-title h5">@T("Ret sang", "Edit song")</h2>
+                    <button type="button" class="btn-close" aria-label="@T("Luk", "Close")" @onclick="() => _editing = null"></button>
                 </div>
                 <div class="modal-body">
                     <ErrorMessage Message="@_editError" />
                     <div class="mb-3">
-                        <label for="edit-title" class="form-label">Titel</label>
+                        <label for="edit-title" class="form-label">@T("Titel", "Title")</label>
                         <input id="edit-title" class="form-control" maxlength="200" @bind="_edit.Title" @bind:event="oninput" />
                     </div>
                     <div class="mb-3">
-                        <label for="edit-artist" class="form-label">Kunstner(e)</label>
+                        <label for="edit-artist" class="form-label">@T("Kunstner(e)", "Artist(s)")</label>
                         <ArtistPicker InputId="edit-artist" @bind-Selected="_edit.Artists" />
                     </div>
                     <div class="mb-3">
-                        <label for="edit-year" class="form-label">År</label>
+                        <label for="edit-year" class="form-label">@T("År", "Year")</label>
                         <input id="edit-year" type="number" class="form-control" min="@MinYear" max="@ThisYear" @bind="_edit.Year" />
                     </div>
-                    <p class="small text-body-secondary mb-0">Ændringen gælder i alle playlister, sangen er i.</p>
+                    <p class="small text-body-secondary mb-0">@T("Ændringen gælder i alle playlister, sangen er i.", "The change applies in every playlist the song is in.")</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => _editing = null">Annuller</button>
-                    <LoadingButton Type="submit" IsLoading="_saving" LoadingText="Gemmer…">Gem</LoadingButton>
+                    <button type="button" class="btn btn-secondary" @onclick="() => _editing = null">@T("Annuller", "Cancel")</button>
+                    <LoadingButton Type="submit" IsLoading="_saving" LoadingText="@T("Gemmer…", "Saving…")">@T("Gem", "Save")</LoadingButton>
                 </div>
             </form>
         </div>
@@ -155,9 +155,9 @@
     <div class="modal-backdrop show"></div>
 }
 
-<ConfirmDialog Visible="_removing is not null" Title="Fjern sang" ConfirmText="Fjern" OnConfirm="RemoveAsync" OnCancel="() => _removing = null">
-    <p>Fjern <strong>@_removing?.Title</strong> fra playlisten?</p>
-    <p class="mb-0 small text-body-secondary">Sangen slettes helt, hvis den ikke er i andre playlister.</p>
+<ConfirmDialog Visible="_removing is not null" Title="@T("Fjern sang", "Remove song")" ConfirmText="@T("Fjern", "Remove")" OnConfirm="RemoveAsync" OnCancel="() => _removing = null">
+    <p>@T("Fjern", "Remove") <strong>@_removing?.Title</strong> @T("fra playlisten?", "from the playlist?")</p>
+    <p class="mb-0 small text-body-secondary">@T("Sangen slettes helt, hvis den ikke er i andre playlister.", "The song is deleted completely if it is not in other playlists.")</p>
 </ConfirmDialog>
 </RequiresService>
 
@@ -190,7 +190,7 @@
 
     private int ThisYear => Time.GetLocalNow().Year;
 
-    private string SongCountText => _playlist is null ? "" : _playlist.SongCount == 1 ? "1 sang" : $"{_playlist.SongCount} sange";
+    private string SongCountText => _playlist is null ? "" : _playlist.SongCount == 1 ? T("1 sang", "1 song") : $"{_playlist.SongCount} {T("sange", "songs")}";
 
     private List<SongDto> Visible
     {
@@ -239,9 +239,9 @@
 
     private async Task UploadAsync()
     {
-        _uploadError = Validate(_upload) ?? (_file is null ? "Vælg en mp3-fil." : null);
+        _uploadError = Validate(_upload) ?? (_file is null ? T("Vælg en mp3-fil.", "Choose an MP3 file.") : null);
         if (_uploadError is null && !IsMp3(_file!))
-            _uploadError = "Filen er ikke en mp3.";
+            _uploadError = T("Filen er ikke en mp3.", "The file is not an MP3.");
         if (_uploadError is not null || _fileInput?.Element is not { } input)
             return;
 
@@ -329,11 +329,11 @@
     private string? Validate(SongForm form)
     {
         if (form.Title.Trim().Length is 0 or > 200)
-            return "Titlen skal være 1-200 tegn.";
+            return T("Titlen skal være 1-200 tegn.", "The title must be 1-200 characters.");
         if (form.Artists.Count == 0)
-            return "Vælg mindst én kunstner.";
+            return T("Vælg mindst én kunstner.", "Choose at least one artist.");
         if (form.Year is not { } year || year < MinYear || year > ThisYear)
-            return $"Året skal være mellem {MinYear} og {ThisYear}.";
+            return T($"Året skal være mellem {MinYear} og {ThisYear}.", $"The year must be between {MinYear} and {ThisYear}.");
         return null;
     }
 

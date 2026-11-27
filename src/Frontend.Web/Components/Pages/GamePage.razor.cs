@@ -119,24 +119,32 @@ public partial class GamePage : IAsyncDisposable
         (_autoLock || _timeUp) && !(_me is { } me && _players.TryGetValue(me, out var self) && self.Stamp is not null);
 
     private string Banner =>
-        _reveal is not null ? "Runden er slut"
-        : _roundInfo is null ? "Venter på spillerne"
-        : _secondsLeft is null ? "Gør dig klar"
-        : "Nu spiller";
+        _reveal is not null ? T("Runden er slut", "The round is over")
+        : _roundInfo is null ? T("Venter på spillerne", "Waiting for the players")
+        : _secondsLeft is null ? T("Gør dig klar", "Get ready")
+        : T("Nu spiller", "Now playing");
 
     private string LockedText => _roundInfo is null
-        ? (_round == 0 ? "Spillet starter, når alle er forbundet." : "Næste runde starter om lidt.")
-        : _startsIn is not null ? "Sangen starter om lidt."
-        : "Tiden er gået.";
+        ? (_round == 0 ? T("Spillet starter, når alle er forbundet.", "The game starts when everyone is connected.")
+                       : T("Næste runde starter om lidt.", "The next round starts soon."))
+        : _startsIn is not null ? T("Sangen starter om lidt.", "The song starts soon.")
+        : T("Tiden er gået.", "Time is up.");
 
     // The hand can only be used while the song plays: not before the countdown is over, not after the time.
     private bool HandLocked => _timeUp || _roundInfo is null || _startsIn is not null;
 
     // SCRUM-169: where I stand, on the countdown screen from round 2 on (in round 1 everyone has 0).
-    private string? Standing =>
-        _round > 1 && _me is { } me && _players.TryGetValue(me, out var self)
-            ? $"Du har {self.Score} point · nr. {1 + _players.Values.Count(p => p.Score > self.Score)} af {_players.Count}"
-            : null;
+    private string? Standing
+    {
+        get
+        {
+            if (_round <= 1 || _me is not { } me || !_players.TryGetValue(me, out var self))
+                return null;
+            var place = 1 + _players.Values.Count(p => p.Score > self.Score);
+            return T($"Du har {self.Score} point · nr. {place} af {_players.Count}",
+                $"You have {self.Score} points · no. {place} of {_players.Count}");
+        }
+    }
 
     // Everyone but me, in lobby order.
     private List<RivalView> Rivals =>
@@ -170,15 +178,15 @@ public partial class GamePage : IAsyncDisposable
         }
         catch (ApiException e) when (e.Problem?.Detail == NotFinishedYet)
         {
-            _playAgainError = "Lobbyen er ikke klar endnu. Prøv igen om lidt.";
+            _playAgainError = T("Lobbyen er ikke klar endnu. Prøv igen om lidt.", "The lobby is not ready yet. Try again in a moment.");
         }
         catch (ApiException e)
         {
-            _playAgainError = LobbyMessages.For(e) ?? "Du kunne ikke komme tilbage til lobbyen.";
+            _playAgainError = LobbyMessages.For(e) ?? T("Du kunne ikke komme tilbage til lobbyen.", "You could not get back to the lobby.");
         }
         catch (HttpRequestException)
         {
-            _playAgainError = "Kunne ikke kontakte lobbyen. Prøv igen om lidt.";
+            _playAgainError = T("Kunne ikke kontakte lobbyen. Prøv igen om lidt.", "Could not reach the lobby. Try again in a moment.");
         }
         _playAgainBusy = false;
     }
@@ -416,7 +424,7 @@ public partial class GamePage : IAsyncDisposable
         }
         catch (JSException)
         {
-            _error = "Sangen kunne ikke afspilles.";
+            _error = T("Sangen kunne ikke afspilles.", "The song could not be played.");
             return true;
         }
     }

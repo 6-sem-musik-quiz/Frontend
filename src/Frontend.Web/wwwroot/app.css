@@ -450,6 +450,10 @@ h1:focus {
     content: "Indlæser " var(--blazor-load-percentage-text, "");
 }
 
+html[lang="en"] .sl-loading-text:after {
+    content: "Loading " var(--blazor-load-percentage-text, "");
+}
+
 /* No bouncing for people who asked for less motion: the bars stand still at different heights. */
 @media (prefers-reduced-motion: reduce) {
     .sl-eq span { animation: none; }

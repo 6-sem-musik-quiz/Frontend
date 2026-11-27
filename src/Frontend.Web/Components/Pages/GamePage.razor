@@ -7,44 +7,44 @@
    screen counts 3-2-1 to the song's start, and the hand is locked until then (SCRUM-169). *@
 @implements IAsyncDisposable
 
-<PageTitle>Spil</PageTitle>
+<PageTitle>@T("Spil", "Game")</PageTitle>
 
 @if (_loading)
 {
-    <p class="text-body-secondary" role="status">Forbinder til spillet…</p>
+    <p class="text-body-secondary" role="status">@T("Forbinder til spillet…", "Connecting to the game…")</p>
 }
 else if (_state is null)
 {
     <ErrorMessage Message="@_error" />
-    <a href="" class="btn btn-primary">Til forsiden</a>
+    <a href="" class="btn btn-primary">@T("Til forsiden", "To the front page")</a>
 }
 else if (_ended is { Awards: not null })
 {
     @* SCRUM-155: the staged reveal with the bonus awards; the buttons come when it is over. *@
     <EndReveal Ended="_ended" Me="_me" OnDone="PlayWinnerRevealedAsync" Actions="EndActions" PlaySound="Sounds.PlayAsync" />
-    <SongListDialog Open="_showAllSongs" Title="Alle spillets sange" Songs="_played"
-                    Intro="Hver rundes sang, og hvordan det gik for dig."
+    <SongListDialog Open="_showAllSongs" Title="@T("Alle spillets sange", "All songs in the game")" Songs="_played"
+                    Intro="@T("Hver rundes sang, og hvordan det gik for dig.", "Each round's song, and how it went for you.")"
                     OnClose="() => _showAllSongs = false" />
 }
 else if (_ended is not null)
 {
     @* A server without awards (before SCRUM-151): the standings at once. *@
     <section class="game-end" aria-labelledby="end-title">
-        <h1 id="end-title" class="sl-banner">· · · Slutstilling · · ·</h1>
+        <h1 id="end-title" class="sl-banner">· · · @T("Slutstilling", "Final standings") · · ·</h1>
         <ol class="list-unstyled game-standings" data-testid="standings">
             @foreach (var s in _ended.Standings)
             {
                 <li class="card @(s.UserId == _me ? "me" : "")" data-testid="standing">
                     <span class="px game-place @(s.Placement == 1 ? "first" : "")">@s.Placement</span>
-                    <span class="px">@s.UserName@(s.UserId == _me ? " (dig)" : "")</span>
-                    <span class="text-body-secondary small">@s.Correct rigtige af @s.Answered besvarede</span>
-                    <span class="px">@s.Score point</span>
+                    <span class="px">@s.UserName@(s.UserId == _me ? T(" (dig)", " (you)") : "")</span>
+                    <span class="text-body-secondary small">@T($"{s.Correct} rigtige af {s.Answered} besvarede", $"{s.Correct} right of {s.Answered} answered")</span>
+                    <span class="px">@s.Score @T("point", "points")</span>
                 </li>
             }
         </ol>
         @EndActions
-        <SongListDialog Open="_showAllSongs" Title="Alle spillets sange" Songs="_played"
-                        Intro="Hver rundes sang, og hvordan det gik for dig."
+        <SongListDialog Open="_showAllSongs" Title="@T("Alle spillets sange", "All songs in the game")" Songs="_played"
+                        Intro="@T("Hver rundes sang, og hvordan det gik for dig.", "Each round's song, and how it went for you.")"
                         OnClose="() => _showAllSongs = false" />
     </section>
 }
@@ -52,7 +52,7 @@ else
 {
     @if (_connectionLost)
     {
-        <div class="alert alert-warning" role="status" data-testid="connection-lost">Forbindelsen blev afbrudt. Prøver igen…</div>
+        <div class="alert alert-warning" role="status" data-testid="connection-lost">@T("Forbindelsen blev afbrudt. Prøver igen…", "The connection was lost. Trying again…")</div>
     }
     <ErrorMessage Message="@_error" />
 
@@ -61,10 +61,10 @@ else
             <GameSidebar Round="_round" TotalRounds="_state.TotalRounds" SecondsLeft="_secondsLeft"
                          AnswerTimeSeconds="_state.Settings.AnswerTimeSeconds">
                 <div class="card gs-box game-volume">
-                    <label for="volume" class="sl-label">Musik</label>
+                    <label for="volume" class="sl-label">@T("Musik", "Music")</label>
                     <input id="volume" type="range" class="form-range" min="0" max="100" step="5"
                            value="@((int)Math.Round(_volume * 100))" @oninput="OnVolumeAsync" data-testid="volume" />
-                    <label for="effects-volume" class="sl-label">Lydeffekter</label>
+                    <label for="effects-volume" class="sl-label">@T("Lydeffekter", "Sound effects")</label>
                     <input id="effects-volume" type="range" class="form-range" min="0" max="100" step="5"
                            value="@((int)Math.Round(_effectsVolume * 100))" @onchange="OnEffectsVolumeAsync" data-testid="effects-volume" />
                 </div>
@@ -74,7 +74,7 @@ else
             <RivalTable Rivals="Rivals" TotalRounds="_state.TotalRounds" />
             @if (_needsPlay)
             {
-                <button type="button" class="btn btn-primary game-play" @onclick="PlayClickedAsync" data-testid="play">Afspil sangen</button>
+                <button type="button" class="btn btn-primary game-play" @onclick="PlayClickedAsync" data-testid="play">@T("Afspil sangen", "Play the song")</button>
             }
             <RoundCountdown Round="_round" TotalRounds="_state.TotalRounds" StartsIn="_startsIn" Go="_go" Standing="@Standing" />
             <HandOfCards Cards="_cards" Round="_round" Banner="@Banner" Reveal="_reveal"
@@ -102,15 +102,15 @@ else
                 @* SCRUM-172: back to the same lobby (same code, players and settings), or leave it. *@
                 <RequiresService Service="lobbyservice" Inline="true">
                     <button type="button" class="btn btn-primary" @onclick="PlayAgainAsync" disabled="@_playAgainBusy"
-                            data-testid="play-again">@(_playAgainBusy ? "Vender tilbage…" : "Spil igen")</button>
+                            data-testid="play-again">@(_playAgainBusy ? T("Vender tilbage…", "Going back…") : T("Spil igen", "Play again"))</button>
                 </RequiresService>
-                <a href="" class="btn" data-testid="leave">Forlad</a>
+                <a href="" class="btn" data-testid="leave">@T("Forlad", "Leave")</a>
             }
             else
             {
-                <a href="" class="btn btn-primary">Til forsiden</a>
+                <a href="" class="btn btn-primary">@T("Til forsiden", "To the front page")</a>
             }
-            <button type="button" class="btn" @onclick="() => _showAllSongs = true" data-testid="all-songs">Se alle sange</button>
+            <button type="button" class="btn" @onclick="() => _showAllSongs = true" data-testid="all-songs">@T("Se alle sange", "See all songs")</button>
         </div>
     </div>;
 }

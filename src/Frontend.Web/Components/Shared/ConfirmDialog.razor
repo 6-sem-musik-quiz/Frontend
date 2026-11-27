@@ -6,13 +6,13 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title h5">@Title</h2>
-                    <button type="button" class="btn-close" aria-label="Luk" @onclick="OnCancel"></button>
+                    <h2 class="modal-title h5">@(Title ?? T("Er du sikker?", "Are you sure?"))</h2>
+                    <button type="button" class="btn-close" aria-label="@T("Luk", "Close")" @onclick="OnCancel"></button>
                 </div>
                 <div class="modal-body">@ChildContent</div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="OnCancel">Annuller</button>
-                    <LoadingButton CssClass="@ConfirmCss" OnClick="OnConfirm" LoadingText="Vent…" data-testid="confirm">@ConfirmText</LoadingButton>
+                    <button type="button" class="btn btn-secondary" @onclick="OnCancel">@T("Annuller", "Cancel")</button>
+                    <LoadingButton CssClass="@ConfirmCss" OnClick="OnConfirm" LoadingText="@T("Vent…", "Wait…")" data-testid="confirm">@(ConfirmText ?? T("Slet", "Delete"))</LoadingButton>
                 </div>
             </div>
         </div>
@@ -22,8 +22,8 @@
 
 @code {
     [Parameter] public bool Visible { get; set; }
-    [Parameter] public string Title { get; set; } = "Er du sikker?";
-    [Parameter] public string ConfirmText { get; set; } = "Slet";
+    [Parameter] public string? Title { get; set; }        // default "Er du sikker?"
+    [Parameter] public string? ConfirmText { get; set; }  // default "Slet"
     [Parameter] public string ConfirmCss { get; set; } = "btn-danger";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback OnConfirm { get; set; }

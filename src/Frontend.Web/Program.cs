@@ -3,6 +3,7 @@ using Frontend.Web.Auth;
 using Frontend.Web.Components;
 using Frontend.Web.Games;
 using Frontend.Web.Lobbies;
+using Frontend.Web.Localization;
 using Frontend.Web.Music;
 using Frontend.Web.Sound;
 
@@ -42,5 +43,8 @@ builder.Services.AddSingleton(TimeProvider.System); // the game page's timers; t
 // SCRUM-174/176: which services an admin has switched off, and the toasts that say so.
 builder.Services.AddSingleton<Frontend.Web.Maintenance.MaintenanceState>();
 builder.Services.AddSingleton<Frontend.Web.Maintenance.ToastService>();
+builder.Services.AddSingleton<LanguageStore>(); // Danish / English, remembered in localStorage
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+await host.Services.GetRequiredService<LanguageStore>().LoadAsync(); // before the first render
+await host.RunAsync();

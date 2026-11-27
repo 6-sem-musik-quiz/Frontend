@@ -3,12 +3,12 @@
 @inject IMusicApiClient Music
 @inject ApiCallHandler ApiCall
 
-<PageTitle>Playlister · Admin · Slopster</PageTitle>
+<PageTitle>@T("Playlister", "Playlists") · Admin · Slopster</PageTitle>
 
 <GrafanaCard />
 <MaintenanceCard />
 
-<h1 class="mb-3">Playlister</h1>
+<h1 class="mb-3">@T("Playlister", "Playlists")</h1>
 
 @* SCRUM-180: no playlist editing or upload while MusicService is switched off. *@
 <RequiresService Service="musicservice" Replace="true">
@@ -17,13 +17,13 @@
 
 <form class="row g-2 mb-4" @onsubmit="CreateAsync" data-testid="new-playlist-form">
     <div class="col-sm-6 col-md-4">
-        <label for="new-playlist" class="visually-hidden">Navn på ny playlist</label>
-        <input id="new-playlist" class="form-control" placeholder="Navn på ny playlist" maxlength="@MaxNameLength"
+        <label for="new-playlist" class="visually-hidden">@T("Navn på ny playlist", "Name of new playlist")</label>
+        <input id="new-playlist" class="form-control" placeholder="@T("Navn på ny playlist", "Name of new playlist")" maxlength="@MaxNameLength"
                @bind="_newName" @bind:event="oninput" />
     </div>
     <div class="col-auto">
-        <LoadingButton Type="submit" IsLoading="_creating" LoadingText="Opretter…"
-                       Disabled="@string.IsNullOrWhiteSpace(_newName)">Ny playlist</LoadingButton>
+        <LoadingButton Type="submit" IsLoading="_creating" LoadingText="@T("Opretter…", "Creating…")"
+                       Disabled="@string.IsNullOrWhiteSpace(_newName)">@T("Ny playlist", "New playlist")</LoadingButton>
     </div>
 </form>
 
@@ -31,21 +31,21 @@
 {
     @if (_error is null)
     {
-        <p class="text-body-secondary">Henter playlister…</p>
+        <p class="text-body-secondary">@T("Henter playlister…", "Loading playlists…")</p>
     }
 }
 else
 {
     <div class="mb-3" style="max-width: 24rem">
-        <label for="search" class="visually-hidden">Søg</label>
-        <input id="search" class="form-control" type="search" placeholder="Søg på navn…"
+        <label for="search" class="visually-hidden">@T("Søg", "Search")</label>
+        <input id="search" class="form-control" type="search" placeholder="@T("Søg på navn…", "Search by name…")"
                @bind="_search" @bind:event="oninput" />
     </div>
 
     @if (Filtered.Count == 0)
     {
         <p class="text-body-secondary" data-testid="empty">
-            @(_playlists.Count == 0 ? "Der er ingen playlister endnu." : "Ingen playlister matcher søgningen.")
+            @(_playlists.Count == 0 ? T("Der er ingen playlister endnu.", "There are no playlists yet.") : T("Ingen playlister matcher søgningen.", "No playlists match the search."))
         </p>
     }
     else
@@ -53,9 +53,9 @@ else
         <table class="table align-middle" data-testid="playlists">
             <thead>
                 <tr>
-                    <th>Navn</th>
-                    <th class="text-end">Sange</th>
-                    <th class="text-end">Handlinger</th>
+                    <th>@T("Navn", "Name")</th>
+                    <th class="text-end">@T("Sange", "Songs")</th>
+                    <th class="text-end">@T("Handlinger", "Actions")</th>
                 </tr>
             </thead>
             <tbody>
@@ -66,11 +66,11 @@ else
                         {
                             <td colspan="2">
                                 <form class="d-flex gap-2" @onsubmit="() => RenameAsync(playlist)">
-                                    <input class="form-control form-control-sm" aria-label="Nyt navn" maxlength="@MaxNameLength"
+                                    <input class="form-control form-control-sm" aria-label="@T("Nyt navn", "New name")" maxlength="@MaxNameLength"
                                            @bind="_renameName" @bind:event="oninput" />
-                                    <LoadingButton Type="submit" CssClass="btn-primary btn-sm" IsLoading="_renaming" LoadingText="Gemmer…"
-                                                   Disabled="@string.IsNullOrWhiteSpace(_renameName)">Gem</LoadingButton>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelRename">Annuller</button>
+                                    <LoadingButton Type="submit" CssClass="btn-primary btn-sm" IsLoading="_renaming" LoadingText="@T("Gemmer…", "Saving…")"
+                                                   Disabled="@string.IsNullOrWhiteSpace(_renameName)">@T("Gem", "Save")</LoadingButton>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CancelRename">@T("Annuller", "Cancel")</button>
                                 </form>
                             </td>
                         }
@@ -80,9 +80,9 @@ else
                             <td class="text-end">@playlist.SongCount</td>
                         }
                         <td class="text-end text-nowrap">
-                            <a class="btn btn-outline-primary btn-sm" href="admin/playlister/@playlist.Id">Åbn</a>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => StartRename(playlist)">Omdøb</button>
-                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => _deleting = playlist">Slet</button>
+                            <a class="btn btn-outline-primary btn-sm" href="admin/playlister/@playlist.Id">@T("Åbn", "Open")</a>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="() => StartRename(playlist)">@T("Omdøb", "Rename")</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => _deleting = playlist">@T("Slet", "Delete")</button>
                         </td>
                     </tr>
                 }
@@ -91,10 +91,10 @@ else
     }
 }
 
-<ConfirmDialog Visible="_deleting is not null" Title="Slet playlist" OnConfirm="DeleteAsync" OnCancel="() => _deleting = null">
-    <p>Playlisten <strong>@_deleting?.Name</strong> og dens sange slettes.</p>
+<ConfirmDialog Visible="_deleting is not null" Title="@T("Slet playlist", "Delete playlist")" OnConfirm="DeleteAsync" OnCancel="() => _deleting = null">
+    <p>@T("Playlisten", "The playlist") <strong>@_deleting?.Name</strong> @T("og dens sange slettes.", "and its songs will be deleted.")</p>
     <p class="mb-0 small text-body-secondary">
-        Sange, der også ligger i en anden playlist, bevares der. Det kan ikke fortrydes.
+        @T("Sange, der også ligger i en anden playlist, bevares der. Det kan ikke fortrydes.", "Songs that are also in another playlist are kept there. This cannot be undone.")
     </p>
 </ConfirmDialog>
 </RequiresService>
@@ -102,9 +102,9 @@ else
 @code {
     private const int MaxNameLength = 60;
 
-    private static readonly Dictionary<HttpStatusCode, string> NameTaken = new()
+    private static Dictionary<HttpStatusCode, string> NameTaken => new()
     {
-        [HttpStatusCode.Conflict] = "Navnet findes allerede."
+        [HttpStatusCode.Conflict] = T("Navnet findes allerede.", "The name already exists.")
     };
 
     private List<PlaylistDto>? _playlists;

@@ -1,9 +1,9 @@
 @* SCRUM-116: the week's top 10 in three tabs. The signed-in user's row is highlighted. *@
 
-<h3 class="h6 mb-1">Ugens leaderboard</h3>
+<h3 class="h6 mb-1">@T("Ugens leaderboard", "This week's leaderboard")</h3>
 <p class="small text-body-secondary mb-2" data-testid="week-title">@StatsFormat.WeekTitle(Week.WeekStart, Week.WeekEnd)</p>
 
-<nav class="nav nav-pills nav-fill small mb-2" aria-label="Leaderboard-lister">
+<nav class="nav nav-pills nav-fill small mb-2" aria-label="@T("Leaderboard-lister", "Leaderboard lists")">
     @foreach (var tab in Tabs)
     {
         <button type="button" class="nav-link py-1 @(_tab == tab.Key ? "active" : "")" data-testid="tab-@tab.Key"
@@ -14,7 +14,7 @@
 @if (Rows.Count == 0)
 {
     <p class="text-body-secondary small mb-1" data-testid="no-rows">
-        @(_tab == "wins" ? "Ingen sejre denne uge endnu." : "Ingen har spillet 5 spil denne uge endnu.")
+        @(_tab == "wins" ? T("Ingen sejre denne uge endnu.", "No wins this week yet.") : T("Ingen har spillet 5 spil denne uge endnu.", "Nobody has played 5 games this week yet."))
     </p>
 }
 else
@@ -28,7 +28,7 @@ else
                 <span class="ms-2 flex-grow-1 text-truncate">@row.UserName</span>
                 @if (mine)
                 {
-                    <span class="sl-you-tag ms-2">dig</span>
+                    <span class="sl-you-tag ms-2">@T("dig", "you")</span>
                 }
                 <span class="ms-2 text-nowrap" data-testid="value">@row.Value</span>
             </li>
@@ -38,7 +38,7 @@ else
 
 @if (_tab != "wins")
 {
-    <p class="small text-body-secondary mb-0" data-testid="min-games">Kræver mindst 5 spil denne uge.</p>
+    <p class="small text-body-secondary mb-0" data-testid="min-games">@T("Kræver mindst 5 spil denne uge.", "Requires at least 5 games this week.")</p>
 }
 
 @code {
@@ -47,8 +47,8 @@ else
     // The signed-in user (the token's "sub"), or null.
     [Parameter] public int? MeId { get; set; }
 
-    private static readonly (string Key, string Title)[] Tabs =
-        [("wins", "Flest sejre"), ("winrate", "Win%"), ("accuracy", "Accuracy")];
+    private static (string Key, string Title)[] Tabs =>
+        [("wins", T("Flest sejre", "Most wins")), ("winrate", "Win%"), ("accuracy", "Accuracy")];
 
     private string _tab = "wins";
 
@@ -58,6 +58,6 @@ else
     {
         "winrate" => Week.WinRate.Select(r => new Row(r.UserId, r.UserName, StatsFormat.Percent(r.WinRate))).ToList(),
         "accuracy" => Week.Accuracy.Select(r => new Row(r.UserId, r.UserName, StatsFormat.Percent(r.Accuracy))).ToList(),
-        _ => Week.MostWins.Select(r => new Row(r.UserId, r.UserName, r.Wins == 1 ? "1 sejr" : $"{r.Wins} sejre")).ToList()
+        _ => Week.MostWins.Select(r => new Row(r.UserId, r.UserName, r.Wins == 1 ? T("1 sejr", "1 win") : $"{r.Wins} {T("sejre", "wins")}")).ToList()
     };
 }

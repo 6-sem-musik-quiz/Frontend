@@ -1,4 +1,5 @@
 using Frontend.Domain.DTOs.Maintenance;
+using Frontend.Domain.Localization;
 using Frontend.Services.Interfaces;
 
 namespace Frontend.Web.Maintenance;
@@ -11,8 +12,11 @@ public sealed class MaintenanceState(IMaintenanceApiClient api, TimeProvider tim
 {
     public static readonly TimeSpan PollEvery = TimeSpan.FromSeconds(5);
 
-    // What each service turns off, in the words players see (toast, banner, notices).
-    public static readonly IReadOnlyDictionary<string, (string Feature, string Text)> Features =
+    // What each service turns off, in the words players see (toast, banner, notices), in the current language.
+    public static IReadOnlyDictionary<string, (string Feature, string Text)> Features =>
+        Lang.IsEnglish ? EnglishFeatures : DanishFeatures;
+
+    private static readonly IReadOnlyDictionary<string, (string Feature, string Text)> DanishFeatures =
         new Dictionary<string, (string, string)>
         {
             ["userservice"] = ("Login og oprettelse", "Login og oprettelse er under vedligeholdelse."),
@@ -22,7 +26,18 @@ public sealed class MaintenanceState(IMaintenanceApiClient api, TimeProvider tim
             ["statisticservice"] = ("Leaderboard og statistik", "Leaderboardet er under vedligeholdelse. Prøv igen senere."),
         };
 
-    public const string FallbackText = "Funktionen er under vedligeholdelse. Prøv igen senere.";
+    private static readonly IReadOnlyDictionary<string, (string Feature, string Text)> EnglishFeatures =
+        new Dictionary<string, (string, string)>
+        {
+            ["userservice"] = ("Login and sign-up", "Login and sign-up are under maintenance."),
+            ["lobbyservice"] = ("Lobbies", "Lobbies are under maintenance."),
+            ["gameservice"] = ("New games", "The game is under maintenance. You can stay in the lobby meanwhile."),
+            ["musicservice"] = ("The music catalogue", "The music catalogue is under maintenance."),
+            ["statisticservice"] = ("Leaderboard and statistics", "The leaderboard is under maintenance. Try again later."),
+        };
+
+    public static string FallbackText =>
+        Lang.T("Funktionen er under vedligeholdelse. Prøv igen senere.", "This feature is under maintenance. Try again later.");
 
     private Dictionary<string, MaintenanceStatusDto> _off = [];
     private ITimer? _timer;

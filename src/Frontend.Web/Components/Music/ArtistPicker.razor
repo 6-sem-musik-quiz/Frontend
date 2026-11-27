@@ -9,18 +9,18 @@
         {
             <span class="badge text-bg-primary me-1 mb-1">
                 @artist.Name
-                <button type="button" class="btn-close btn-close-white ms-1 small" aria-label="Fjern @artist.Name"
+                <button type="button" class="btn-close btn-close-white ms-1 small" aria-label="@($"{T("Fjern", "Remove")} {artist.Name}")"
                         @onclick="() => RemoveAsync(artist)"></button>
             </span>
         }
         @if (Selected.Count == 0)
         {
-            <span class="text-body-secondary small">Ingen kunstnere valgt.</span>
+            <span class="text-body-secondary small">@T("Ingen kunstnere valgt.", "No artists selected.")</span>
         }
     </div>
 
-    <input id="@InputId" class="form-control" placeholder="Søg efter kunstner…" autocomplete="off"
-           value="@_search" @oninput="OnSearchInput" aria-label="Søg efter kunstner" />
+    <input id="@InputId" class="form-control" placeholder="@T("Søg efter kunstner…", "Search for artist…")" autocomplete="off"
+           value="@_search" @oninput="OnSearchInput" aria-label="@T("Søg efter kunstner", "Search for artist")" />
 
     <ErrorMessage Message="@_error" />
 
@@ -34,7 +34,7 @@
             @if (CanCreate)
             {
                 <button type="button" class="list-group-item list-group-item-action text-primary" data-testid="create-artist"
-                        @onclick="CreateAsync" disabled="@_creating">+ Opret kunstner "@_search.Trim()"</button>
+                        @onclick="CreateAsync" disabled="@_creating">+ @T("Opret kunstner", "Create artist") "@_search.Trim()"</button>
             }
         </div>
     }
@@ -90,7 +90,7 @@
         ArtistDto? created = null;
         _error = await ApiCall.RunAsync(
             async () => created = await Music.CreateArtistAsync(_search.Trim()),
-            statusMessages: new Dictionary<HttpStatusCode, string> { [HttpStatusCode.Conflict] = "Kunstneren findes allerede. Søg efter den i stedet." });
+            statusMessages: new Dictionary<HttpStatusCode, string> { [HttpStatusCode.Conflict] = T("Kunstneren findes allerede. Søg efter den i stedet.", "The artist already exists. Search for it instead.") });
         _creating = false;
 
         if (created is not null)

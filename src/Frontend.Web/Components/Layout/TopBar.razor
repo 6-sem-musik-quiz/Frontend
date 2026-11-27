@@ -6,16 +6,20 @@
     <AuthorizeView>
         <Authorized>
             <nav class="navbar-nav me-auto">
-                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Forside</NavLink>
+                <NavLink class="nav-link" href="" Match="NavLinkMatch.All">@T("Forside", "Home")</NavLink>
                 <AuthorizeView Roles="@Roles.Admin" Context="adminContext">
                     <NavLink class="nav-link" href="admin">Admin</NavLink>
                 </AuthorizeView>
             </nav>
 
+            <LanguageToggle />
             <OptionsMenu />
             <span class="user-chip me-3" data-testid="current-user">@context.User.Identity?.Name</span>
-            <LoadingButton CssClass="btn-sm" OnClick="LogoutAsync" LoadingText="Logger ud…">Log ud</LoadingButton>
+            <LoadingButton CssClass="btn-sm" OnClick="LogoutAsync" LoadingText="@T("Logger ud…", "Logging out…")">@T("Log ud", "Log out")</LoadingButton>
         </Authorized>
+        <NotAuthorized>
+            <div class="ms-auto"><LanguageToggle /></div>
+        </NotAuthorized>
     </AuthorizeView>
 </header>
 

@@ -3,14 +3,14 @@
    SCRUM-152) instead of in a list here. *@
 @using System.Globalization
 
-<aside class="gs" aria-label="Spilstatus">
+<aside class="gs" aria-label="@T("Spilstatus", "Game status")">
     <div class="card gs-box">
-        <div class="sl-label">Runde</div>
+        <div class="sl-label">@T("Runde", "Round")</div>
         <div class="gs-big px" data-testid="round">@Round / @TotalRounds</div>
     </div>
 
     <div class="card gs-box">
-        <div class="sl-label">Tid</div>
+        <div class="sl-label">@T("Tid", "Time")</div>
         <div class="gs-big px gs-time" data-testid="time" aria-live="off">@(SecondsLeft?.ToString(CultureInfo.InvariantCulture) ?? "–")</div>
         <div class="gs-bar" aria-hidden="true"><div class="gs-bar-fill" style="@BarStyle" data-testid="time-bar"></div></div>
     </div>

@@ -8,8 +8,8 @@
 
 <section class="card mb-4" data-testid="maintenance-card">
     <div class="card-body">
-        <h2 class="h5 card-title">Vedligeholdelse</h2>
-        <p class="small text-body-secondary">Slå en service fra, og funktionerne, der bruger den, bliver nedtonet for spillerne. Spil og lobbyer, der er i gang, kører færdigt.</p>
+        <h2 class="h5 card-title">@T("Vedligeholdelse", "Maintenance")</h2>
+        <p class="small text-body-secondary">@T("Slå en service fra, og funktionerne, der bruger den, bliver nedtonet for spillerne. Spil og lobbyer, der er i gang, kører færdigt.", "Switch a service off, and the features that use it are greyed out for the players. Games and lobbies in progress run to the end.")</p>
 
         <ErrorMessage Message="@_error" />
 
@@ -17,7 +17,7 @@
         {
             @if (_error is null)
             {
-                <p class="text-body-secondary">Henter status…</p>
+                <p class="text-body-secondary">@T("Henter status…", "Loading status…")</p>
             }
         }
         else
@@ -27,13 +27,13 @@
                     @foreach (var s in _services)
                     {
                         <tr @key="s.Service" data-testid="maintenance-row" data-service="@s.Service">
-                            <td class="fw-semibold">@s.Name</td>
+                            <td class="fw-semibold">@ServiceName(s)</td>
                             <td>
                                 @if (s.Off)
                                 {
-                                    <span class="badge text-bg-warning" data-testid="status">Vedligeholdelse</span>
+                                    <span class="badge text-bg-warning" data-testid="status">@T("Vedligeholdelse", "Maintenance")</span>
                                     <div class="small text-body-secondary" data-testid="off-by">
-                                        Slået fra af @(s.By ?? "?") @(s.Since is { } since ? since.ToLocalTime().ToString("d/M HH:mm") : "")
+                                        @T("Slået fra af", "Switched off by") @(s.By ?? "?") @(s.Since is { } since ? since.ToLocalTime().ToString("d/M HH:mm") : "")
                                         @if (!string.IsNullOrWhiteSpace(s.Message))
                                         {
                                             <br /><span>“@s.Message”</span>
@@ -42,19 +42,19 @@
                                 }
                                 else
                                 {
-                                    <span class="badge text-bg-success" data-testid="status">Aktiv</span>
+                                    <span class="badge text-bg-success" data-testid="status">@T("Aktiv", "Active")</span>
                                 }
                             </td>
                             <td class="text-end">
                                 @if (s.Off)
                                 {
                                     <LoadingButton CssClass="btn-sm btn-success" OnClick="() => SwitchAsync(s.Service, false, null)"
-                                                   LoadingText="Slår til…" data-testid="switch-on">Slå til</LoadingButton>
+                                                   LoadingText="@T("Slår til…", "Switching on…")" data-testid="switch-on">@T("Slå til", "Switch on")</LoadingButton>
                                 }
                                 else
                                 {
                                     <button type="button" class="btn btn-sm btn-outline-warning" data-testid="switch-off"
-                                            @onclick="() => AskOff(s)">Slå fra</button>
+                                            @onclick="() => AskOff(s)">@T("Slå fra", "Switch off")</button>
                                 }
                             </td>
                         </tr>
@@ -65,13 +65,13 @@
     </div>
 </section>
 
-<ConfirmDialog Visible="_confirm is not null" Title="@($"Slå {_confirm?.Name} fra?")" ConfirmText="Slå fra" ConfirmCss="btn-warning"
+<ConfirmDialog Visible="_confirm is not null" Title="@(_confirm is null ? "" : T($"Slå {_confirm.Name} fra?", $"Switch off {ServiceName(_confirm)}?"))" ConfirmText="@T("Slå fra", "Switch off")" ConfirmCss="btn-warning"
                OnConfirm="ConfirmOffAsync" OnCancel="() => _confirm = null">
     @if (_confirm is not null)
     {
-        <p data-testid="confirm-text">Brugerne kan ikke bruge @Affected(_confirm.Service) imens.</p>
-        <label for="maintenance-message" class="form-label small">Besked til brugerne (valgfri)</label>
-        <input id="maintenance-message" class="form-control" maxlength="300" placeholder="Fx: Tilbage kl. 20"
+        <p data-testid="confirm-text">@T($"Brugerne kan ikke bruge {Affected(_confirm.Service)} imens.", $"Users cannot use {Affected(_confirm.Service)} meanwhile.")</p>
+        <label for="maintenance-message" class="form-label small">@T("Besked til brugerne (valgfri)", "Message to the users (optional)")</label>
+        <input id="maintenance-message" class="form-control" maxlength="300" placeholder="@T("Fx: Tilbage kl. 20", "E.g.: Back at 8 pm")"
                @bind="_message" @bind:event="oninput" data-testid="message" />
     }
 </ConfirmDialog>
@@ -81,6 +81,10 @@
     private MaintenanceStatusDto? _confirm;
     private string _message = "";
     private string? _error;
+
+    // The edge names the services in Danish; in English we use our own names when we know the service.
+    private static string ServiceName(MaintenanceStatusDto s) =>
+        IsEnglish && MaintenanceState.Features.TryGetValue(s.Service, out var f) ? f.Feature : s.Name;
 
     private static string Affected(string service) =>
         MaintenanceState.Features.TryGetValue(service, out var f) ? f.Feature.ToLowerInvariant() : service;

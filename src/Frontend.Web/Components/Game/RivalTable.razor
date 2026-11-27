@@ -9,7 +9,7 @@
    five streak squares; the hand is hidden until the player taps the seat's toggle. *@
 @using System.Globalization
 
-<section class="rt" aria-label="Modstandere" data-testid="rival-table">
+<section class="rt" aria-label="@T("Modstandere", "Opponents")" data-testid="rival-table">
     @foreach (var rival in Rivals)
     {
         var cards = HandOf(rival);
@@ -18,12 +18,12 @@
         <article @key="rival.UserId" class="rt-seat @(open ? "open" : "")" data-testid="rival" aria-label="@SeatLabel(rival)">
             <div class="rt-top">
                 <span class="px rt-name">@rival.Name</span>
-                <span class="px rt-count" data-testid="rival-count">@rival.Cards.Count kort</span>
+                <span class="px rt-count" data-testid="rival-count">@rival.Cards.Count @T("kort", rival.Cards.Count == 1 ? "card" : "cards")</span>
             </div>
 
             @* Only shown on a phone, where the hand is folded away. *@
             <button type="button" class="rt-toggle" aria-expanded="@(open ? "true" : "false")"
-                    aria-label="@(open ? $"Skjul {rival.Name}s kort" : $"Vis {rival.Name}s kort")"
+                    aria-label="@(open ? T($"Skjul {rival.Name}s kort", $"Hide {rival.Name}'s cards") : T($"Vis {rival.Name}s kort", $"Show {rival.Name}'s cards"))"
                     @onclick="() => Toggle(rival.UserId)" data-testid="rival-toggle">@(open ? "▴" : "▾")</button>
 
             @* Over 8 cards only a strip of each shows, so the year runs up its edge (like my own hand). *@
@@ -54,7 +54,7 @@
                 }
                 @if (run >= 2)
                 {
-                    <span class="rt-run px" data-testid="rival-run">@run i træk</span>
+                    <span class="rt-run px" data-testid="rival-run">@T($"{run} i træk", $"{run} in a row")</span>
                 }
             </div>
         </article>
@@ -104,19 +104,19 @@
         return run;
     }
 
-    // "1. · 4,2 s" (Danish decimal comma), or "1." when the time is not known.
+    // "1. · 4,2 s" (decimal comma in Danish, point in English), or "1." when the time is not known.
     public static string StampText(RivalStamp stamp) =>
         stamp.AfterMs is { } ms
-            ? $"{stamp.Order}. · {(ms / 1000.0).ToString("0.0", CultureInfo.GetCultureInfo("da-DK"))} s"
+            ? $"{stamp.Order}. · {Lang.Number(ms / 1000.0)} s"
             : $"{stamp.Order}.";
 
     private string SeatLabel(RivalView rival)
     {
-        var label = $"{rival.Name}: {rival.Cards.Count} kort";
+        var label = T($"{rival.Name}: {rival.Cards.Count} kort", $"{rival.Name}: {rival.Cards.Count} cards");
         if (rival.Stamp is { } stamp && rival.Reveal is null)
-            label += $", har svaret som nummer {stamp.Order}";
+            label += T($", har svaret som nummer {stamp.Order}", $", answered as number {stamp.Order}");
         var run = CurrentRun(rival.History);
-        return run >= 2 ? $"{label}, {run} rigtige i træk" : label;
+        return run >= 2 ? T($"{label}, {run} rigtige i træk", $"{label}, {run} right in a row") : label;
     }
 
     private static string ShortYear(int year) => (year % 100).ToString("00", CultureInfo.InvariantCulture);

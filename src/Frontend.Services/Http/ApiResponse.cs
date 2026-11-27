@@ -1,3 +1,4 @@
+using Frontend.Domain.Localization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -68,7 +69,7 @@ public static class ApiResponse
     {
         if (problem is null)
         {
-            return $"Servicen svarede med fejl {(int)statusCode}.";
+            return Lang.T($"Servicen svarede med fejl {(int)statusCode}.", $"The service answered with error {(int)statusCode}.");
         }
 
         var parts = new List<string>();
@@ -85,6 +86,6 @@ public static class ApiResponse
             parts.AddRange(problem.Errors.SelectMany(e => e.Value));
         }
 
-        return parts.Count > 0 ? string.Join(" ", parts) : $"Servicen svarede med fejl {(int)statusCode}.";
+        return parts.Count > 0 ? string.Join(" ", parts) : Lang.T($"Servicen svarede med fejl {(int)statusCode}.", $"The service answered with error {(int)statusCode}.");
     }
 }

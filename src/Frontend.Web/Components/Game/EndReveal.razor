@@ -7,7 +7,7 @@
 @inject TimeProvider Time
 
 <section class="er" aria-labelledby="er-title">
-    <h1 id="er-title" class="sl-banner">· · · Slutresultat · · ·</h1>
+    <h1 id="er-title" class="sl-banner">· · · @T("Slutresultat", "Final result") · · ·</h1>
     <div class="er-grid">
         <div class="er-stage card" aria-live="polite" data-testid="er-stage">
             @if (_script.Current is { } award)
@@ -30,7 +30,7 @@
                 }
                 else if (award.Contenders.All(c => c.Shown) && award.Winners.Count == 0)
                 {
-                    <p class="er-rule">Ingen fik prisen.</p>
+                    <p class="er-rule">@T("Ingen fik prisen.", "Nobody won the award.")</p>
                 }
             }
             else
@@ -39,7 +39,7 @@
             }
         </div>
 
-        <ol class="er-standings list-unstyled" aria-label="Stilling" data-testid="standings">
+        <ol class="er-standings list-unstyled" aria-label="@T("Stilling", "Standings")" data-testid="standings">
             @foreach (var row in _script.Ordered)
             {
                 var st = row.Standing;
@@ -50,16 +50,16 @@
                         data-testid="standing" data-user="@st.UserId">
                         <span class="px er-place @(st.Placement == 1 ? "first" : "")" data-testid="placement">@st.Placement</span>
                         <span class="er-name">
-                            <span class="px">@st.UserName@(mine ? " (dig)" : "")</span>
-                            <span class="text-body-secondary small">@st.Correct rigtige af @st.Answered besvarede</span>
+                            <span class="px">@st.UserName@(mine ? T(" (dig)", " (you)") : "")</span>
+                            <span class="text-body-secondary small">@T($"{st.Correct} rigtige af {st.Answered} besvarede", $"{st.Correct} right of {st.Answered} answered")</span>
                         </span>
-                        <span class="px er-score" data-testid="score">@st.Score point@(row.Bonus > 0 ? $" (+{row.Bonus} bonus)" : "")</span>
+                        <span class="px er-score" data-testid="score">@st.Score @T("point", "points")@(row.Bonus > 0 ? $" (+{row.Bonus} bonus)" : "")</span>
                     </li>
                 }
                 else
                 {
                     @* Face down: nothing about who is here until the slot is turned over. *@
-                    <li @key="st.UserId" class="er-row er-hidden" data-testid="standing" aria-label="Skjult placering">
+                    <li @key="st.UserId" class="er-row er-hidden" data-testid="standing" aria-label="@T("Skjult placering", "Hidden placement")">
                         <span class="px er-place" data-testid="placement">?</span>
                         <span class="er-name"><span class="px">· · ·</span></span>
                     </li>
@@ -74,7 +74,7 @@
     }
     else
     {
-        <button type="button" class="btn" @onclick="Skip" data-testid="skip">Spring til resultatet</button>
+        <button type="button" class="btn" @onclick="Skip" data-testid="skip">@T("Spring til resultatet", "Skip to the result")</button>
     }
 </section>
 

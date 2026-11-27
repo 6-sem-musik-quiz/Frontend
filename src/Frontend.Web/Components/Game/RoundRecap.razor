@@ -6,7 +6,7 @@
 @implements IDisposable
 @inject TimeProvider Time
 
-<section class="rr" aria-label="Rundens svar" data-testid="round-recap">
+<section class="rr" aria-label="@T("Rundens svar", "The round's answers")" data-testid="round-recap">
     <div class="rr-head">
         <span class="px">@Ended.Song.Year</span>
         <span class="rr-song"><b>@Ended.Song.Title</b> · @string.Join(", ", Ended.Song.Artists)</span>
@@ -14,7 +14,7 @@
     </div>
     <div class="rr-grid">
         <div class="card rr-box">
-            <h3 class="rr-title">Hvor lagde alle kortet?</h3>
+            <h3 class="rr-title">@T("Hvor lagde alle kortet?", "Where did everyone put the card?")</h3>
             <div class="rr-map">
                 <div class="rr-true" style="left: @Pct(Ended.Song.Year)" data-testid="true-year"><b>@Ended.Song.Year</b></div>
                 @foreach (var r in Ended.Results)
@@ -27,11 +27,11 @@
                             <div class="rr-range @(r.Correct ? "y" : "n") @(mine ? "me" : "")"
                                  style="left: @left; width: @width"
                                  data-from="@range[0]" data-to="@range[1]"
-                                 title="@Label(range)">@(mine ? "Dig" : r.UserName) @Label(range)</div>
+                                 title="@Label(range)">@(mine ? T("Dig", "You") : r.UserName) @Label(range)</div>
                         }
                         else
                         {
-                            <span class="rr-none @(mine ? "me" : "")">@(mine ? "Dig" : r.UserName): intet svar</span>
+                            <span class="rr-none @(mine ? "me" : "")">@(mine ? T("Dig", "You") : r.UserName): @T("intet svar", "no answer")</span>
                         }
                     </div>
                 }
@@ -44,13 +44,13 @@
             </div>
         </div>
         <div class="card rr-box">
-            <h3 class="rr-title">Hvornår låste de?</h3>
+            <h3 class="rr-title">@T("Hvornår låste de?", "When did they lock in?")</h3>
             <div class="rr-lanes">
                 @foreach (var r in Lanes)
                 {
                     var mine = r.UserId == Me;
                     <div class="rr-lane @(mine ? "me" : "")" data-testid="lane" data-user="@r.UserId">
-                        <span class="px rr-name">@(mine ? "Dig" : r.UserName)</span>
+                        <span class="px rr-name">@(mine ? T("Dig", "You") : r.UserName)</span>
                         <div class="rr-bar">
                             @if (r.AnsweredAfterMs is { } ms)
                             {
@@ -81,7 +81,7 @@
     private IEnumerable<RoundResultDto> Lanes =>
         Ended.Results.OrderBy(r => r.AnsweredAfterMs is null).ThenBy(r => r.AnsweredAfterMs ?? 0);
 
-    private string NextText => _nextIn > 0 ? $"Næste runde om {_nextIn} s" : "Venter på de andre …";
+    private string NextText => _nextIn > 0 ? T($"Næste runde om {_nextIn} s", $"Next round in {_nextIn} s") : T("Venter på de andre …", "Waiting for the others …");
 
     protected override void OnParametersSet()
     {
@@ -108,17 +108,17 @@
     private static string Label(IReadOnlyList<int?> range) =>
         (range[0], range[1]) switch
         {
-            (null, { } to) => $"før {to}",
-            ({ } from, null) => $"efter {from}",
+            (null, { } to) => T($"før {to}", $"before {to}"),
+            ({ } from, null) => T($"efter {from}", $"after {from}"),
             ({ } from, { } to) => $"{from}–{to}",
-            _ => "hvor som helst"
+            _ => T("hvor som helst", "anywhere")
         };
 
     private static string Percent(double fraction) =>
         (Math.Clamp(fraction, 0, 1) * 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
 
     private static string Seconds(int ms) =>
-        (ms / 1000.0).ToString("0.0", CultureInfo.GetCultureInfo("da-DK")) + " s";
+        Lang.Number(ms / 1000.0) + " s";
 
     public void Dispose() => _timer?.Dispose();
 }

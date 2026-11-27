@@ -4,14 +4,14 @@
 @inject ApiCallHandler ApiCall
 @inject NavigationManager Navigation
 
-<h2 class="h5">Lobbyer</h2>
+<h2 class="h5">@T("Lobbyer", "Lobbies")</h2>
 
 <form class="d-flex mb-3" @onsubmit="JoinByCodeAsync" data-testid="join-code-form">
-    <label for="join-code" class="visually-hidden">Lobbykode</label>
-    <input id="join-code" class="form-control text-uppercase join-code" placeholder="Kode (6 tegn)" maxlength="6" autocomplete="off"
+    <label for="join-code" class="visually-hidden">@T("Lobbykode", "Lobby code")</label>
+    <input id="join-code" class="form-control text-uppercase join-code" placeholder="@T("Kode (6 tegn)", "Code (6 characters)")" maxlength="6" autocomplete="off"
            @bind="_code" @bind:event="oninput" />
-    <LoadingButton Type="submit" CssClass="btn-sm ms-2" IsLoading="_joiningCode" LoadingText="Joiner…"
-                   Disabled="@(_code.Trim().Length != 6)">Join med kode</LoadingButton>
+    <LoadingButton Type="submit" CssClass="btn-sm ms-2" IsLoading="_joiningCode" LoadingText="@T("Joiner…", "Joining…")"
+                   Disabled="@(_code.Trim().Length != 6)">@T("Join med kode", "Join with code")</LoadingButton>
 </form>
 
 <ErrorMessage Message="@_error" />
@@ -21,12 +21,12 @@
 {
     @if (_refreshError is null)
     {
-        <p class="text-body-secondary">Henter lobbyer…</p>
+        <p class="text-body-secondary">@T("Henter lobbyer…", "Loading lobbies…")</p>
     }
 }
 else if (_lobbies.Count == 0)
 {
-    <p class="text-body-secondary" data-testid="no-lobbies">Ingen åbne lobbyer lige nu. Opret en!</p>
+    <p class="text-body-secondary" data-testid="no-lobbies">@T("Ingen åbne lobbyer lige nu. Opret en!", "No open lobbies right now. Create one!")</p>
 }
 else
 {
@@ -38,17 +38,17 @@ else
                 <div class="flex-grow-1">
                     <div class="fw-semibold">@lobby.HostUserName</div>
                     <div class="small text-body-secondary">
-                        @lobby.CategoryName · @lobby.Rounds runder · @lobby.AnswerTimeSeconds sek.
+                        @lobby.CategoryName · @lobby.Rounds @T("runder", "rounds") · @lobby.AnswerTimeSeconds @T("sek.", "sec")
                     </div>
                 </div>
                 <span class="badge text-bg-light" data-testid="player-count">@lobby.PlayerCount/@lobby.MaxPlayers</span>
                 @if (full)
                 {
-                    <span class="small text-body-secondary">Fuld</span>
+                    <span class="small text-body-secondary">@T("Fuld", "Full")</span>
                 }
                 else
                 {
-                    <LoadingButton CssClass="btn-sm" OnClick="() => JoinAsync(lobby.Id)" LoadingText="Joiner…">Join</LoadingButton>
+                    <LoadingButton CssClass="btn-sm" OnClick="() => JoinAsync(lobby.Id)" LoadingText="@T("Joiner…", "Joining…")">Join</LoadingButton>
                 }
             </li>
         }

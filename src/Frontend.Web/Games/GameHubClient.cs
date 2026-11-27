@@ -1,3 +1,4 @@
+using Frontend.Domain.Localization;
 using Frontend.Domain.DTOs.Games;
 using Frontend.Services.Auth;
 using Frontend.Services.Options;
@@ -87,7 +88,7 @@ public sealed class GameHubClient(
             catch (Exception e) when (e is not OperationCanceledException)
             {
                 await connection.DisposeAsync();
-                throw new GameHubException("Kunne ikke forbinde til spillet. Tjek din forbindelse og prøv igen.", e);
+                throw new GameHubException(Lang.T("Kunne ikke forbinde til spillet. Tjek din forbindelse og prøv igen.", "Could not connect to the game. Check your connection and try again."), e);
             }
             _connection = connection;
             _connectedGameId = gameId;
@@ -140,7 +141,7 @@ public sealed class GameHubClient(
     }
 
     private HubConnection Connected() =>
-        _connection ?? throw new GameHubException("Du er ikke forbundet til spillet.");
+        _connection ?? throw new GameHubException(Lang.T("Du er ikke forbundet til spillet.", "You are not connected to the game."));
 
     private static async Task Call(Func<Task> call) =>
         await Call(async () => { await call(); return true; });
@@ -157,7 +158,7 @@ public sealed class GameHubClient(
         }
         catch (InvalidOperationException e) // e.g. invoked while the connection is reconnecting
         {
-            throw new GameHubException("Forbindelsen til spillet er tabt. Vent et øjeblik, så prøver vi igen.", e);
+            throw new GameHubException(Lang.T("Forbindelsen til spillet er tabt. Vent et øjeblik, så prøver vi igen.", "The connection to the game was lost. Wait a moment and we will try again."), e);
         }
     }
 

@@ -1,16 +1,18 @@
 using System.ComponentModel.DataAnnotations;
 
+using Frontend.Domain.Localization;
+
 namespace Frontend.Domain.DTOs.Users;
 
 // Spejler UserService (POST /api/auth/login, /refresh, /logout og POST /api/users),
 // kontrakt i Platform/docs/contracts, så UserService's DTO'er er kilden.
 public class LoginRequest
 {
-    [Required(ErrorMessage = "Brugernavn er påkrævet.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationText), ErrorMessageResourceName = nameof(ValidationText.UserNameRequired))]
     [StringLength(50)]
     public string UserName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Adgangskode er påkrævet.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationText), ErrorMessageResourceName = nameof(ValidationText.PasswordRequired))]
     public string Password { get; set; } = string.Empty;
 }
 
@@ -35,12 +37,12 @@ public record RefreshTokenRequest(string RefreshToken);
 
 public class CreateUserRequest
 {
-    [Required(ErrorMessage = "Brugernavn er påkrævet.")]
-    [StringLength(50, MinimumLength = 3, ErrorMessage = "Brugernavn skal være 3-50 tegn.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationText), ErrorMessageResourceName = nameof(ValidationText.UserNameRequired))]
+    [StringLength(50, MinimumLength = 3, ErrorMessageResourceType = typeof(ValidationText), ErrorMessageResourceName = nameof(ValidationText.UserNameLength))]
     public string UserName { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Adgangskode er påkrævet.")]
-    [StringLength(100, MinimumLength = 6, ErrorMessage = "Adgangskode skal være mindst 6 tegn.")]
+    [Required(ErrorMessageResourceType = typeof(ValidationText), ErrorMessageResourceName = nameof(ValidationText.PasswordRequired))]
+    [StringLength(100, MinimumLength = 6, ErrorMessageResourceType = typeof(ValidationText), ErrorMessageResourceName = nameof(ValidationText.PasswordLength))]
     public string Password { get; set; } = string.Empty;
 }
 

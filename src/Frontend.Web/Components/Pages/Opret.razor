@@ -4,10 +4,10 @@
 @inject ApiCallHandler ApiCall
 @inject NavigationManager Navigation
 
-<PageTitle>Opret bruger · Slopster</PageTitle>
+<PageTitle>@T("Opret bruger", "Create account") · Slopster</PageTitle>
 
 <div class="auth-card">
-    <h1 class="h3 mb-3">Opret bruger</h1>
+    <h1 class="h3 mb-3">@T("Opret bruger", "Create account")</h1>
 
     <ErrorMessage Message="@_error" />
 
@@ -17,22 +17,22 @@
         <DataAnnotationsValidator />
 
         <div class="mb-3">
-            <label for="username" class="form-label">Brugernavn</label>
+            <label for="username" class="form-label">@T("Brugernavn", "Username")</label>
             <InputText id="username" class="form-control" @bind-Value="_model.UserName" autocomplete="username" />
             <ValidationMessage For="() => _model.UserName" />
         </div>
 
         <div class="mb-3">
-            <label for="password" class="form-label">Adgangskode</label>
+            <label for="password" class="form-label">@T("Adgangskode", "Password")</label>
             <InputText id="password" type="password" class="form-control" @bind-Value="_model.Password" autocomplete="new-password" />
             <ValidationMessage For="() => _model.Password" />
         </div>
 
-        <LoadingButton Type="submit" IsLoading="_loading" LoadingText="Opretter…" CssClass="btn-primary w-100">Opret bruger</LoadingButton>
+        <LoadingButton Type="submit" IsLoading="_loading" LoadingText="@T("Opretter…", "Creating…")" CssClass="btn-primary w-100">@T("Opret bruger", "Create account")</LoadingButton>
     </EditForm>
     </RequiresService>
 
-    <p class="mt-3 mb-0">Har du allerede en bruger? <a href="login">Log ind</a></p>
+    <p class="mt-3 mb-0">@T("Har du allerede en bruger?", "Already have an account?") <a href="login">@T("Log ind", "Log in")</a></p>
 </div>
 
 @code {
@@ -45,7 +45,7 @@
         _loading = true;
         _error = await ApiCall.RunAsync(
             () => AuthService.RegisterAsync(_model),
-            unauthorizedMessage: "Brugeren blev oprettet, men login fejlede. Prøv at logge ind.");
+            unauthorizedMessage: T("Brugeren blev oprettet, men login fejlede. Prøv at logge ind.", "Your account was created, but logging in failed. Try logging in."));
         _loading = false;
 
         if (_error is null)

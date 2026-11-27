@@ -1,9 +1,9 @@
 @* SCRUM-153: the deck to the left of my hand: how many rounds are left. Never which songs. *@
 
 <div class="pile pile-deck @(RoundsLeft == 0 ? "pile-empty" : "")" role="img"
-     aria-label="@($"Bunken: {RoundsLeft} {(RoundsLeft == 1 ? "runde" : "runder")} tilbage")" data-testid="deck">
+     aria-label="@T($"Bunken: {RoundsLeft} {(RoundsLeft == 1 ? "runde" : "runder")} tilbage", $"The deck: {RoundsLeft} {(RoundsLeft == 1 ? "round" : "rounds")} left")" data-testid="deck">
     <div class="pile-stack" aria-hidden="true"><i></i><i></i><i></i><span data-testid="deck-count">@RoundsLeft</span></div>
-    <div class="pile-label" aria-hidden="true">Bunken<small>@(RoundsLeft == 1 ? "runde" : "runder") tilbage</small></div>
+    <div class="pile-label" aria-hidden="true">@T("Bunken", "Deck")<small>@(RoundsLeft == 1 ? T("runde tilbage", "round left") : T("runder tilbage", "rounds left"))</small></div>
 </div>
 
 @code {

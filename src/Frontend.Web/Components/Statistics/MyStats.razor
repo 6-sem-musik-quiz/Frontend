@@ -1,18 +1,18 @@
 @* SCRUM-116: the signed-in user's own stats (all time). *@
 
-<h3 class="h6 mb-2">Mine stats</h3>
+<h3 class="h6 mb-2">@T("Mine stats", "My stats")</h3>
 
 @if (Stats.GamesPlayed == 0)
 {
-    <p class="text-body-secondary small mb-0" data-testid="no-games">Ingen spil endnu.</p>
+    <p class="text-body-secondary small mb-0" data-testid="no-games">@T("Ingen spil endnu.", "No games yet.")</p>
 }
 else
 {
     <dl class="row small mb-0" data-testid="my-stats">
-        <dt class="col-6 fw-normal text-body-secondary">Spil</dt>
+        <dt class="col-6 fw-normal text-body-secondary">@T("Spil", "Games")</dt>
         <dd class="col-6 text-end mb-1" data-testid="games">@Stats.GamesPlayed</dd>
 
-        <dt class="col-6 fw-normal text-body-secondary">Sejre</dt>
+        <dt class="col-6 fw-normal text-body-secondary">@T("Sejre", "Wins")</dt>
         <dd class="col-6 text-end mb-1" data-testid="wins">@Stats.Wins</dd>
 
         <dt class="col-6 fw-normal text-body-secondary">Win%</dt>
@@ -21,21 +21,21 @@ else
         <dt class="col-6 fw-normal text-body-secondary">Accuracy</dt>
         <dd class="col-6 text-end mb-1" data-testid="accuracy">@StatsFormat.Percent(Stats.Accuracy)</dd>
 
-        <dt class="col-6 fw-normal text-body-secondary">Runder</dt>
+        <dt class="col-6 fw-normal text-body-secondary">@T("Runder", "Rounds")</dt>
         <dd class="col-6 text-end mb-1" data-testid="rounds">@Stats.RoundsPlayed</dd>
 
-        <dt class="col-6 fw-normal text-body-secondary">Spilletid</dt>
+        <dt class="col-6 fw-normal text-body-secondary">@T("Spilletid", "Play time")</dt>
         <dd class="col-6 text-end mb-1" data-testid="play-time">@StatsFormat.PlayTime(Stats.TimePlayedSeconds)</dd>
 
         @if (Stats.MostPlayedCategory is { } category)
         {
-            <dt class="col-6 fw-normal text-body-secondary">Mest spillede kategori</dt>
+            <dt class="col-6 fw-normal text-body-secondary">@T("Mest spillede kategori", "Most played category")</dt>
             <dd class="col-6 text-end mb-1" data-testid="category">@category.CategoryName (@Games(category.Games))</dd>
         }
 
         @if (Stats.MostCommonFriend is { } friend)
         {
-            <dt class="col-6 fw-normal text-body-secondary">Spiller oftest med</dt>
+            <dt class="col-6 fw-normal text-body-secondary">@T("Spiller oftest med", "Plays most often with")</dt>
             <dd class="col-6 text-end mb-1" data-testid="friend">@friend.UserName (@Games(friend.GamesTogether))</dd>
         }
     </dl>
@@ -44,5 +44,5 @@ else
 @code {
     [Parameter, EditorRequired] public MyStatsDto Stats { get; set; } = null!;
 
-    private static string Games(int count) => count == 1 ? "1 spil" : $"{count} spil";
+    private static string Games(int count) => count == 1 ? T("1 spil", "1 game") : $"{count} {T("spil", "games")}";
 }

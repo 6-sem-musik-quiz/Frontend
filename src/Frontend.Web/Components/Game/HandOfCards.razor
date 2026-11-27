@@ -8,19 +8,19 @@
 @inject IJSRuntime JS
 
 <div class="gr @(IsLocked ? "gr-locked" : "") @(_dragging ? "gr-dragging" : "")" @ref="_root" data-testid="hand-of-cards" data-sfx="none">
-    <div class="sl-banner">· · · @Banner · · ·</div>
+    <div class="sl-banner">· · · @(Banner ?? T("Nu spiller", "Now playing")) · · ·</div>
 
     <div class="gr-mystery-area">
         @if (ShowMystery)
         {
             <div class="gc gc-mystery @(Reveal is { Answered: false } ? "gc-missed" : "")" @ref="_mysteryRef"
                  data-ghost="" data-drag="@(IsLocked ? null : "")" tabindex="@(IsLocked ? -1 : 0)"
-                 role="button" aria-label="Rundens sang. Træk den ned i din hånd, eller brug piletasterne og Enter."
+                 role="button" aria-label="@T("Rundens sang. Træk den ned i din hånd, eller brug piletasterne og Enter.", "The round's song. Drag it down into your hand, or use the arrow keys and Enter.")"
                  @onkeydown="OnKeyDown" data-testid="mystery">
                 <div class="gc-year">?</div>
                 @if (!IsLocked)
                 {
-                    <div class="gc-artist">træk ned i hånden</div>
+                    <div class="gc-artist">@T("træk ned i hånden", "drag into your hand")</div>
                 }
             </div>
         }
@@ -40,7 +40,7 @@
         <div class="gr-side gr-side-left">@Left</div>
     }
     <div class="gr-hand-wrap">
-    <div class="gr-hand" data-hand="" role="group" aria-label="Din tidslinje" style="--n:@(Cards.Count + 1)" data-testid="hand">
+    <div class="gr-hand" data-hand="" role="group" aria-label="@T("Din tidslinje", "Your timeline")" style="--n:@(Cards.Count + 1)" data-testid="hand">
         @{
             var count = Cards.Count + (ShowPlaced ? 1 : 0);
             var index = 0;
@@ -88,9 +88,9 @@
     </div>
 
     <div class="gr-footer">
-        <span class="gr-count px" data-testid="count">Din hånd · @Cards.Count kort = @Cards.Count point</span>
+        <span class="gr-count px" data-testid="count">@T("Din hånd", "Your hand") · @Cards.Count @T("kort", Cards.Count == 1 ? "card" : "cards") = @Cards.Count @T("point", Cards.Count == 1 ? "point" : "points")</span>
         <span class="gr-message" role="status" data-testid="message">@Message</span>
-        <button type="button" class="btn btn-primary gr-confirm" disabled="@IsLocked" @onclick="Confirm" data-testid="confirm">Bekræft</button>
+        <button type="button" class="btn btn-primary gr-confirm" disabled="@IsLocked" @onclick="Confirm" data-testid="confirm">@T("Bekræft", "Confirm")</button>
     </div>
 </div>
 
@@ -109,12 +109,12 @@
     [Parameter] public bool AutoConfirm { get; set; }
 
     // What the hand says while Locked (and nothing is confirmed), e.g. before the first round.
-    [Parameter] public string LockedText { get; set; } = "Tiden er gået.";
+    [Parameter] public string? LockedText { get; set; } // default "Tiden er gået."
 
     // My result once the round has ended; null while it is being played.
     [Parameter] public RoundReveal? Reveal { get; set; }
 
-    [Parameter] public string Banner { get; set; } = "Nu spiller";
+    [Parameter] public string? Banner { get; set; } // default "Nu spiller"
 
     // Shown to the left and right of the hand (under it on a phone).
     [Parameter] public RenderFragment? Left { get; set; }
@@ -164,15 +164,15 @@
     // Only while dragging; no standing instruction under the "?" (the screen-reader label still explains it).
     private string Hint =>
         IsLocked || !_dragging ? ""
-        : _hot >= 0 ? "Slip for at lægge kortet her" : "Træk ned mod hånden";
+        : _hot >= 0 ? T("Slip for at lægge kortet her", "Release to place the card here") : T("Træk ned mod hånden", "Drag down towards your hand");
 
     private string? Message => Reveal switch
     {
-        { Answered: false } => "Intet svar – tiden løb ud.",
-        { Correct: true } => "Rigtigt! Kortet bliver i din hånd.",
-        not null => "Forkert – kortet ryger ud.",
-        null when _confirmed => "Svar afgivet – låst",
-        null when Locked => LockedText,
+        { Answered: false } => T("Intet svar – tiden løb ud.", "No answer – time ran out."),
+        { Correct: true } => T("Rigtigt! Kortet bliver i din hånd.", "Right! The card stays in your hand."),
+        not null => T("Forkert – kortet ryger ud.", "Wrong – the card is out."),
+        null when _confirmed => T("Svar afgivet – låst", "Answer sent – locked"),
+        null when Locked => LockedText ?? T("Tiden er gået.", "Time is up."),
         _ => _message
     };
 
@@ -184,14 +184,14 @@
     };
 
     private string PlacedLabel => Reveal is { Correct: true } r
-        ? $"{r.Song.Year}: {r.Song.Title} – rigtigt"
-        : $"Din placering: {SlotLabel(_slot ?? 0)}. Piletasterne flytter, Enter bekræfter.";
+        ? $"{r.Song.Year}: {r.Song.Title} – {T("rigtigt", "right")}"
+        : T($"Din placering: {SlotLabel(_slot ?? 0)}. Piletasterne flytter, Enter bekræfter.", $"Your placement: {SlotLabel(_slot ?? 0)}. The arrow keys move, Enter confirms.");
 
     private string SlotLabel(int slot) =>
-        Cards.Count == 0 ? "Læg kortet her"
-        : slot == 0 ? $"Før {Cards[0].Year}"
-        : slot == Cards.Count ? $"Efter {Cards[^1].Year}"
-        : $"Mellem {Cards[slot - 1].Year} og {Cards[slot].Year}";
+        Cards.Count == 0 ? T("Læg kortet her", "Place the card here")
+        : slot == 0 ? T($"Før {Cards[0].Year}", $"Before {Cards[0].Year}")
+        : slot == Cards.Count ? T($"Efter {Cards[^1].Year}", $"After {Cards[^1].Year}")
+        : T($"Mellem {Cards[slot - 1].Year} og {Cards[slot].Year}", $"Between {Cards[slot - 1].Year} and {Cards[slot].Year}");
 
     // Fan: each card is turned a little and the outer ones sit a little lower. The outermost cards
     // turn at most 10° and drop at most 14 px in a big hand, so the fan stays inside the hand's
@@ -216,7 +216,7 @@
         if (IsLocked || slot < 0 || slot > Cards.Count)
             return;
         _slot = slot;
-        _message = "Placeret – flyt eller bekræft";
+        _message = T("Placeret – flyt eller bekræft", "Placed – move or confirm");
     }
 
     private void PlaceByClick(int slot) => Place(slot);
@@ -227,7 +227,7 @@
             return;
         if (_slot is not { } slot)
         {
-            _message = "Placér kortet først";
+            _message = T("Placér kortet først", "Place the card first");
             return;
         }
         _confirmed = true;
